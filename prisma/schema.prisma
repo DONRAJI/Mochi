@@ -1,0 +1,188 @@
+// 모찌(Mochi) DB 스키마 — P0 초안
+// 규칙(conventions.md): 모델 PascalCase / 필드 camelCase / 테이블·컬럼 snake_case는 @@map·@map
+// ⚠️ 초안입니다. 실제 마이그레이션(npx prisma migrate dev)은 DATABASE_URL(Supabase/Neon) 연결 후 생성합니다.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── 공통 enum ──────────────────────────────────────────────
+// 불변규칙 #3: 모찌 상태는 이 유니온만. 임의 상태 추가 금지.
+enum MochiState {
+  happy
+  sleepy
+  idle
+  cheer
+}
+
+enum Rarity {
+  common
+  rare
+  epic
+  seasonal
+}
+
+enum PreferenceKind {
+  like
+  dislike
+  allergy
+}
+
+enum MealMode {
+  cook
+  eatout
+  convenience
+}
+
+enum CollectionType {
+  ingredient
+  recipe
+  convenience
+}
+
+// ── auth ───────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nickname     String
+  cooksOften   Boolean  @default(true) @map("cooks_often") // 온보딩 "요리하는 편?" → A/B 페르소나 분기
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sessions    Session[]
+  preferences PreferenceTag[]
+  ingredients Ingredient[]
+  meals       MealRecord[]
+  weights     WeightLog[]
+  collection  CollectionEntry[]
+  streak      Streak?
+  mochi       MochiProfile?
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token") // 폐기 가능하도록 서버 DB 저장 (security.md §2)
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PreferenceTag {
+  id     String         @id @default(cuid())
+  userId String         @map("user_id")
+  kind   PreferenceKind
+  label  String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("preference_tags")
+}
+
+// ── fridge ─────────────────────────────────────────────────
+model Ingredient {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  name      String
+  category  String // 채소/단백질/유제품/곡물 …
+  rarity    Rarity    @default(common)
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ingredients")
+}
+
+// ── recommend (시드 콘텐츠 — 유저 소유 아님) ───────────────
+model Recipe {
+  id       String @id @default(cuid())
+  name     String
+  minutes  Int // 조리시간
+  servings Int    @default(1)
+  rarity   Rarity @default(common)
+
+  @@map("recipes")
+}
+
+// ── record ─────────────────────────────────────────────────
+model MealRecord {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  mode     MealMode
+  photoUrl String?  @map("photo_url") // 외부 스토리지 경로 (security.md §6)
+  memo     String?
+  eatenAt  DateTime @default(now()) @map("eaten_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("meal_records")
+}
+
+model WeightLog {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  weight   Decimal  @db.Decimal(5, 2) // 숫자는 me(마이)에서만 노출 (불변 #2)
+  loggedAt DateTime @default(now()) @map("logged_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("weight_logs")
+}
+
+model Streak {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  count         Int      @default(0)
+  shieldCount   Int      @default(1) @map("shield_count") // 보호권 🛡️ "하루 빠져도 안 깨져요"
+  lastCheckedAt DateTime @default(now()) @map("last_checked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("streaks")
+}
+
+// ── collection ─────────────────────────────────────────────
+model CollectionEntry {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  type       CollectionType
+  refId      String         @map("ref_id") // 재료/레시피/간편식 식별자 (도메인 간 ID 참조 — project.md)
+  rarity     Rarity         @default(common)
+  acquiredAt DateTime       @default(now()) @map("acquired_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, refId])
+  @@index([userId])
+  @@map("collection_entries")
+}
+
+// ── mochi ──────────────────────────────────────────────────
+model MochiProfile {
+  id          String     @id @default(cuid())
+  userId      String     @unique @map("user_id")
+  state       MochiState @default(idle)
+  growthStage Int        @default(1) @map("growth_stage")
+  outfit      String?
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mochi_profiles")
+}

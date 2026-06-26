@@ -1,0 +1,13 @@
+# 설치: pipx install pre-commit && pre-commit install
+# 점검: pre-commit run --all-files
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks            # 시크릿(키/토큰) 커밋 차단
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key  # 개인키 차단
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
