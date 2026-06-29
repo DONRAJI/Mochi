@@ -9,6 +9,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ── 공통 enum ──────────────────────────────────────────────
@@ -107,7 +108,9 @@ model Ingredient {
   @@map("ingredients")
 }
 
-// ── recommend (시드 콘텐츠 — 유저 소유 아님) ───────────────
+// ── recommend 콘텐츠 카탈로그 (3모드 시드 — 유저 소유 아님) ───
+// 비요리 동등(불변 #5): 요리=Recipe, 외식=Menu, 간편식=ConvenienceItem.
+// fridge는 '요리 입력 재고'로 한정하고, 제안 콘텐츠는 recommend가 소유한다.
 model Recipe {
   id       String @id @default(cuid())
   name     String
@@ -116,6 +119,27 @@ model Recipe {
   rarity   Rarity @default(common)
 
   @@map("recipes")
+}
+
+// 외식/배달 메뉴 (mode = eatout)
+model Menu {
+  id       String @id @default(cuid())
+  name     String
+  category String // 한식/양식/일식 …
+  rarity   Rarity @default(common)
+
+  @@map("menus")
+}
+
+// 편의점·간편식 (mode = convenience). CollectionEntry(type=convenience).refId 의 참조처.
+model ConvenienceItem {
+  id      String  @id @default(cuid())
+  name    String
+  brand   String?
+  barcode String? @unique // 바코드 스캔 등록 (PRD 8장 아이디어2)
+  rarity  Rarity  @default(common)
+
+  @@map("convenience_items")
 }
 
 // ── record ─────────────────────────────────────────────────
