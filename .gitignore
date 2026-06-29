@@ -46,3 +46,12 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# AI 에이전트 지침·규칙 (로컬 전용 — 깃에 올리지 않음)
+/CLAUDE.md
+/AGENTS.md
+/GEMINI.md
+/SETUP.md
+/rules/
+/.cursor/
+/.claude/
