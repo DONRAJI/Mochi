@@ -25,9 +25,12 @@ export function IngredientSticker({ name, rarity = "common", onRemove }: Ingredi
       {onRemove && (
         <button
           type="button"
-          onClick={onRemove}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
           aria-label={`${name} 빼기`}
-          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-cream-200 text-xs text-cocoa-faint shadow-mochi-press transition-transform ease-jelly active:scale-90"
+          className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-peach text-xs text-cocoa shadow-mochi-press transition-transform ease-jelly active:scale-90"
         >
           ✕
         </button>
