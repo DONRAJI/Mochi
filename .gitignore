@@ -55,3 +55,6 @@ yarn-error.log*
 /rules/
 /.cursor/
 /.claude/
+
+# 디자인 시스템 참조 패키지 (로컬 전용 — 에셋/토큰은 코드로 포팅)
+/Mochi Design System/

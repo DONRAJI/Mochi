@@ -26,6 +26,7 @@ export function BottomTabBar() {
             href={tab.href}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 rounded-mochi-sm py-1.5 text-xs",
+              "transition ease-jelly active:scale-[0.94]",
               active ? "bg-mint-soft text-cocoa" : "text-cocoa-faint",
             )}
           >

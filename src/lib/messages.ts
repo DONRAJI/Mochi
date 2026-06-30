@@ -11,6 +11,11 @@ export const messages = {
     VALIDATION: "입력을 한 번만 더 봐줄래요?",
     INTERNAL: "잠깐 문제가 생겼어요. 다시 시도해 주세요.",
   },
+  auth: {
+    emailTaken: "이미 함께하고 있는 이메일이에요.",
+    invalidCredentials: "이메일이나 비밀번호를 한 번만 더 봐줄래요?",
+    loginRequired: "로그인이 필요해요.",
+  },
   empty: {
     fridge: "냉장고가 비어도 괜찮아요 — 외식 모드 볼까요?",
     collection: "아직 비어 있어요. 오늘 한 칸 채워볼까요?",

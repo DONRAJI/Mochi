@@ -18,6 +18,7 @@ const config = [
       "coverage/**",
       "next-env.d.ts",
       "prisma/migrations/**",
+      "Mochi Design System/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
