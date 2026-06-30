@@ -1,12 +1,14 @@
 import "server-only";
 import { db } from "@/server/db";
 import { computeMatchRate, missingIngredients } from "@/features/recommend/ranking";
+import { deriveBadge } from "@/features/recommend/nutrition";
+import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
 import type { MealMode, RecommendationResponse } from "@/features/recommend/types";
 
 /**
- * recommend 서비스 — 시드 카탈로그(Recipe/Menu/ConvenienceItem)를 3모드로 서빙.
- * 요리 모드는 유저 냉장고(Ingredient) 기준 매칭률을 실제 계산해 내림차순 정렬.
- * (비요리 동등 — 불변 #5: 외식/간편식도 동일하게 카탈로그에서 서빙.)
+ * recommend 서비스 — 시드 카탈로그를 3모드로 서빙.
+ * 요리 모드: 재료 마스터로 이름 정규화(별칭→표준명) 후 냉장고 매칭률 계산.
+ * 뱃지는 영양(kcal/protein)에서 자동 산출(deriveBadge) — 영양 숫자는 응답에 안 넣는다(불변 #2).
  */
 export async function getRecommendations(
   mode: MealMode,
@@ -17,28 +19,33 @@ export async function getRecommendations(
   const skip = page * size;
 
   if (mode === "cook") {
-    const [recipes, fridge] = await Promise.all([
+    const [recipes, fridge, masters] = await Promise.all([
       db.recipe.findMany(),
       userId
         ? db.ingredient.findMany({ where: { userId }, select: { name: true } })
         : Promise.resolve([] as { name: string }[]),
+      db.ingredientMaster.findMany({ select: { name: true, aliases: true } }),
     ]);
-    const owned = fridge.map((f) => f.name);
+    const canon = buildCanonicalMap(masters);
+    const owned = fridge.map((f) => canonicalize(f.name, canon));
 
     return recipes
-      .map((r) => ({
-        id: r.id,
-        name: r.name,
-        emoji: r.emoji,
-        badge: r.badge,
-        minutes: r.minutes,
-        servings: r.servings,
-        matchRate: computeMatchRate(owned, r.ingredients),
-        missingIngredients: missingIngredients(owned, r.ingredients),
-        subtitle: null,
-        rarity: r.rarity,
-        steps: r.steps,
-      }))
+      .map((r) => {
+        const required = r.ingredients.map((i) => canonicalize(i, canon));
+        return {
+          id: r.id,
+          name: r.name,
+          emoji: r.emoji,
+          badge: deriveBadge(r.kcal, r.protein),
+          minutes: r.minutes,
+          servings: r.servings,
+          matchRate: computeMatchRate(owned, required),
+          missingIngredients: missingIngredients(owned, required),
+          subtitle: null,
+          rarity: r.rarity,
+          steps: r.steps,
+        };
+      })
       .sort((a, b) => b.matchRate - a.matchRate || a.minutes - b.minutes)
       .slice(skip, skip + size);
   }
@@ -49,7 +56,7 @@ export async function getRecommendations(
       id: m.id,
       name: m.name,
       emoji: m.emoji,
-      badge: m.badge,
+      badge: deriveBadge(m.kcal, m.protein),
       minutes: null,
       servings: null,
       matchRate: null,
@@ -65,7 +72,7 @@ export async function getRecommendations(
     id: c.id,
     name: c.name,
     emoji: c.emoji,
-    badge: c.badge,
+    badge: deriveBadge(c.kcal, c.protein),
     minutes: null,
     servings: null,
     matchRate: null,

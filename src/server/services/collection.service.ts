@@ -1,12 +1,12 @@
 import "server-only";
 import { db } from "@/server/db";
-import { COMMON_INGREDIENTS } from "@/features/fridge/ingredients";
+import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
 import type { CollectionTab, CollectibleResponse } from "@/features/collection/types";
 
 /**
  * 도감 read — 전체 카탈로그에 내 획득 여부를 합쳐 보여준다(획득=풀컬러, 미획득=실루엣).
  * recipe/convenience는 시드 카탈로그 ⋈ CollectionEntry.
- * ingredient는 (재료 마스터 없으니 P0 근사) 팔레트 ⋈ 현재 냉장고 보유 — Phase 1C에서 마스터로 교체.
+ * ingredient는 재료 마스터(IngredientMaster) ⋈ 현재 냉장고(별칭 정규화로 매칭).
  */
 export async function listCollection(
   userId: string,
@@ -39,15 +39,19 @@ export async function listCollection(
     }));
   }
 
-  // ingredient: 팔레트 카탈로그 ⋈ 현재 냉장고(보유=발견)
-  const fridge = await db.ingredient.findMany({ where: { userId }, select: { name: true } });
-  const owned = new Set(fridge.map((f) => f.name));
-  return COMMON_INGREDIENTS.map((p) => ({
-    refId: p.name,
-    name: p.name,
-    emoji: p.emoji,
-    rarity: "common",
-    acquired: owned.has(p.name),
+  // ingredient: 재료 마스터 ⋈ 현재 냉장고(보유=발견, 별칭 정규화)
+  const [masters, fridge] = await Promise.all([
+    db.ingredientMaster.findMany(),
+    db.ingredient.findMany({ where: { userId }, select: { name: true } }),
+  ]);
+  const canon = buildCanonicalMap(masters);
+  const owned = new Set(fridge.map((f) => canonicalize(f.name, canon)));
+  return masters.map((m) => ({
+    refId: m.name,
+    name: m.name,
+    emoji: m.emoji,
+    rarity: m.rarity,
+    acquired: owned.has(m.name),
     acquiredAt: null,
   }));
 }

@@ -118,7 +118,9 @@ model Recipe {
   minutes     Int // 조리시간
   servings    Int      @default(1)
   rarity      Rarity   @default(common)
-  badge       String? // 랭킹 뱃지 (💪 단백질 / 🫧 포만감 / 🍃 가벼움)
+  badge       String? // (구) 수기 뱃지 — 이제 영양에서 자동 산출(미사용, 호환 위해 유지)
+  kcal        Int? // 서버 전용 영양 신호 (화면 노출 X, 불변 #2). 1인분 기준
+  protein     Int? // g
   ingredients String[] // 필요한 재료(이름) — 냉장고 매칭률 계산용
   steps       String[] // 조리 단계
 
@@ -127,12 +129,14 @@ model Recipe {
 
 // 외식/배달 메뉴 (mode = eatout)
 model Menu {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   name     String
   emoji    String?
   category String // 한식/양식/일식 …
-  rarity   Rarity @default(common)
-  badge    String?
+  rarity   Rarity  @default(common)
+  badge    String? // (구) 미사용
+  kcal     Int?
+  protein  Int?
 
   @@map("menus")
 }
@@ -145,9 +149,25 @@ model ConvenienceItem {
   brand   String?
   barcode String? @unique // 바코드 스캔 등록 (PRD 8장 아이디어2)
   rarity  Rarity  @default(common)
-  badge   String?
+  badge   String? // (구) 미사용
+  kcal    Int?
+  protein Int?
 
   @@map("convenience_items")
+}
+
+// ── 재료 마스터 (표준 재료 카탈로그 — 매칭 정규화·영양·재료 도감) ──
+model IngredientMaster {
+  id       String   @id @default(cuid())
+  name     String   @unique // 표준명
+  category String
+  emoji    String
+  rarity   Rarity   @default(common)
+  kcal     Int? // 100g 기준 (서버 전용)
+  protein  Int?
+  aliases  String[] // 별칭(토마토→방울토마토 등) — 매칭 정확도
+
+  @@map("ingredient_masters")
 }
 
 // ── record ─────────────────────────────────────────────────
