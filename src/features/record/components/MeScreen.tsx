@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { WeightTrendChart } from "./WeightTrendChart";
+import { WeightSection } from "./WeightSection";
 import { MeMenuList } from "./MeMenuList";
 import { useMe } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
@@ -41,7 +41,7 @@ export function MeScreen() {
         <span className="text-cocoa">체중·통계 더보기</span>
         <span className="text-sm text-cocoa-faint">{showStats ? "접기" : "펼치기"}</span>
       </button>
-      {showStats && <WeightTrendChart />}
+      {showStats && <WeightSection />}
 
       <MeMenuList />
     </div>
