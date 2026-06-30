@@ -2,42 +2,44 @@
 
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import type { MockRecipe } from "../data";
+import type { RecommendationResponse } from "../types";
 
-/** 레시피/메뉴 상세 — 단계 + (예정)StepTimer + 도감 등록 (PRD 5.3). */
+/** 레시피/메뉴 상세 — 단계(요리) 또는 매장 연결(외식·간편식) + 도감 등록 (PRD 5.3). */
 export function RecipeDetailModal({
-  recipe,
+  item,
   onClose,
 }: {
-  recipe: MockRecipe | null;
+  item: RecommendationResponse | null;
   onClose: () => void;
 }) {
   return (
-    <Modal open={recipe !== null} onClose={onClose}>
-      {recipe && (
+    <Modal open={item !== null} onClose={onClose}>
+      {item && (
         <>
           <div className="flex items-center gap-3">
-            <span className="text-4xl">{recipe.emoji}</span>
+            <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
             <div>
-              <h3 className="text-lg font-bold text-cocoa">{recipe.name}</h3>
+              <h3 className="text-lg font-bold text-cocoa">{item.name}</h3>
               <p className="text-sm text-cocoa-faint">
-                {recipe.minutes > 0 ? `⏱ ${recipe.minutes}분 · ` : ""}
-                {recipe.servings}인분
+                {item.minutes != null ? `⏱ ${item.minutes}분 · ${item.servings}인분` : item.subtitle}
               </p>
             </div>
           </div>
-          <ol className="mt-4 flex flex-col gap-2">
-            {recipe.steps.map((s, i) => (
-              <li key={i} className="flex gap-2 text-cocoa-soft">
-                <span className="font-bold text-cocoa">{i + 1}</span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-4 rounded-mochi-sm bg-lavender-soft px-3 py-2 text-center text-sm text-cocoa">
-            ⏲ 단계 타이머는 곧 들어와요
-          </div>
-          <Button className="mt-4 w-full">다 했어요! 도감에 담기</Button>
+
+          {item.steps.length > 0 ? (
+            <ol className="mt-4 flex flex-col gap-2">
+              {item.steps.map((s, i) => (
+                <li key={i} className="flex gap-2 text-cocoa-soft">
+                  <span className="font-display text-cocoa">{i + 1}</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-4 text-center text-sm text-cocoa-soft">주변 매장·배달로 바로 연결돼요</p>
+          )}
+
+          <Button className="mt-4 w-full">잘 먹었어요! 도감에 담기</Button>
         </>
       )}
     </Modal>

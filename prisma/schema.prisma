@@ -112,11 +112,15 @@ model Ingredient {
 // 비요리 동등(불변 #5): 요리=Recipe, 외식=Menu, 간편식=ConvenienceItem.
 // fridge는 '요리 입력 재고'로 한정하고, 제안 콘텐츠는 recommend가 소유한다.
 model Recipe {
-  id       String @id @default(cuid())
-  name     String
-  minutes  Int // 조리시간
-  servings Int    @default(1)
-  rarity   Rarity @default(common)
+  id          String   @id @default(cuid())
+  name        String
+  emoji       String?
+  minutes     Int // 조리시간
+  servings    Int      @default(1)
+  rarity      Rarity   @default(common)
+  badge       String? // 랭킹 뱃지 (💪 단백질 / 🫧 포만감 / 🍃 가벼움)
+  ingredients String[] // 필요한 재료(이름) — 냉장고 매칭률 계산용
+  steps       String[] // 조리 단계
 
   @@map("recipes")
 }
@@ -125,8 +129,10 @@ model Recipe {
 model Menu {
   id       String @id @default(cuid())
   name     String
+  emoji    String?
   category String // 한식/양식/일식 …
   rarity   Rarity @default(common)
+  badge    String?
 
   @@map("menus")
 }
@@ -135,9 +141,11 @@ model Menu {
 model ConvenienceItem {
   id      String  @id @default(cuid())
   name    String
+  emoji   String?
   brand   String?
   barcode String? @unique // 바코드 스캔 등록 (PRD 8장 아이디어2)
   rarity  Rarity  @default(common)
+  badge   String?
 
   @@map("convenience_items")
 }
