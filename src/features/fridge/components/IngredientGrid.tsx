@@ -1,12 +1,22 @@
 import { IngredientSticker } from "./IngredientSticker";
-import type { MockIngredient } from "../data";
+import type { IngredientResponse } from "../types";
 
-/** 재료 그리드 (PRD 5.2). */
-export function IngredientGrid({ items }: { items: MockIngredient[] }) {
+export function IngredientGrid({
+  items,
+  onRemove,
+}: {
+  items: IngredientResponse[];
+  onRemove?: (id: string) => void;
+}) {
   return (
     <div className="grid grid-cols-4 gap-2">
       {items.map((i) => (
-        <IngredientSticker key={i.id} emoji={i.emoji} name={i.name} rarity={i.rarity} />
+        <IngredientSticker
+          key={i.id}
+          name={i.name}
+          rarity={i.rarity}
+          onRemove={onRemove ? () => onRemove(i.id) : undefined}
+        />
       ))}
     </div>
   );
