@@ -22,7 +22,7 @@ export function FridgeScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-cocoa">냉장고</h1>
+      <h1 className="text-title text-cocoa">냉장고</h1>
       <ExpiryShelf items={MOCK_EXPIRING} />
       <TagFilterChips />
       <div className="flex gap-2 overflow-x-auto pb-1">

@@ -16,6 +16,7 @@ export function CollectibleCard({
       onClick={item.acquired ? onClick : undefined}
       className={cn(
         "flex flex-col items-center gap-1 rounded-mochi-sm bg-cream-50 p-3 shadow-mochi-press",
+        "transition-transform ease-jelly active:scale-[0.96]",
         !item.acquired && "opacity-50",
       )}
     >

@@ -92,6 +92,7 @@ function ChoiceChip({
       onClick={onClick}
       className={cn(
         "flex-1 rounded-mochi-sm px-3 py-2 text-sm shadow-mochi-press",
+        "transition-transform ease-jelly active:scale-[0.96]",
         active ? "bg-mint text-cocoa" : "bg-cream-200 text-cocoa-faint",
       )}
     >

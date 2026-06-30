@@ -18,7 +18,7 @@ export function MealsScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-cocoa">오늘 뭐 먹지</h1>
+      <h1 className="text-title text-cocoa">오늘 뭐 먹지</h1>
       <ModeToggle value={mode} onChange={(v) => setMode(v as MealMode)} />
       <SortFilterChips />
 

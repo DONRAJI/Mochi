@@ -18,7 +18,7 @@ export function InputMethodSheet({ open, onClose }: { open: boolean; onClose: ()
             key={m.label}
             type="button"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-mochi-sm bg-cream-200 px-4 py-3 text-left"
+            className="flex items-center gap-3 rounded-mochi-sm bg-cream-200 px-4 py-3 text-left transition-transform ease-jelly active:scale-[0.97]"
           >
             <span className="text-2xl">{m.emoji}</span>
             <div>

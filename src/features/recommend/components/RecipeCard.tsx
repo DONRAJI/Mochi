@@ -11,13 +11,17 @@ export function RecipeCard({
   onClick?: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="w-full text-left">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
+    >
       <Card>
         <div className="flex items-center gap-3">
           <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-medium text-cocoa">{item.name}</p>
+              <p className="font-display text-cocoa">{item.name}</p>
               {item.badge && (
                 <span className="rounded-mochi-sm bg-mint-soft px-2 py-0.5 text-xs text-cocoa">
                   {item.badge}

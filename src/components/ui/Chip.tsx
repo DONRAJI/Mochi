@@ -26,6 +26,7 @@ export function Chip({ children, active, onClick, tone = "default" }: ChipProps)
       onClick={onClick}
       className={cn(
         "whitespace-nowrap rounded-mochi-sm px-3 py-1.5 text-sm shadow-mochi-press",
+        "transition-transform ease-jelly active:scale-[0.94]",
         active ? "bg-mint text-cocoa" : tones[tone],
       )}
     >

@@ -17,7 +17,7 @@ export function TodaySuggestionCard() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">{s.emoji}</span>
               <div>
-                <p className="text-lg font-medium text-cocoa">{s.title}</p>
+                <p className="font-display text-lg text-cocoa">{s.title}</p>
                 <p className="text-sm text-cocoa-soft">{s.hint}</p>
               </div>
             </div>

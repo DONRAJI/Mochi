@@ -22,7 +22,7 @@ export function CollectionScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-cocoa">도감</h1>
+      <h1 className="text-title text-cocoa">도감</h1>
       <SegmentedControl
         options={[...COLLECTION_TABS]}
         value={tab}

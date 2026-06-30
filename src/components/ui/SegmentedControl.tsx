@@ -24,7 +24,7 @@ export function SegmentedControl({ options, value, onChange, className }: Segmen
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
-            "flex-1 rounded-mochi-sm px-3 py-2 text-sm",
+            "flex-1 rounded-mochi-sm px-3 py-2 text-sm transition ease-jelly active:scale-[0.97]",
             value === opt.value ? "bg-cream-50 text-cocoa shadow-mochi-press" : "text-cocoa-faint",
           )}
         >
