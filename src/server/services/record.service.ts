@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { nextStreakCount } from "@/features/record/streak";
-import type { MarkMealRequest, MealRecordResponse } from "@/features/record/types";
+import type { MarkMealRequest, MealRecordResponse, StreakResponse } from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
 
 /** cook→recipe, convenience→convenience 도감. eatout은 도감 대상 아님(요리/재료/간편식만). */
@@ -60,4 +60,10 @@ export async function markMealEaten(
 
     return { recordId: record.id, mochiState, streakCount: count, cardAcquired };
   });
+}
+
+/** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */
+export async function getStreak(userId: string): Promise<StreakResponse> {
+  const streak = await db.streak.findUnique({ where: { userId } });
+  return { count: streak?.count ?? 0, shieldCount: streak?.shieldCount ?? 1 };
 }

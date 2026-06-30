@@ -4,12 +4,18 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { WeightTrendChart } from "./WeightTrendChart";
 import { MeMenuList } from "./MeMenuList";
+import { useMe } from "@/features/auth/hooks/useAuth";
+import { useStreak } from "../hooks/useRecord";
+import { useMochiState } from "@/features/mochi/hooks/useMochi";
 
 /**
  * 👤 마이 — 기록·더보기. 숫자(체중·통계)는 '더보기' 안에서만 펼쳐 본다 (불변 #2).
  */
 export function MeScreen() {
   const [showStats, setShowStats] = useState(false);
+  const { data: me } = useMe();
+  const { data: streak } = useStreak();
+  const { data: mochi } = useMochiState();
 
   return (
     <div className="flex flex-col gap-4">
@@ -20,8 +26,10 @@ export function MeScreen() {
           •‿•
         </span>
         <div>
-          <p className="font-display text-cocoa">모찌 친구</p>
-          <p className="text-sm text-cocoa-faint">오늘도 잘 먹고 있어요</p>
+          <p className="font-display text-cocoa">{me?.nickname ?? "모찌 친구"}</p>
+          <p className="text-sm text-cocoa-faint">
+            스트릭 {streak?.count ?? 0}일째 · 모은 카드 {mochi?.collectedCount ?? 0}개
+          </p>
         </div>
       </Card>
 

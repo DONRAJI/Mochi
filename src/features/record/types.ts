@@ -16,3 +16,8 @@ export interface MealRecordResponse {
   streakCount: number;
   cardAcquired: boolean; // 새 도감 카드 획득 여부
 }
+
+export interface StreakResponse {
+  count: number;
+  shieldCount: number;
+}
