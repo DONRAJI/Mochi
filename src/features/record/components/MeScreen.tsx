@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { WeightSection } from "./WeightSection";
 import { MeMenuList } from "./MeMenuList";
-import { useMe } from "@/features/auth/hooks/useAuth";
+import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
 import { useMochiState } from "@/features/mochi/hooks/useMochi";
 
@@ -13,6 +14,8 @@ import { useMochiState } from "@/features/mochi/hooks/useMochi";
  */
 export function MeScreen() {
   const [showStats, setShowStats] = useState(false);
+  const router = useRouter();
+  const logout = useLogout();
   const { data: me } = useMe();
   const { data: streak } = useStreak();
   const { data: mochi } = useMochiState();
@@ -44,6 +47,14 @@ export function MeScreen() {
       {showStats && <WeightSection />}
 
       <MeMenuList />
+
+      <button
+        type="button"
+        onClick={() => logout.mutate(undefined, { onSuccess: () => router.push("/login") })}
+        className="mt-2 rounded-mochi bg-cream-50 px-4 py-3 text-center text-sm text-cocoa-faint shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+      >
+        {logout.isPending ? "나가는 중…" : "로그아웃"}
+      </button>
     </div>
   );
 }
