@@ -6,4 +6,10 @@
   body {
     @apply bg-cream text-cocoa antialiased;
   }
+  /* 제목은 둥근 디스플레이 폰트(Jua) — DS 타이포 위계 */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
 }

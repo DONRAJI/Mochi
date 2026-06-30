@@ -11,7 +11,7 @@ export function MochiSpeechBubble({ children, className }: MochiSpeechBubbleProp
   return (
     <p
       className={cn(
-        "rounded-mochi bg-cream-50 px-4 py-3 text-center text-cocoa-soft shadow-mochi-press",
+        "rounded-mochi bg-cream-50 px-4 py-3 text-center font-display text-cocoa-soft shadow-mochi-press",
         className,
       )}
     >

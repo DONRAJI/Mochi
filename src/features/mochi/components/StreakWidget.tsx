@@ -13,7 +13,7 @@ export function StreakWidget({ days = 7, shields = 1 }: StreakWidgetProps) {
         <span className="text-3xl">🍮</span>
         <div>
           <p className="text-sm text-cocoa-faint">연속 기록</p>
-          <p className="text-lg font-bold text-cocoa">{days}일째</p>
+          <p className="font-display text-lg text-cocoa">{days}일째</p>
         </div>
       </div>
       <div className="text-right text-sm text-cocoa-soft">
