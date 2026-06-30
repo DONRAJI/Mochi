@@ -8,6 +8,9 @@ import { QuickActionBar } from "./QuickActionBar";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak } from "@/features/record/hooks/useRecord";
 import { messages } from "@/lib/messages";
+import { cn } from "@/lib/utils";
+
+const MAX_STAGE = 5;
 
 const bubbleFor: Record<string, string> = {
   happy: "오늘도 잘 먹었네요, 뿌듯해요 😊",
@@ -21,11 +24,26 @@ export function MochiRoom() {
   const { data: mochi } = useMochiState();
   const { data: streak } = useStreak();
   const state = mochi?.state ?? "idle";
+  const stage = mochi?.growthStage ?? 1;
 
   return (
     <main className="flex flex-col items-center gap-5">
       <MochiAvatar state={state} priority />
       <MochiSpeechBubble>{bubbleFor[state] ?? messages.mochi.greet}</MochiSpeechBubble>
+
+      {/* 성장 단계 — 수집할수록 모찌가 자란다 (PRD: 진행도=성장) */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-cocoa-faint">함께 자라는 중</span>
+        {Array.from({ length: MAX_STAGE }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              i < stage ? "bg-mint-deep" : "bg-cream-200",
+            )}
+          />
+        ))}
+      </div>
       <TodaySuggestionCard />
       <StreakWidget days={streak?.count ?? 0} shields={streak?.shieldCount ?? 1} />
       <QuickActionBar />
