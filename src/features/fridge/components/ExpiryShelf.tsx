@@ -1,12 +1,12 @@
 import { Card } from "@/components/ui/Card";
+import { emojiForIngredient } from "../ingredients";
 
 interface ExpiryItem {
-  emoji: string;
   name: string;
   days: number;
 }
 
-/** 유통기한 임박 선반 — 강조색은 빨강이 아니라 복숭아톤 (불변 #1, PRD 5.2). */
+/** 유통기한 임박 선반 — 강조색은 빨강이 아니라 복숭아톤 (불변 #1, PRD 5.2). 비면 숨김. */
 export function ExpiryShelf({ items }: { items: ExpiryItem[] }) {
   if (!items.length) return null;
   return (
@@ -18,7 +18,7 @@ export function ExpiryShelf({ items }: { items: ExpiryItem[] }) {
             key={i.name}
             className="flex min-w-fit items-center gap-1.5 rounded-mochi-sm bg-cream-50 px-3 py-1.5 text-sm text-cocoa"
           >
-            <span>{i.emoji}</span>
+            <span>{emojiForIngredient(i.name)}</span>
             <span>{i.name}</span>
             <span className="text-cocoa-faint">D-{i.days}</span>
           </div>
