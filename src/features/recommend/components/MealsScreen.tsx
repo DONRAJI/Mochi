@@ -34,7 +34,7 @@ export function MealsScreen() {
       </div>
 
       <WeeklyPlanStrip />
-      <RecipeDetailModal item={selected} onClose={() => setSelected(null)} />
+      <RecipeDetailModal item={selected} mode={mode} onClose={() => setSelected(null)} />
     </div>
   );
 }
