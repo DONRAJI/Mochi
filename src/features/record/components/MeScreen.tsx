@@ -1,15 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { WeightTrendChart } from "./WeightTrendChart";
+import { WeightSection } from "./WeightSection";
 import { MeMenuList } from "./MeMenuList";
+import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
+import { useStreak } from "../hooks/useRecord";
+import { useMochiState } from "@/features/mochi/hooks/useMochi";
 
 /**
  * 👤 마이 — 기록·더보기. 숫자(체중·통계)는 '더보기' 안에서만 펼쳐 본다 (불변 #2).
  */
 export function MeScreen() {
   const [showStats, setShowStats] = useState(false);
+  const router = useRouter();
+  const logout = useLogout();
+  const { data: me } = useMe();
+  const { data: streak } = useStreak();
+  const { data: mochi } = useMochiState();
 
   return (
     <div className="flex flex-col gap-4">
@@ -20,8 +29,10 @@ export function MeScreen() {
           •‿•
         </span>
         <div>
-          <p className="font-display text-cocoa">모찌 친구</p>
-          <p className="text-sm text-cocoa-faint">오늘도 잘 먹고 있어요</p>
+          <p className="font-display text-cocoa">{me?.nickname ?? "모찌 친구"}</p>
+          <p className="text-sm text-cocoa-faint">
+            스트릭 {streak?.count ?? 0}일째 · 모은 카드 {mochi?.collectedCount ?? 0}개
+          </p>
         </div>
       </Card>
 
@@ -33,9 +44,17 @@ export function MeScreen() {
         <span className="text-cocoa">체중·통계 더보기</span>
         <span className="text-sm text-cocoa-faint">{showStats ? "접기" : "펼치기"}</span>
       </button>
-      {showStats && <WeightTrendChart />}
+      {showStats && <WeightSection />}
 
       <MeMenuList />
+
+      <button
+        type="button"
+        onClick={() => logout.mutate(undefined, { onSuccess: () => router.push("/login") })}
+        className="mt-2 rounded-mochi bg-cream-50 px-4 py-3 text-center text-sm text-cocoa-faint shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+      >
+        {logout.isPending ? "나가는 중…" : "로그아웃"}
+      </button>
     </div>
   );
 }

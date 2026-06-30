@@ -16,3 +16,24 @@ export interface MealRecordResponse {
   streakCount: number;
   cardAcquired: boolean; // 새 도감 카드 획득 여부
 }
+
+export interface StreakResponse {
+  count: number;
+  shieldCount: number;
+}
+
+/** 체중 기록 — 숫자는 마이>더보기에서만 (불변 #2). */
+export const createWeightSchema = z.object({
+  weight: z.coerce.number().min(20, "체중을 한 번만 더 봐줄래요?").max(300),
+  loggedAt: z.coerce.date().optional(),
+});
+
+export const weightQuerySchema = z.object({
+  size: z.coerce.number().int().min(1).max(120).default(30),
+});
+
+export interface WeightLogResponse {
+  id: string;
+  weight: number;
+  loggedAt: string; // ISO
+}

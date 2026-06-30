@@ -1,7 +1,12 @@
 import "server-only";
 import { db } from "@/server/db";
 import { nextStreakCount } from "@/features/record/streak";
-import type { MarkMealRequest, MealRecordResponse } from "@/features/record/types";
+import type {
+  MarkMealRequest,
+  MealRecordResponse,
+  StreakResponse,
+  WeightLogResponse,
+} from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
 
 /** cook→recipe, convenience→convenience 도감. eatout은 도감 대상 아님(요리/재료/간편식만). */
@@ -60,4 +65,33 @@ export async function markMealEaten(
 
     return { recordId: record.id, mochiState, streakCount: count, cardAcquired };
   });
+}
+
+/** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */
+export async function getStreak(userId: string): Promise<StreakResponse> {
+  const streak = await db.streak.findUnique({ where: { userId } });
+  return { count: streak?.count ?? 0, shieldCount: streak?.shieldCount ?? 1 };
+}
+
+function toWeight(row: { id: string; weight: unknown; loggedAt: Date }): WeightLogResponse {
+  return { id: row.id, weight: Number(row.weight), loggedAt: row.loggedAt.toISOString() };
+}
+
+export async function addWeight(
+  userId: string,
+  weight: number,
+  loggedAt?: Date,
+): Promise<WeightLogResponse> {
+  const row = await db.weightLog.create({ data: { userId, weight, loggedAt } });
+  return toWeight(row);
+}
+
+/** 최근 size개를 오름차순(과거→현재)으로 — 그래프용. */
+export async function listWeights(userId: string, size: number): Promise<WeightLogResponse[]> {
+  const rows = await db.weightLog.findMany({
+    where: { userId },
+    orderBy: { loggedAt: "desc" },
+    take: size,
+  });
+  return rows.reverse().map(toWeight);
 }

@@ -10,6 +10,7 @@ export const messages = {
     NOT_FOUND: "찾는 걸 못 찾았어요.",
     VALIDATION: "입력을 한 번만 더 봐줄래요?",
     INTERNAL: "잠깐 문제가 생겼어요. 다시 시도해 주세요.",
+    RATE_LIMITED: "조금 천천히, 잠시 후 다시 와줄래요?",
   },
   auth: {
     emailTaken: "이미 함께하고 있는 이메일이에요.",

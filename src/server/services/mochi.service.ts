@@ -1,17 +1,37 @@
 import "server-only";
+import { db } from "@/server/db";
 import type { MochiState } from "@/types/mochi";
+import type { MochiStateResponse } from "@/features/mochi/types";
 
 /**
- * mochi 도메인 서비스 — 비즈니스 로직은 여기서만, Prisma 호출도 여기서만 (structure.md 레이어 규칙).
- * P0 골격: 아직 DB 없이 상태를 계산해 돌려준다. auth/record 연결 후 db(streak·시간대 등) 기반으로 확장.
+ * 모찌 상태 — 숫자가 아니라 표정으로 진행도를 전한다 (불변 #2).
+ * 파생 규칙: 밤(23~6시)→sleepy · 오늘 먹은 기록 있으면→happy · 그 외→idle.
+ * 성장 단계는 모은 도감 카드 수로(수집=성장, PRD 7장). 비로그인은 시간대만.
  */
-export interface MochiStateResponse {
-  state: MochiState;
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
 }
 
-export async function getMochiState(): Promise<MochiStateResponse> {
-  // TODO(record 연동): 마지막 기록·시간대·스트릭으로 상태 결정. 지금은 시간대 기반 데모.
-  const hour = new Date().getHours();
-  const state: MochiState = hour >= 23 || hour < 6 ? "sleepy" : "idle";
-  return { state };
+export async function getMochiState(userId: string | null): Promise<MochiStateResponse> {
+  const now = new Date();
+  const isNight = now.getHours() >= 23 || now.getHours() < 6;
+
+  if (!userId) {
+    return { state: isNight ? "sleepy" : "idle", growthStage: 1, collectedCount: 0 };
+  }
+
+  const [collectedCount, ateToday] = await Promise.all([
+    db.collectionEntry.count({ where: { userId } }),
+    db.mealRecord.count({ where: { userId, eatenAt: { gte: startOfDay(now) } } }),
+  ]);
+
+  let state: MochiState;
+  if (isNight) state = "sleepy";
+  else if (ateToday > 0) state = "happy";
+  else state = "idle";
+
+  const growthStage = Math.min(5, 1 + Math.floor(collectedCount / 3));
+  return { state, growthStage, collectedCount };
 }
