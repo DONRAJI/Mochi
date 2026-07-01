@@ -8,6 +8,7 @@ import {
   fetchTodayMeals,
   fetchProfile,
   saveProfile,
+  fetchNudge,
   addWeight,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
@@ -32,11 +33,14 @@ export function useSaveProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ProfileRequest) => saveProfile(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["record", "profile"] });
-      qc.invalidateQueries({ queryKey: ["mochi"] }); // 넛지가 프로필을 반영
-    },
+    // 프로필(TDEE)이 바뀌면 넛지도 달라지므로 record 전체 무효화.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["record"] }),
   });
+}
+
+/** 밸런싱 넛지 (PRD 11.5) — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
+export function useBalanceNudge() {
+  return useQuery({ queryKey: ["record", "nudge"], queryFn: fetchNudge, retry: false });
 }
 
 export function useWeightLogs() {

@@ -2,12 +2,16 @@ import "server-only";
 import { db } from "@/server/db";
 import { nextStreakCount } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
+import { balanceNudge, type Nudge } from "@/features/record/balance";
+import { computeBMR, computeTDEE, ageFromBirthYear } from "@/features/record/energy";
 import type {
   MarkMealRequest,
   MealRecordResponse,
   MealSlot,
   ProfileRequest,
   ProfileResponse,
+  Gender,
+  ActivityLevel,
   StreakResponse,
   TodayMealResponse,
   WeightLogResponse,
@@ -179,4 +183,43 @@ export async function saveProfile(
     update: data,
   });
   return toProfile(row);
+}
+
+/**
+ * 밸런싱 넛지 (PRD 11.5) — 최근 끼니 kcal 추세(+opt-in 프로필 TDEE)로 오늘의 부드러운 제안.
+ * 과거엔 벌 없음, 미래만 유도. kcal 숫자는 근거로만 쓰고 노출 안 함(불변 #2).
+ */
+export async function getBalanceNudge(userId: string): Promise<Nudge> {
+  const [meals, profile, latestWeight] = await Promise.all([
+    db.mealRecord.findMany({
+      where: { userId, kcal: { not: null } },
+      orderBy: { eatenAt: "desc" },
+      take: 9,
+      select: { kcal: true },
+    }),
+    db.userProfile.findUnique({ where: { userId } }),
+    db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+  ]);
+
+  const kcals = meals.map((m) => m.kcal).filter((k): k is number => k != null);
+
+  // 프로필 4항목 + 체중이 모두 있어야 TDEE 산출(없으면 끼니 평균 휴리스틱).
+  let tdee: number | null = null;
+  if (
+    profile?.birthYear != null &&
+    profile.gender != null &&
+    profile.heightCm != null &&
+    profile.activityLevel != null &&
+    latestWeight != null
+  ) {
+    const bmr = computeBMR(
+      Number(latestWeight.weight),
+      profile.heightCm,
+      ageFromBirthYear(profile.birthYear),
+      profile.gender as Gender,
+    );
+    tdee = computeTDEE(bmr, profile.activityLevel as ActivityLevel);
+  }
+
+  return balanceNudge(kcals, tdee);
 }

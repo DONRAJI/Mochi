@@ -6,7 +6,7 @@ import { TodaySuggestionCard } from "./TodaySuggestionCard";
 import { StreakWidget } from "./StreakWidget";
 import { QuickActionBar } from "./QuickActionBar";
 import { useMochiState } from "../hooks/useMochi";
-import { useStreak } from "@/features/record/hooks/useRecord";
+import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
 import { messages } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
@@ -23,13 +23,18 @@ const bubbleFor: Record<string, string> = {
 export function MochiRoom() {
   const { data: mochi } = useMochiState();
   const { data: streak } = useStreak();
+  const { data: nudge } = useBalanceNudge();
   const state = mochi?.state ?? "idle";
   const stage = mochi?.growthStage ?? 1;
+
+  // 며칠 든든했으면 모찌가 오늘 가벼운 쪽을 제안(경고 아님, PRD 11.5). 그 외엔 상태 인사.
+  const bubble =
+    nudge?.kind === "light" ? nudge.message : (bubbleFor[state] ?? messages.mochi.greet);
 
   return (
     <main className="flex flex-col items-center gap-5">
       <MochiAvatar state={state} priority />
-      <MochiSpeechBubble>{bubbleFor[state] ?? messages.mochi.greet}</MochiSpeechBubble>
+      <MochiSpeechBubble>{bubble}</MochiSpeechBubble>
 
       {/* 성장 단계 — 수집할수록 모찌가 자란다 (PRD: 진행도=성장) */}
       <div className="flex items-center gap-1.5">

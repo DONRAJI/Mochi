@@ -1,4 +1,5 @@
 import { fetcher } from "@/lib/fetcher";
+import type { Nudge } from "../balance";
 import type {
   MarkMealRequest,
   MealRecordResponse,
@@ -11,6 +12,10 @@ import type {
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
+}
+
+export function fetchNudge(): Promise<Nudge> {
+  return fetcher<Nudge>("/api/records/nudge");
 }
 
 export function fetchProfile(): Promise<ProfileResponse> {
