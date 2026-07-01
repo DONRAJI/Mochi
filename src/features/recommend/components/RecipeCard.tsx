@@ -22,6 +22,11 @@ export function RecipeCard({
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-display text-cocoa">{item.name}</p>
+              {item.mine && (
+                <span className="rounded-mochi-sm bg-lavender-soft px-2 py-0.5 text-xs text-cocoa">
+                  🧑‍🍳 내 요리
+                </span>
+              )}
               {item.badge && (
                 <span className="rounded-mochi-sm bg-mint-soft px-2 py-0.5 text-xs text-cocoa">
                   {item.badge}

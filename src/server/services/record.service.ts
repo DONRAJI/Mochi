@@ -1,19 +1,40 @@
 import "server-only";
 import { db } from "@/server/db";
 import { nextStreakCount } from "@/features/record/streak";
+import { estimateSlot } from "@/features/record/slot";
+import { balanceNudge, type Nudge } from "@/features/record/balance";
+import { computeBMR, computeTDEE, ageFromBirthYear } from "@/features/record/energy";
 import type {
   MarkMealRequest,
   MealRecordResponse,
+  MealSlot,
+  ProfileRequest,
+  ProfileResponse,
+  Gender,
+  ActivityLevel,
   StreakResponse,
+  TodayMealResponse,
   WeightLogResponse,
 } from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
+import type { Prisma } from "@prisma/client";
 
 /** cook→recipe, convenience→convenience 도감. eatout은 도감 대상 아님(요리/재료/간편식만). */
 function collectionTypeFor(mode: MarkMealRequest["mode"]): "recipe" | "convenience" | null {
   if (mode === "cook") return "recipe";
   if (mode === "convenience") return "convenience";
   return null;
+}
+
+/** 먹은 항목의 kcal 스냅샷 (서버 전용, 밸런싱 넛지 추세용 — 화면 노출 X 불변 #2). */
+async function lookupKcal(
+  tx: Prisma.TransactionClient,
+  mode: MarkMealRequest["mode"],
+  refId: string,
+): Promise<number | null> {
+  if (mode === "cook") return (await tx.recipe.findUnique({ where: { id: refId } }))?.kcal ?? null;
+  if (mode === "eatout") return (await tx.menu.findUnique({ where: { id: refId } }))?.kcal ?? null;
+  return (await tx.convenienceItem.findUnique({ where: { id: refId } }))?.kcal ?? null;
 }
 
 /**
@@ -25,10 +46,12 @@ export async function markMealEaten(
   input: MarkMealRequest,
 ): Promise<MealRecordResponse> {
   const now = new Date();
+  const slot: MealSlot = input.slot ?? estimateSlot(now);
 
   return db.$transaction(async (tx) => {
+    const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : null;
     const record = await tx.mealRecord.create({
-      data: { userId, mode: input.mode, memo: input.memo },
+      data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo },
     });
 
     // 스트릭 (죄책감 제로: 끊지 않고 새 날에만 +1)
@@ -63,8 +86,31 @@ export async function markMealEaten(
       update: { state: mochiState },
     });
 
-    return { recordId: record.id, mochiState, streakCount: count, cardAcquired };
+    return { recordId: record.id, mochiState, slot, streakCount: count, cardAcquired };
   });
+}
+
+/** KST 자정의 UTC 순간 — 서버가 UTC(Vercel)라도 한국 기준 '오늘'을 정확히 자른다. */
+function kstDayStart(nowMs = Date.now()): Date {
+  const KST = 9 * 3_600_000;
+  const shifted = nowMs + KST;
+  return new Date(shifted - (shifted % 86_400_000) - KST);
+}
+
+/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. */
+export async function listTodayMeals(userId: string): Promise<TodayMealResponse[]> {
+  const since = kstDayStart();
+  const rows = await db.mealRecord.findMany({
+    where: { userId, eatenAt: { gte: since } },
+    orderBy: { eatenAt: "asc" },
+    select: { id: true, slot: true, mode: true, eatenAt: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    slot: (r.slot ?? "snack") as MealSlot,
+    mode: r.mode,
+    eatenAt: r.eatenAt.toISOString(),
+  }));
 }
 
 /** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */
@@ -94,4 +140,86 @@ export async function listWeights(userId: string, size: number): Promise<WeightL
     take: size,
   });
   return rows.reverse().map(toWeight);
+}
+
+function toProfile(row: {
+  birthYear: number | null;
+  gender: string | null;
+  heightCm: number | null;
+  activityLevel: string | null;
+} | null): ProfileResponse {
+  const p = {
+    birthYear: row?.birthYear ?? null,
+    gender: (row?.gender ?? null) as ProfileResponse["gender"],
+    heightCm: row?.heightCm ?? null,
+    activityLevel: (row?.activityLevel ?? null) as ProfileResponse["activityLevel"],
+  };
+  return {
+    ...p,
+    personalized:
+      p.birthYear != null && p.gender != null && p.heightCm != null && p.activityLevel != null,
+  };
+}
+
+/** opt-in 프로필 조회 (PRD 11.4). 없으면 전부 null. */
+export async function getProfile(userId: string): Promise<ProfileResponse> {
+  return toProfile(await db.userProfile.findUnique({ where: { userId } }));
+}
+
+/** opt-in 프로필 저장(upsert). 마이 탭에서 원하는 사람만. */
+export async function saveProfile(
+  userId: string,
+  input: ProfileRequest,
+): Promise<ProfileResponse> {
+  const data = {
+    birthYear: input.birthYear ?? null,
+    gender: input.gender ?? null,
+    heightCm: input.heightCm ?? null,
+    activityLevel: input.activityLevel ?? null,
+  };
+  const row = await db.userProfile.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
+  return toProfile(row);
+}
+
+/**
+ * 밸런싱 넛지 (PRD 11.5) — 최근 끼니 kcal 추세(+opt-in 프로필 TDEE)로 오늘의 부드러운 제안.
+ * 과거엔 벌 없음, 미래만 유도. kcal 숫자는 근거로만 쓰고 노출 안 함(불변 #2).
+ */
+export async function getBalanceNudge(userId: string): Promise<Nudge> {
+  const [meals, profile, latestWeight] = await Promise.all([
+    db.mealRecord.findMany({
+      where: { userId, kcal: { not: null } },
+      orderBy: { eatenAt: "desc" },
+      take: 9,
+      select: { kcal: true },
+    }),
+    db.userProfile.findUnique({ where: { userId } }),
+    db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+  ]);
+
+  const kcals = meals.map((m) => m.kcal).filter((k): k is number => k != null);
+
+  // 프로필 4항목 + 체중이 모두 있어야 TDEE 산출(없으면 끼니 평균 휴리스틱).
+  let tdee: number | null = null;
+  if (
+    profile?.birthYear != null &&
+    profile.gender != null &&
+    profile.heightCm != null &&
+    profile.activityLevel != null &&
+    latestWeight != null
+  ) {
+    const bmr = computeBMR(
+      Number(latestWeight.weight),
+      profile.heightCm,
+      ageFromBirthYear(profile.birthYear),
+      profile.gender as Gender,
+    );
+    tdee = computeTDEE(bmr, profile.activityLevel as ActivityLevel);
+  }
+
+  return balanceNudge(kcals, tdee);
 }

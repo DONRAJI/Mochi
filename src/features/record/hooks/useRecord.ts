@@ -1,13 +1,46 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { markMealEaten, fetchStreak, fetchWeights, addWeight } from "../api/record.api";
+import {
+  markMealEaten,
+  fetchStreak,
+  fetchWeights,
+  fetchTodayMeals,
+  fetchProfile,
+  saveProfile,
+  fetchNudge,
+  addWeight,
+} from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
-import type { MarkMealRequest } from "../types";
+import type { MarkMealRequest, ProfileRequest } from "../types";
 
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
 export function useStreak() {
   return useQuery({ queryKey: ["record", "streak"], queryFn: fetchStreak, retry: false });
+}
+
+/** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
+export function useTodayMeals() {
+  return useQuery({ queryKey: ["record", "today"], queryFn: fetchTodayMeals, retry: false });
+}
+
+/** opt-in 개인 프로필 (PRD 11.4). */
+export function useProfile() {
+  return useQuery({ queryKey: ["record", "profile"], queryFn: fetchProfile, retry: false });
+}
+
+export function useSaveProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ProfileRequest) => saveProfile(input),
+    // 프로필(TDEE)이 바뀌면 넛지도 달라지므로 record 전체 무효화.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["record"] }),
+  });
+}
+
+/** 밸런싱 넛지 (PRD 11.5) — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
+export function useBalanceNudge() {
+  return useQuery({ queryKey: ["record", "nudge"], queryFn: fetchNudge, retry: false });
 }
 
 export function useWeightLogs() {

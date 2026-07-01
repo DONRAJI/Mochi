@@ -40,10 +40,31 @@ enum MealMode {
   convenience
 }
 
+// 끼니 슬롯 (PRD 11.2) — 시간대로 자동추정, 사용자가 바꿀 수 있음.
+enum MealSlot {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
 enum CollectionType {
   ingredient
   recipe
   convenience
+}
+
+// opt-in 개인 프로필 (PRD 11.4) — 원하는 사람만. 맞춤 가이드용.
+enum Gender {
+  female
+  male
+  other
+}
+
+enum ActivityLevel {
+  low
+  medium
+  high
 }
 
 // ── auth ───────────────────────────────────────────────────
@@ -63,8 +84,25 @@ model User {
   collection  CollectionEntry[]
   streak      Streak?
   mochi       MochiProfile?
+  profile     UserProfile?
 
   @@map("users")
+}
+
+// opt-in 개인 프로필 (PRD 11.4) — 마이 탭에서 원하는 사람만 입력. 전부 nullable.
+// 저마찰 온보딩 유지(강요 X). BMR/TDEE 계산 → 부드러운 맞춤 가이드(숫자 노출 X, 불변 #2).
+model UserProfile {
+  id            String         @id @default(cuid())
+  userId        String         @unique @map("user_id")
+  birthYear     Int?           @map("birth_year")
+  gender        Gender?
+  heightCm      Int?           @map("height_cm")
+  activityLevel ActivityLevel? @map("activity_level")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
 model Session {
@@ -113,6 +151,7 @@ model Ingredient {
 // fridge는 '요리 입력 재고'로 한정하고, 제안 콘텐츠는 recommend가 소유한다.
 model Recipe {
   id          String   @id @default(cuid())
+  ownerId     String?  @map("owner_id") // null=시드 카탈로그(전체 공개), 값=내 요리 (PRD 11.3)
   name        String
   emoji       String?
   minutes     Int // 조리시간
@@ -124,6 +163,7 @@ model Recipe {
   ingredients String[] // 필요한 재료(이름) — 냉장고 매칭률 계산용
   steps       String[] // 조리 단계
 
+  @@index([ownerId])
   @@map("recipes")
 }
 
@@ -172,12 +212,15 @@ model IngredientMaster {
 
 // ── record ─────────────────────────────────────────────────
 model MealRecord {
-  id       String   @id @default(cuid())
-  userId   String   @map("user_id")
+  id       String    @id @default(cuid())
+  userId   String    @map("user_id")
   mode     MealMode
-  photoUrl String?  @map("photo_url") // 외부 스토리지 경로 (security.md §6)
+  slot     MealSlot? // 끼니 슬롯 (아침/점심/저녁/간식) — 시간대 자동추정 (PRD 11.2)
+  refId    String?   @map("ref_id") // 먹은 항목 id(recipe/menu/convenience) — 밸런싱 넛지 추세용
+  kcal     Int? // 영양 스냅샷 (서버 전용, 화면 X 불변 #2) — 밸런싱 넛지용
+  photoUrl String?   @map("photo_url") // 외부 스토리지 경로 (security.md §6)
   memo     String?
-  eatenAt  DateTime @default(now()) @map("eaten_at")
+  eatenAt  DateTime  @default(now()) @map("eaten_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
