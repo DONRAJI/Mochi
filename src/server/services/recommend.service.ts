@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/server/db";
 import { computeMatchRate, missingIngredients } from "@/features/recommend/ranking";
 import { deriveBadge } from "@/features/recommend/nutrition";
+import { ingredientHint } from "@/features/recommend/substitution";
 import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
 import type { MealMode, RecommendationResponse } from "@/features/recommend/types";
 
@@ -28,10 +29,12 @@ export async function getRecommendations(
     ]);
     const canon = buildCanonicalMap(masters);
     const owned = fridge.map((f) => canonicalize(f.name, canon));
+    const ownedSet = new Set(owned);
 
     return recipes
       .map((r) => {
         const required = r.ingredients.map((i) => canonicalize(i, canon));
+        const seen = new Set<string>();
         return {
           id: r.id,
           name: r.name,
@@ -41,6 +44,19 @@ export async function getRecommendations(
           servings: r.servings,
           matchRate: computeMatchRate(owned, required),
           missingIngredients: missingIngredients(owned, required),
+          // 재료 + 다이어트 힌트(대체·선택). 원 재료명 기준으로 힌트, 표시명은 정규화.
+          ingredients: r.ingredients
+            .filter((raw) => {
+              const c = canonicalize(raw, canon);
+              if (seen.has(c)) return false;
+              seen.add(c);
+              return true;
+            })
+            .map((raw) => {
+              const name = canonicalize(raw, canon);
+              const hint = ingredientHint(raw);
+              return { name, owned: ownedSet.has(name), optional: hint.optional, swap: hint.swap };
+            }),
           subtitle: null,
           rarity: r.rarity,
           steps: r.steps,
@@ -61,6 +77,7 @@ export async function getRecommendations(
       servings: null,
       matchRate: null,
       missingIngredients: [],
+      ingredients: [],
       subtitle: m.category,
       rarity: m.rarity,
       steps: [],
@@ -77,6 +94,7 @@ export async function getRecommendations(
     servings: null,
     matchRate: null,
     missingIngredients: [],
+    ingredients: [],
     subtitle: c.brand,
     rarity: c.rarity,
     steps: [],

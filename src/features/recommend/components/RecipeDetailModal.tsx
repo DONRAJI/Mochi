@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
 import type { MarkMealRequest } from "@/features/record/types";
-import type { MealMode, RecommendationResponse } from "../types";
+import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
 /** 레시피/메뉴 상세 + '먹었어요'(기록→수집). 성공 시 모찌 cheer 축하 연출 (PRD 4.2 데일리 루프). */
 export function RecipeDetailModal({
@@ -61,6 +61,10 @@ export function RecipeDetailModal({
               </div>
             </div>
 
+            {mode === "cook" && item.ingredients.length > 0 && (
+              <IngredientHints ingredients={item.ingredients} />
+            )}
+
             {item.steps.length > 0 ? (
               <ol className="mt-4 flex flex-col gap-2">
                 {item.steps.map((s, i) => (
@@ -83,5 +87,54 @@ export function RecipeDetailModal({
           </>
         ))}
     </Modal>
+  );
+}
+
+/**
+ * 재료 + 다이어트 힌트 — "냉장고 재료로 가볍게" 컨셉.
+ * 가진 재료는 민트로 체크, 없어도 되는 재료엔 태그, 고열량은 가벼운 대체를 부드럽게 제안(강요 아님).
+ */
+function IngredientHints({ ingredients }: { ingredients: RecipeIngredient[] }) {
+  const swaps = ingredients.filter((i) => i.swap);
+  const optionals = ingredients.filter((i) => i.optional && !i.swap);
+
+  return (
+    <div className="mt-4">
+      <p className="mb-2 text-sm font-display text-cocoa">재료</p>
+      <div className="flex flex-wrap gap-1.5">
+        {ingredients.map((ing) => (
+          <span
+            key={ing.name}
+            className={
+              ing.owned
+                ? "rounded-mochi-sm bg-mint-soft px-2.5 py-1 text-sm text-cocoa"
+                : "rounded-mochi-sm bg-cream-200 px-2.5 py-1 text-sm text-cocoa-faint"
+            }
+          >
+            {ing.owned ? "✓ " : ""}
+            {ing.name}
+          </span>
+        ))}
+      </div>
+
+      {(swaps.length > 0 || optionals.length > 0) && (
+        <div className="mt-3 rounded-mochi bg-peach-soft/60 p-3">
+          <p className="mb-1.5 text-sm font-display text-cocoa">🍃 가볍게 바꿔볼까요?</p>
+          <ul className="flex flex-col gap-1 text-sm text-cocoa-soft">
+            {swaps.map((i) => (
+              <li key={i.name}>
+                <span className="text-cocoa">
+                  {i.name} → {i.swap!.to}
+                </span>{" "}
+                · {i.swap!.note}
+              </li>
+            ))}
+            {optionals.map((i) => (
+              <li key={i.name}>{i.name}는 없어도 괜찮아요</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
