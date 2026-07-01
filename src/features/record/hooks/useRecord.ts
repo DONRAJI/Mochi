@@ -6,10 +6,12 @@ import {
   fetchStreak,
   fetchWeights,
   fetchTodayMeals,
+  fetchProfile,
+  saveProfile,
   addWeight,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
-import type { MarkMealRequest } from "../types";
+import type { MarkMealRequest, ProfileRequest } from "../types";
 
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
 export function useStreak() {
@@ -19,6 +21,22 @@ export function useStreak() {
 /** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
 export function useTodayMeals() {
   return useQuery({ queryKey: ["record", "today"], queryFn: fetchTodayMeals, retry: false });
+}
+
+/** opt-in 개인 프로필 (PRD 11.4). */
+export function useProfile() {
+  return useQuery({ queryKey: ["record", "profile"], queryFn: fetchProfile, retry: false });
+}
+
+export function useSaveProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ProfileRequest) => saveProfile(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["record", "profile"] });
+      qc.invalidateQueries({ queryKey: ["mochi"] }); // 넛지가 프로필을 반영
+    },
+  });
 }
 
 export function useWeightLogs() {

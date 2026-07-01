@@ -2,6 +2,8 @@ import { fetcher } from "@/lib/fetcher";
 import type {
   MarkMealRequest,
   MealRecordResponse,
+  ProfileRequest,
+  ProfileResponse,
   StreakResponse,
   TodayMealResponse,
   WeightLogResponse,
@@ -9,6 +11,17 @@ import type {
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
+}
+
+export function fetchProfile(): Promise<ProfileResponse> {
+  return fetcher<ProfileResponse>("/api/records/profile");
+}
+
+export function saveProfile(input: ProfileRequest): Promise<ProfileResponse> {
+  return fetcher<ProfileResponse>("/api/records/profile", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export function markMealEaten(input: MarkMealRequest): Promise<MealRecordResponse> {

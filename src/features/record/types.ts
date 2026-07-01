@@ -50,3 +50,36 @@ export interface WeightLogResponse {
   weight: number;
   loggedAt: string; // ISO
 }
+
+/** opt-in 개인 프로필 (PRD 11.4) — 원하는 사람만. 맞춤 가이드용, 저마찰 유지. */
+export type Gender = "female" | "male" | "other";
+export type ActivityLevel = "low" | "medium" | "high";
+
+export const profileSchema = z.object({
+  birthYear: z.coerce
+    .number()
+    .int()
+    .min(1900, "태어난 해를 한 번만 더 봐줄래요?")
+    .max(2026, "태어난 해를 한 번만 더 봐줄래요?")
+    .nullable()
+    .optional(),
+  gender: z.enum(["female", "male", "other"]).nullable().optional(),
+  heightCm: z.coerce
+    .number()
+    .int()
+    .min(100, "키를 한 번만 더 봐줄래요?")
+    .max(250, "키를 한 번만 더 봐줄래요?")
+    .nullable()
+    .optional(),
+  activityLevel: z.enum(["low", "medium", "high"]).nullable().optional(),
+});
+
+export type ProfileRequest = z.infer<typeof profileSchema>;
+
+export interface ProfileResponse {
+  birthYear: number | null;
+  gender: Gender | null;
+  heightCm: number | null;
+  activityLevel: ActivityLevel | null;
+  personalized: boolean; // 네 항목이 모두 채워졌는지 (맞춤 가이드 활성)
+}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { WeightSection } from "./WeightSection";
+import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
 import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
@@ -44,10 +45,15 @@ export function MeScreen() {
         onClick={() => setShowStats((s) => !s)}
         className="flex items-center justify-between rounded-mochi bg-cream-50 px-4 py-3 shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
       >
-        <span className="text-cocoa">체중·통계 더보기</span>
+        <span className="text-cocoa">맞춤·체중 더보기</span>
         <span className="text-sm text-cocoa-faint">{showStats ? "접기" : "펼치기"}</span>
       </button>
-      {showStats && <WeightSection />}
+      {showStats && (
+        <>
+          <ProfileSection />
+          <WeightSection />
+        </>
+      )}
 
       <MeMenuList />
 

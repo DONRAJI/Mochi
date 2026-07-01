@@ -54,6 +54,19 @@ enum CollectionType {
   convenience
 }
 
+// opt-in 개인 프로필 (PRD 11.4) — 원하는 사람만. 맞춤 가이드용.
+enum Gender {
+  female
+  male
+  other
+}
+
+enum ActivityLevel {
+  low
+  medium
+  high
+}
+
 // ── auth ───────────────────────────────────────────────────
 model User {
   id           String   @id @default(cuid())
@@ -71,8 +84,25 @@ model User {
   collection  CollectionEntry[]
   streak      Streak?
   mochi       MochiProfile?
+  profile     UserProfile?
 
   @@map("users")
+}
+
+// opt-in 개인 프로필 (PRD 11.4) — 마이 탭에서 원하는 사람만 입력. 전부 nullable.
+// 저마찰 온보딩 유지(강요 X). BMR/TDEE 계산 → 부드러운 맞춤 가이드(숫자 노출 X, 불변 #2).
+model UserProfile {
+  id            String         @id @default(cuid())
+  userId        String         @unique @map("user_id")
+  birthYear     Int?           @map("birth_year")
+  gender        Gender?
+  heightCm      Int?           @map("height_cm")
+  activityLevel ActivityLevel? @map("activity_level")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
 model Session {

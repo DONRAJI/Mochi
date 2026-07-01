@@ -6,6 +6,8 @@ import type {
   MarkMealRequest,
   MealRecordResponse,
   MealSlot,
+  ProfileRequest,
+  ProfileResponse,
   StreakResponse,
   TodayMealResponse,
   WeightLogResponse,
@@ -134,4 +136,47 @@ export async function listWeights(userId: string, size: number): Promise<WeightL
     take: size,
   });
   return rows.reverse().map(toWeight);
+}
+
+function toProfile(row: {
+  birthYear: number | null;
+  gender: string | null;
+  heightCm: number | null;
+  activityLevel: string | null;
+} | null): ProfileResponse {
+  const p = {
+    birthYear: row?.birthYear ?? null,
+    gender: (row?.gender ?? null) as ProfileResponse["gender"],
+    heightCm: row?.heightCm ?? null,
+    activityLevel: (row?.activityLevel ?? null) as ProfileResponse["activityLevel"],
+  };
+  return {
+    ...p,
+    personalized:
+      p.birthYear != null && p.gender != null && p.heightCm != null && p.activityLevel != null,
+  };
+}
+
+/** opt-in 프로필 조회 (PRD 11.4). 없으면 전부 null. */
+export async function getProfile(userId: string): Promise<ProfileResponse> {
+  return toProfile(await db.userProfile.findUnique({ where: { userId } }));
+}
+
+/** opt-in 프로필 저장(upsert). 마이 탭에서 원하는 사람만. */
+export async function saveProfile(
+  userId: string,
+  input: ProfileRequest,
+): Promise<ProfileResponse> {
+  const data = {
+    birthYear: input.birthYear ?? null,
+    gender: input.gender ?? null,
+    heightCm: input.heightCm ?? null,
+    activityLevel: input.activityLevel ?? null,
+  };
+  const row = await db.userProfile.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
+  return toProfile(row);
 }
