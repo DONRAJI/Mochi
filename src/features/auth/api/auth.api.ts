@@ -1,5 +1,11 @@
 import { fetcher } from "@/lib/fetcher";
-import type { SignupRequest, LoginRequest, AuthUserResponse } from "../types";
+import type {
+  SignupRequest,
+  LoginRequest,
+  AuthUserResponse,
+  PreferencesRequest,
+  PreferencesResponse,
+} from "../types";
 
 /** 클라 호출 함수 (conventions.md: 컴포넌트에서 직접 fetch 금지 → 이 함수 → TanStack Query 순). */
 export function signup(input: SignupRequest): Promise<AuthUserResponse> {
@@ -25,4 +31,15 @@ export function logout(): Promise<{ done: true }> {
 
 export function fetchMe(): Promise<AuthUserResponse> {
   return fetcher<AuthUserResponse>("/api/auth/me");
+}
+
+export function fetchPreferences(): Promise<PreferencesResponse> {
+  return fetcher<PreferencesResponse>("/api/auth/preferences");
+}
+
+export function savePreferences(input: PreferencesRequest): Promise<PreferencesResponse> {
+  return fetcher<PreferencesResponse>("/api/auth/preferences", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }

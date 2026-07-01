@@ -4,7 +4,13 @@ import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { createSession, destroySession, getSessionUserId } from "@/server/auth/session";
-import type { SignupRequest, LoginRequest, AuthUserResponse } from "@/features/auth/types";
+import type {
+  SignupRequest,
+  LoginRequest,
+  AuthUserResponse,
+  PreferencesRequest,
+  PreferencesResponse,
+} from "@/features/auth/types";
 
 /**
  * auth 서비스 — 비즈니스 로직·Prisma는 여기서만 (structure.md 레이어 규칙).
@@ -66,4 +72,36 @@ export async function getMe(): Promise<AuthUserResponse> {
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) throw new AppError("UNAUTHORIZED", messages.auth.loginRequired, 401);
   return toAuthUser(user);
+}
+
+/** 내 취향 태그(선호·비선호·알러지) 조회. 추천 반영에 쓰임. */
+export async function getPreferences(userId: string): Promise<PreferencesResponse> {
+  const tags = await db.preferenceTag.findMany({
+    where: { userId },
+    select: { kind: true, label: true },
+  });
+  const res: PreferencesResponse = { likes: [], dislikes: [], allergies: [] };
+  for (const t of tags) {
+    if (t.kind === "like") res.likes.push(t.label);
+    else if (t.kind === "dislike") res.dislikes.push(t.label);
+    else if (t.kind === "allergy") res.allergies.push(t.label);
+  }
+  return res;
+}
+
+/** 취향 통째 교체(기존 삭제 후 재생성 — 트랜잭션). */
+export async function savePreferences(
+  userId: string,
+  input: PreferencesRequest,
+): Promise<PreferencesResponse> {
+  const rows = [
+    ...input.likes.map((label) => ({ userId, kind: "like" as const, label })),
+    ...input.dislikes.map((label) => ({ userId, kind: "dislike" as const, label })),
+    ...input.allergies.map((label) => ({ userId, kind: "allergy" as const, label })),
+  ];
+  await db.$transaction([
+    db.preferenceTag.deleteMany({ where: { userId } }),
+    db.preferenceTag.createMany({ data: rows }),
+  ]);
+  return getPreferences(userId);
 }

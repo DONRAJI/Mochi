@@ -24,6 +24,21 @@ export type SignupRequest = z.infer<typeof signupSchema>;
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type PreferenceTagInput = z.infer<typeof preferenceTagSchema>;
 
+/** 취향 편집 (선호·비선호·알러지) — kind별 라벨 배열로 통째 교체. */
+export const preferencesSchema = z.object({
+  likes: z.array(z.string().min(1).max(20)).max(20).default([]),
+  dislikes: z.array(z.string().min(1).max(20)).max(20).default([]),
+  allergies: z.array(z.string().min(1).max(20)).max(20).default([]),
+});
+
+export type PreferencesRequest = z.infer<typeof preferencesSchema>;
+
+export interface PreferencesResponse {
+  likes: string[];
+  dislikes: string[];
+  allergies: string[];
+}
+
 /** 클라에 노출하는 안전한 유저 형태 (passwordHash 등 제외). */
 export interface AuthUserResponse {
   id: string;
