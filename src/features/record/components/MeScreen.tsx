@@ -7,6 +7,7 @@ import { WeightSection } from "./WeightSection";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
+import { PreferencesSection } from "@/features/auth/components/PreferencesSection";
 import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
 import { useMochiState } from "@/features/mochi/hooks/useMochi";
@@ -39,6 +40,8 @@ export function MeScreen() {
       </Card>
 
       <TodayMealsStrip />
+
+      <PreferencesSection />
 
       <button
         type="button"

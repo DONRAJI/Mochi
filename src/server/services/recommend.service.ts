@@ -4,6 +4,13 @@ import { computeMatchRate, missingIngredients } from "@/features/recommend/ranki
 import { deriveBadge } from "@/features/recommend/nutrition";
 import { ingredientHint } from "@/features/recommend/substitution";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
+import {
+  groupPreferences,
+  hasAllergen,
+  preferenceScore,
+  ingredientMatcher,
+  nameMatcher,
+} from "@/features/recommend/preferences";
 import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
 import type {
   CreateRecipeRequest,
@@ -24,6 +31,12 @@ export async function getRecommendations(
 ): Promise<RecommendationResponse[]> {
   const skip = page * size;
 
+  // 취향(선호·비선호·알러지) — 로그인 시에만. 알러지=제외, 비선호=하향, 선호=상향.
+  const prefTags = userId
+    ? await db.preferenceTag.findMany({ where: { userId }, select: { kind: true, label: true } })
+    : [];
+  const prefs = groupPreferences(prefTags);
+
   if (mode === "cook") {
     // 시드 카탈로그(ownerId=null) + 내 요리(ownerId=userId)만. 남의 요리는 노출 안 함.
     const [recipes, fridge, masters] = await Promise.all([
@@ -38,8 +51,13 @@ export async function getRecommendations(
     const canon = buildCanonicalMap(masters);
     const owned = fridge.map((f) => canonicalize(f.name, canon));
     const ownedSet = new Set(owned);
+    // 취향 라벨도 표준명으로 정규화(토마토→방울토마토)해 재료와 정확일치시킨다.
+    const canonLabels = (arr: string[]) => arr.map((l) => canonicalize(l, canon));
+    const allergiesC = canonLabels(prefs.allergies);
+    const likesC = canonLabels(prefs.likes);
+    const dislikesC = canonLabels(prefs.dislikes);
 
-    return recipes
+    const cards = recipes
       .map((r) => {
         const required = r.ingredients.map((i) => canonicalize(i, canon));
         const seen = new Set<string>();
@@ -71,45 +89,71 @@ export async function getRecommendations(
           steps: r.steps,
         };
       })
-      .sort((a, b) => b.matchRate - a.matchRate || a.minutes - b.minutes)
-      .slice(skip, skip + size);
+      // 알러지 재료가 든 요리는 제외(안전). 정렬은 매칭률 + 취향 보정.
+      .filter((c) => !hasAllergen(ingredientMatcher(c.ingredients.map((i) => i.name)), allergiesC));
+
+    return cards
+      .map((c) => ({
+        c,
+        key: c.matchRate + preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC),
+      }))
+      .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
+      .slice(skip, skip + size)
+      .map((s) => s.c);
   }
 
   if (mode === "eatout") {
-    const menus = await db.menu.findMany({ skip, take: size });
-    return menus.map((m) => ({
-      id: m.id,
-      name: m.name,
-      emoji: m.emoji,
-      badge: deriveBadge(m.kcal, m.protein),
+    // 작은 카탈로그 → 인메모리 필터/정렬(취향). 이름 부분일치 best-effort.
+    const menus = await db.menu.findMany();
+    return menus
+      .filter((m) => !hasAllergen(nameMatcher(m.name), prefs.allergies))
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        emoji: m.emoji,
+        badge: deriveBadge(m.kcal, m.protein),
+        minutes: null,
+        servings: null,
+        matchRate: null,
+        missingIngredients: [],
+        ingredients: [],
+        mine: false,
+        subtitle: m.category,
+        rarity: m.rarity,
+        steps: [],
+      }))
+      .sort(
+        (a, b) =>
+          preferenceScore(nameMatcher(b.name), prefs.likes, prefs.dislikes) -
+          preferenceScore(nameMatcher(a.name), prefs.likes, prefs.dislikes),
+      )
+      .slice(skip, skip + size);
+  }
+
+  const items = await db.convenienceItem.findMany();
+  return items
+    .filter((c) => !hasAllergen(nameMatcher(c.name), prefs.allergies))
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji,
+      badge: deriveBadge(c.kcal, c.protein),
       minutes: null,
       servings: null,
       matchRate: null,
       missingIngredients: [],
       ingredients: [],
       mine: false,
-      subtitle: m.category,
-      rarity: m.rarity,
+      subtitle: c.brand,
+      rarity: c.rarity,
       steps: [],
-    }));
-  }
-
-  const items = await db.convenienceItem.findMany({ skip, take: size });
-  return items.map((c) => ({
-    id: c.id,
-    name: c.name,
-    emoji: c.emoji,
-    badge: deriveBadge(c.kcal, c.protein),
-    minutes: null,
-    servings: null,
-    matchRate: null,
-    missingIngredients: [],
-    ingredients: [],
-    mine: false,
-    subtitle: c.brand,
-    rarity: c.rarity,
-    steps: [],
-  }));
+    }))
+    .sort(
+      (a, b) =>
+        preferenceScore(nameMatcher(b.name), prefs.likes, prefs.dislikes) -
+        preferenceScore(nameMatcher(a.name), prefs.likes, prefs.dislikes),
+    )
+    .slice(skip, skip + size);
 }
 
 /** 내 요리 등록 (PRD 11.3). ownerId=userId로 저장 → 요리 모드 추천에 내 요리도 뜬다. */
