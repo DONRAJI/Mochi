@@ -121,6 +121,7 @@ model Ingredient {
 // fridge는 '요리 입력 재고'로 한정하고, 제안 콘텐츠는 recommend가 소유한다.
 model Recipe {
   id          String   @id @default(cuid())
+  ownerId     String?  @map("owner_id") // null=시드 카탈로그(전체 공개), 값=내 요리 (PRD 11.3)
   name        String
   emoji       String?
   minutes     Int // 조리시간
@@ -132,6 +133,7 @@ model Recipe {
   ingredients String[] // 필요한 재료(이름) — 냉장고 매칭률 계산용
   steps       String[] // 조리 단계
 
+  @@index([ownerId])
   @@map("recipes")
 }
 
