@@ -1,19 +1,34 @@
 import "server-only";
 import { db } from "@/server/db";
 import { nextStreakCount } from "@/features/record/streak";
+import { estimateSlot } from "@/features/record/slot";
 import type {
   MarkMealRequest,
   MealRecordResponse,
+  MealSlot,
   StreakResponse,
+  TodayMealResponse,
   WeightLogResponse,
 } from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
+import type { Prisma } from "@prisma/client";
 
 /** cook→recipe, convenience→convenience 도감. eatout은 도감 대상 아님(요리/재료/간편식만). */
 function collectionTypeFor(mode: MarkMealRequest["mode"]): "recipe" | "convenience" | null {
   if (mode === "cook") return "recipe";
   if (mode === "convenience") return "convenience";
   return null;
+}
+
+/** 먹은 항목의 kcal 스냅샷 (서버 전용, 밸런싱 넛지 추세용 — 화면 노출 X 불변 #2). */
+async function lookupKcal(
+  tx: Prisma.TransactionClient,
+  mode: MarkMealRequest["mode"],
+  refId: string,
+): Promise<number | null> {
+  if (mode === "cook") return (await tx.recipe.findUnique({ where: { id: refId } }))?.kcal ?? null;
+  if (mode === "eatout") return (await tx.menu.findUnique({ where: { id: refId } }))?.kcal ?? null;
+  return (await tx.convenienceItem.findUnique({ where: { id: refId } }))?.kcal ?? null;
 }
 
 /**
@@ -25,10 +40,12 @@ export async function markMealEaten(
   input: MarkMealRequest,
 ): Promise<MealRecordResponse> {
   const now = new Date();
+  const slot: MealSlot = input.slot ?? estimateSlot(now);
 
   return db.$transaction(async (tx) => {
+    const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : null;
     const record = await tx.mealRecord.create({
-      data: { userId, mode: input.mode, memo: input.memo },
+      data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo },
     });
 
     // 스트릭 (죄책감 제로: 끊지 않고 새 날에만 +1)
@@ -63,8 +80,31 @@ export async function markMealEaten(
       update: { state: mochiState },
     });
 
-    return { recordId: record.id, mochiState, streakCount: count, cardAcquired };
+    return { recordId: record.id, mochiState, slot, streakCount: count, cardAcquired };
   });
+}
+
+/** KST 자정의 UTC 순간 — 서버가 UTC(Vercel)라도 한국 기준 '오늘'을 정확히 자른다. */
+function kstDayStart(nowMs = Date.now()): Date {
+  const KST = 9 * 3_600_000;
+  const shifted = nowMs + KST;
+  return new Date(shifted - (shifted % 86_400_000) - KST);
+}
+
+/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. */
+export async function listTodayMeals(userId: string): Promise<TodayMealResponse[]> {
+  const since = kstDayStart();
+  const rows = await db.mealRecord.findMany({
+    where: { userId, eatenAt: { gte: since } },
+    orderBy: { eatenAt: "asc" },
+    select: { id: true, slot: true, mode: true, eatenAt: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    slot: (r.slot ?? "snack") as MealSlot,
+    mode: r.mode,
+    eatenAt: r.eatenAt.toISOString(),
+  }));
 }
 
 /** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */

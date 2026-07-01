@@ -3,8 +3,13 @@ import type {
   MarkMealRequest,
   MealRecordResponse,
   StreakResponse,
+  TodayMealResponse,
   WeightLogResponse,
 } from "../types";
+
+export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
+  return fetcher<TodayMealResponse[]>("/api/records/today");
+}
 
 export function markMealEaten(input: MarkMealRequest): Promise<MealRecordResponse> {
   return fetcher<MealRecordResponse>("/api/records/meals", {

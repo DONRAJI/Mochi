@@ -40,6 +40,14 @@ enum MealMode {
   convenience
 }
 
+// 끼니 슬롯 (PRD 11.2) — 시간대로 자동추정, 사용자가 바꿀 수 있음.
+enum MealSlot {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
 enum CollectionType {
   ingredient
   recipe
@@ -172,12 +180,15 @@ model IngredientMaster {
 
 // ── record ─────────────────────────────────────────────────
 model MealRecord {
-  id       String   @id @default(cuid())
-  userId   String   @map("user_id")
+  id       String    @id @default(cuid())
+  userId   String    @map("user_id")
   mode     MealMode
-  photoUrl String?  @map("photo_url") // 외부 스토리지 경로 (security.md §6)
+  slot     MealSlot? // 끼니 슬롯 (아침/점심/저녁/간식) — 시간대 자동추정 (PRD 11.2)
+  refId    String?   @map("ref_id") // 먹은 항목 id(recipe/menu/convenience) — 밸런싱 넛지 추세용
+  kcal     Int? // 영양 스냅샷 (서버 전용, 화면 X 불변 #2) — 밸런싱 넛지용
+  photoUrl String?   @map("photo_url") // 외부 스토리지 경로 (security.md §6)
   memo     String?
-  eatenAt  DateTime @default(now()) @map("eaten_at")
+  eatenAt  DateTime  @default(now()) @map("eaten_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

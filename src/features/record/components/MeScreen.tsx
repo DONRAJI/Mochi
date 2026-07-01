@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { WeightSection } from "./WeightSection";
+import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
 import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
@@ -35,6 +36,8 @@ export function MeScreen() {
           </p>
         </div>
       </Card>
+
+      <TodayMealsStrip />
 
       <button
         type="button"

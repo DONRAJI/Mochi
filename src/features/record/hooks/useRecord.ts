@@ -1,13 +1,24 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { markMealEaten, fetchStreak, fetchWeights, addWeight } from "../api/record.api";
+import {
+  markMealEaten,
+  fetchStreak,
+  fetchWeights,
+  fetchTodayMeals,
+  addWeight,
+} from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
 import type { MarkMealRequest } from "../types";
 
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
 export function useStreak() {
   return useQuery({ queryKey: ["record", "streak"], queryFn: fetchStreak, retry: false });
+}
+
+/** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
+export function useTodayMeals() {
+  return useQuery({ queryKey: ["record", "today"], queryFn: fetchTodayMeals, retry: false });
 }
 
 export function useWeightLogs() {

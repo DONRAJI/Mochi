@@ -4,7 +4,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
-import type { MarkMealRequest } from "@/features/record/types";
+import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
+import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
 /** 레시피/메뉴 상세 + '먹었어요'(기록→수집). 성공 시 모찌 cheer 축하 연출 (PRD 4.2 데일리 루프). */
@@ -24,6 +25,7 @@ export function RecipeDetailModal({
     if (!item) return;
     mark.mutate({
       mode,
+      slot: estimateSlot(new Date()), // 브라우저 로컬 시간(KST)으로 끼니 추정
       refId: item.id,
       rarity: item.rarity as MarkMealRequest["rarity"],
     });
@@ -42,7 +44,8 @@ export function RecipeDetailModal({
             <MochiAvatar state="cheer" className="h-24 w-24" />
             <p className="font-display text-lg text-cocoa">잘 먹었어요!</p>
             <p className="text-sm text-cocoa-soft">
-              {result.cardAcquired ? "도감에 한 칸 채웠어요 🎉" : "오늘도 기록했어요 😊"}
+              {SLOT_LABEL[result.slot as MealSlot]}으로{" "}
+              {result.cardAcquired ? "담았어요 · 도감에 한 칸 🎉" : "기록했어요 😊"}
             </p>
             <p className="text-sm text-cocoa-faint">스트릭 {result.streakCount}일째 🍮</p>
             <Button className="w-full" onClick={close}>
