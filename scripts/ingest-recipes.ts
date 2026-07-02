@@ -20,6 +20,12 @@ function toInt(s: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** 완성 요리 사진 URL을 https로(배포 https에서 mixed-content 방지). 없으면 null. */
+function toHttps(url: string | undefined): string | null {
+  if (!url) return null;
+  return url.replace(/^http:\/\//, "https://");
+}
+
 async function fetchPage(start: number, end: number): Promise<{ total: number; rows: Row[] }> {
   const res = await fetch(
     `http://openapi.foodsafetykorea.go.kr/api/${KEY}/COOKRCP01/json/${start}/${end}`,
@@ -56,6 +62,7 @@ async function main(): Promise<void> {
         minutes: estimateMinutes(steps.length),
         kcal: toInt(r.INFO_ENG),
         protein: toInt(r.INFO_PRO),
+        imageUrl: toHttps(r.ATT_FILE_NO_MAIN),
         ingredients: parseIngredientNames(r.RCP_PARTS_DTLS ?? "", r.RCP_NM),
         steps,
       };

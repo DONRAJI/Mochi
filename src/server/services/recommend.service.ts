@@ -12,6 +12,7 @@ import {
   nameMatcher,
 } from "@/features/recommend/preferences";
 import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
+import { isExpiringSoon, expiryBonus } from "@/features/fridge/expiry";
 import type {
   CreateRecipeRequest,
   MealMode,
@@ -44,13 +45,18 @@ export async function getRecommendations(
         where: { OR: [{ ownerId: null }, ...(userId ? [{ ownerId: userId }] : [])] },
       }),
       userId
-        ? db.ingredient.findMany({ where: { userId }, select: { name: true } })
-        : Promise.resolve([] as { name: string }[]),
+        ? db.ingredient.findMany({ where: { userId }, select: { name: true, expiresAt: true } })
+        : Promise.resolve([] as { name: string; expiresAt: Date | null }[]),
       db.ingredientMaster.findMany({ select: { name: true, aliases: true } }),
     ]);
+    const now = new Date();
     const canon = buildCanonicalMap(masters);
     const owned = fridge.map((f) => canonicalize(f.name, canon));
     const ownedSet = new Set(owned);
+    // 유통기한 임박(3일 이내·지난 것 포함) 재료 — 먼저 쓰도록 추천 가산점 (PRD 5.2).
+    const expiringSet = new Set(
+      fridge.filter((f) => isExpiringSoon(f.expiresAt, now)).map((f) => canonicalize(f.name, canon)),
+    );
     // 취향 라벨도 표준명으로 정규화(토마토→방울토마토)해 재료와 정확일치시킨다.
     const canonLabels = (arr: string[]) => arr.map((l) => canonicalize(l, canon));
     const allergiesC = canonLabels(prefs.allergies);
@@ -65,6 +71,7 @@ export async function getRecommendations(
           id: r.id,
           name: r.name,
           emoji: r.emoji,
+          imageUrl: r.imageUrl,
           badge: deriveBadge(r.kcal, r.protein),
           minutes: r.minutes,
           servings: r.servings,
@@ -84,18 +91,22 @@ export async function getRecommendations(
               return { name, owned: ownedSet.has(name), optional: hint.optional, swap: hint.swap };
             }),
           mine: r.ownerId != null,
+          usesExpiring: required.some((n) => expiringSet.has(n)),
           subtitle: null,
           rarity: r.rarity,
           steps: r.steps,
         };
       })
-      // 알러지 재료가 든 요리는 제외(안전). 정렬은 매칭률 + 취향 보정.
+      // 알러지 재료가 든 요리는 제외(안전). 정렬은 매칭률 + 취향 + 임박 보정.
       .filter((c) => !hasAllergen(ingredientMatcher(c.ingredients.map((i) => i.name)), allergiesC));
 
     return cards
       .map((c) => ({
         c,
-        key: c.matchRate + preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC),
+        key:
+          c.matchRate +
+          preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC) +
+          expiryBonus(c.ingredients.map((i) => i.name), expiringSet),
       }))
       .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
       .slice(skip, skip + size)
@@ -111,6 +122,7 @@ export async function getRecommendations(
         id: m.id,
         name: m.name,
         emoji: m.emoji,
+        imageUrl: null,
         badge: deriveBadge(m.kcal, m.protein),
         minutes: null,
         servings: null,
@@ -118,6 +130,7 @@ export async function getRecommendations(
         missingIngredients: [],
         ingredients: [],
         mine: false,
+        usesExpiring: false,
         subtitle: m.category,
         rarity: m.rarity,
         steps: [],
@@ -137,6 +150,7 @@ export async function getRecommendations(
       id: c.id,
       name: c.name,
       emoji: c.emoji,
+      imageUrl: null,
       badge: deriveBadge(c.kcal, c.protein),
       minutes: null,
       servings: null,
@@ -144,6 +158,7 @@ export async function getRecommendations(
       missingIngredients: [],
       ingredients: [],
       mine: false,
+      usesExpiring: false,
       subtitle: c.brand,
       rarity: c.rarity,
       steps: [],

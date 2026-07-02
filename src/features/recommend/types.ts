@@ -39,6 +39,7 @@ export interface RecommendationResponse {
   id: string;
   name: string;
   emoji: string | null;
+  imageUrl: string | null; // 완성 요리 사진(cook). 없으면 emoji로 폴백
   badge: string | null;
   minutes: number | null; // cook
   servings: number | null; // cook
@@ -46,6 +47,7 @@ export interface RecommendationResponse {
   missingIngredients: string[]; // cook (추가구매)
   ingredients: RecipeIngredient[]; // cook (재료 + 대체/선택 힌트)
   mine: boolean; // cook — 내가 등록한 요리 (PRD 11.3)
+  usesExpiring: boolean; // cook — 유통기한 임박 재료를 쓰는 레시피 (PRD 5.2)
   subtitle: string | null; // eatout=카테고리, convenience=브랜드
   rarity: string;
   steps: string[]; // cook 조리 단계

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import type { RecommendationResponse } from "../types";
@@ -18,13 +19,28 @@ export function RecipeCard({
     >
       <Card>
         <div className="flex items-center gap-3">
-          <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
+          {item.imageUrl ? (
+            <Image
+              src={item.imageUrl}
+              alt={item.name}
+              width={56}
+              height={56}
+              className="h-14 w-14 shrink-0 rounded-mochi-sm object-cover"
+            />
+          ) : (
+            <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
+          )}
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-display text-cocoa">{item.name}</p>
               {item.mine && (
                 <span className="rounded-mochi-sm bg-lavender-soft px-2 py-0.5 text-xs text-cocoa">
                   🧑‍🍳 내 요리
+                </span>
+              )}
+              {item.usesExpiring && (
+                <span className="rounded-mochi-sm bg-peach-soft px-2 py-0.5 text-xs text-cocoa">
+                  🍑 임박 재료
                 </span>
               )}
               {item.badge && (

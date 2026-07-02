@@ -42,7 +42,12 @@ export async function addIngredient(
   input: CreateIngredientRequest,
 ): Promise<IngredientResponse> {
   const created = await db.ingredient.create({
-    data: { userId, name: input.name, category: input.category },
+    data: {
+      userId,
+      name: input.name,
+      category: input.category,
+      expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
+    },
   });
   return toResponse(created);
 }
