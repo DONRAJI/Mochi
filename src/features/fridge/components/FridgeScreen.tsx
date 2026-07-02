@@ -9,9 +9,8 @@ import { AddIngredientFab } from "./AddIngredientFab";
 import { AddIngredientSheet } from "./AddIngredientSheet";
 import { EmptyFridgeState } from "./EmptyFridgeState";
 import { useIngredients, useRemoveIngredient } from "../hooks/useFridge";
+import { daysUntil, isExpiringSoon } from "../expiry";
 import { FRIDGE_CATEGORIES } from "../data";
-
-const DAY_MS = 86_400_000;
 
 /** 🧊 냉장고 화면 — 실데이터. 재료를 담으면 식단(추천) 매칭률이 자동 점등(쿼리 무효화). */
 export function FridgeScreen() {
@@ -22,13 +21,10 @@ export function FridgeScreen() {
 
   const all = data ?? [];
   const items = category === "전체" ? all : all.filter((i) => i.category === category);
+  const now = new Date();
   const expiring = all
-    .filter((i) => i.expiresAt)
-    .map((i) => ({
-      name: i.name,
-      days: Math.max(0, Math.ceil((new Date(i.expiresAt as string).getTime() - Date.now()) / DAY_MS)),
-    }))
-    .filter((i) => i.days <= 3);
+    .filter((i) => isExpiringSoon(i.expiresAt, now))
+    .map((i) => ({ name: i.name, days: Math.max(0, daysUntil(i.expiresAt, now) ?? 0) }));
 
   return (
     <div className="flex flex-col gap-4">

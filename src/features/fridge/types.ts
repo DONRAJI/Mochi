@@ -4,6 +4,10 @@ import { z } from "zod";
 export const createIngredientSchema = z.object({
   name: z.string().min(1, "재료 이름을 알려줄래요?").max(20),
   category: z.string().min(1).max(20),
+  expiresAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "날짜를 한 번만 더 봐줄래요?")
+    .optional(), // 유통기한(선택) — 임박 재료 우선 추천에 쓰임 (PRD 5.2)
 });
 
 /** 목록 조회 쿼리 (페이지네이션 — security.md §5). */

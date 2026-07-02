@@ -14,6 +14,7 @@ export function AddIngredientSheet({ open, onClose }: { open: boolean; onClose: 
   const add = useAddIngredient();
   const [name, setName] = useState("");
   const [category, setCategory] = useState<string>("채소");
+  const [expiry, setExpiry] = useState("");
 
   function quickAdd(preset: IngredientPreset) {
     add.mutate({ name: preset.name, category: preset.category });
@@ -23,7 +24,15 @@ export function AddIngredientSheet({ open, onClose }: { open: boolean; onClose: 
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    add.mutate({ name: trimmed, category }, { onSuccess: () => setName("") });
+    add.mutate(
+      { name: trimmed, category, ...(expiry ? { expiresAt: expiry } : {}) },
+      {
+        onSuccess: () => {
+          setName("");
+          setExpiry("");
+        },
+      },
+    );
   }
 
   return (
@@ -45,6 +54,10 @@ export function AddIngredientSheet({ open, onClose }: { open: boolean; onClose: 
 
       <form onSubmit={customAdd} className="flex flex-col gap-2">
         <Input placeholder="직접 입력 (예: 감자)" value={name} onChange={(e) => setName(e.target.value)} />
+        <label className="flex items-center gap-2 text-sm text-cocoa-faint">
+          <span className="whitespace-nowrap">유통기한 (선택)</span>
+          <Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
+        </label>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {FRIDGE_CATEGORIES.filter((c) => c !== "전체").map((c) => (
             <button

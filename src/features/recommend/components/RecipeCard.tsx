@@ -38,6 +38,11 @@ export function RecipeCard({
                   🧑‍🍳 내 요리
                 </span>
               )}
+              {item.usesExpiring && (
+                <span className="rounded-mochi-sm bg-peach-soft px-2 py-0.5 text-xs text-cocoa">
+                  🍑 임박 재료
+                </span>
+              )}
               {item.badge && (
                 <span className="rounded-mochi-sm bg-mint-soft px-2 py-0.5 text-xs text-cocoa">
                   {item.badge}
