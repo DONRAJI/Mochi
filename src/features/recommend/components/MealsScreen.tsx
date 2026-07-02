@@ -7,6 +7,7 @@ import { RecipeCard } from "./RecipeCard";
 import { RecipeDetailModal } from "./RecipeDetailModal";
 import { AddMyRecipeSheet } from "./AddMyRecipeSheet";
 import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
+import { BalanceBanner } from "@/features/record/components/BalanceBanner";
 import { useRecommendations } from "../hooks/useRecommend";
 import type { MealMode, RecommendationResponse } from "../types";
 import { messages } from "@/lib/messages";
@@ -21,6 +22,7 @@ export function MealsScreen() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-title text-cocoa">오늘 뭐 먹지</h1>
+      <BalanceBanner />
       <ModeToggle value={mode} onChange={(v) => setMode(v as MealMode)} />
       <SortFilterChips />
 

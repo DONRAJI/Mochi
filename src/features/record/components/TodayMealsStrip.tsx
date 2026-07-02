@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import { useTodayMeals, useDailyBudget } from "../hooks/useRecord";
+import { dailyBalanceMessage } from "../balance";
 import { SLOT_LABEL, SLOT_EMOJI } from "../slot";
 import type { MealSlot } from "../types";
 
@@ -51,6 +52,7 @@ export function TodayMealsStrip() {
             </span>
           </div>
           <Gauge value={total} max={budget} tone="mint" />
+          <p className="mt-1.5 text-sm text-cocoa-soft">{dailyBalanceMessage(total, budget)}</p>
         </div>
       ) : (
         total > 0 && (
