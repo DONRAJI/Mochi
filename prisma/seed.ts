@@ -22,6 +22,38 @@ const ingredientMasters = [
   { name: "치즈", category: "유제품", emoji: "🧀", kcal: 402, protein: 25, aliases: [] },
   { name: "우유", category: "유제품", emoji: "🥛", kcal: 60, protein: 3, aliases: [] },
   { name: "쌀", category: "곡물", emoji: "🍚", kcal: 130, protein: 2, aliases: ["밥"] },
+  // 단백질
+  { name: "돼지고기", category: "단백질", emoji: "🥓", kcal: 242, protein: 17, aliases: ["삼겹살", "목살"] },
+  { name: "소고기", category: "단백질", emoji: "🥩", kcal: 250, protein: 26, aliases: ["쇠고기", "한우"] },
+  { name: "참치", category: "단백질", emoji: "🐟", kcal: 132, protein: 28, aliases: [] },
+  { name: "연어", category: "단백질", emoji: "🍣", kcal: 208, protein: 20, aliases: [] },
+  { name: "오징어", category: "단백질", emoji: "🦑", kcal: 92, protein: 18, aliases: [] },
+  { name: "콩", category: "단백질", emoji: "🫘", kcal: 127, protein: 9, aliases: ["대두"] },
+  // 채소
+  { name: "감자", category: "채소", emoji: "🥔", kcal: 77, protein: 2, aliases: [] },
+  { name: "고구마", category: "채소", emoji: "🍠", kcal: 86, protein: 1, aliases: [] },
+  { name: "마늘", category: "채소", emoji: "🧄", kcal: 149, protein: 6, aliases: ["다진마늘"] },
+  { name: "오이", category: "채소", emoji: "🥒", kcal: 15, protein: 1, aliases: [] },
+  { name: "파프리카", category: "채소", emoji: "🫑", kcal: 31, protein: 1, aliases: ["피망"] },
+  { name: "버섯", category: "채소", emoji: "🍄", kcal: 22, protein: 3, aliases: ["표고버섯", "느타리버섯"] },
+  { name: "옥수수", category: "채소", emoji: "🌽", kcal: 96, protein: 3, aliases: [] },
+  { name: "가지", category: "채소", emoji: "🍆", kcal: 25, protein: 1, aliases: [] },
+  { name: "아보카도", category: "채소", emoji: "🥑", kcal: 160, protein: 2, aliases: [] },
+  { name: "시금치", category: "채소", emoji: "🥬", kcal: 23, protein: 3, aliases: [] },
+  // 유제품
+  { name: "버터", category: "유제품", emoji: "🧈", kcal: 717, protein: 1, aliases: [] },
+  { name: "요거트", category: "유제품", emoji: "🍦", kcal: 59, protein: 10, aliases: ["그릭요거트", "요구르트"] },
+  // 곡물
+  { name: "현미", category: "곡물", emoji: "🌾", kcal: 112, protein: 2, aliases: ["현미밥"] },
+  { name: "빵", category: "곡물", emoji: "🍞", kcal: 265, protein: 9, aliases: ["식빵"] },
+  { name: "오트밀", category: "곡물", emoji: "🥣", kcal: 389, protein: 17, aliases: ["귀리"] },
+  // 과일
+  { name: "바나나", category: "과일", emoji: "🍌", kcal: 89, protein: 1, aliases: [] },
+  { name: "사과", category: "과일", emoji: "🍎", kcal: 52, protein: 0, aliases: [] },
+  { name: "딸기", category: "과일", emoji: "🍓", kcal: 32, protein: 1, aliases: [] },
+  { name: "블루베리", category: "과일", emoji: "🫐", kcal: 57, protein: 1, aliases: [] },
+  { name: "포도", category: "과일", emoji: "🍇", kcal: 69, protein: 1, aliases: [] },
+  { name: "레몬", category: "과일", emoji: "🍋", kcal: 29, protein: 1, aliases: [] },
 ];
 
 const recipes = [
