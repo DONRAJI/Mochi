@@ -11,7 +11,7 @@ const ingredientMasters = [
   { name: "계란", category: "단백질", emoji: "🥚", kcal: 155, protein: 13, aliases: ["달걀"] },
   { name: "두부", category: "단백질", emoji: "🧈", kcal: 80, protein: 8, aliases: [] },
   { name: "닭가슴살", category: "단백질", emoji: "🍗", kcal: 165, protein: 31, aliases: ["닭"] },
-  { name: "새우", category: "단백질", emoji: "🦐", kcal: 99, protein: 24, aliases: [] },
+  { name: "새우", category: "단백질", emoji: "🦐", kcal: 99, protein: 24, aliases: [], rarity: "rare" as const },
   { name: "양파", category: "채소", emoji: "🧅", kcal: 40, protein: 1, aliases: [] },
   { name: "당근", category: "채소", emoji: "🥕", kcal: 41, protein: 1, aliases: [] },
   { name: "상추", category: "채소", emoji: "🥬", kcal: 15, protein: 1, aliases: [] },
@@ -26,8 +26,8 @@ const ingredientMasters = [
   { name: "돼지고기", category: "단백질", emoji: "🥓", kcal: 242, protein: 17, aliases: ["삼겹살", "목살"] },
   { name: "소고기", category: "단백질", emoji: "🥩", kcal: 250, protein: 26, aliases: ["쇠고기", "한우"] },
   { name: "참치", category: "단백질", emoji: "🐟", kcal: 132, protein: 28, aliases: [] },
-  { name: "연어", category: "단백질", emoji: "🍣", kcal: 208, protein: 20, aliases: [] },
-  { name: "오징어", category: "단백질", emoji: "🦑", kcal: 92, protein: 18, aliases: [] },
+  { name: "연어", category: "단백질", emoji: "🍣", kcal: 208, protein: 20, aliases: [], rarity: "rare" as const },
+  { name: "오징어", category: "단백질", emoji: "🦑", kcal: 92, protein: 18, aliases: [], rarity: "rare" as const },
   { name: "콩", category: "단백질", emoji: "🫘", kcal: 127, protein: 9, aliases: ["대두"] },
   // 채소
   { name: "감자", category: "채소", emoji: "🥔", kcal: 77, protein: 2, aliases: [] },
@@ -38,7 +38,7 @@ const ingredientMasters = [
   { name: "버섯", category: "채소", emoji: "🍄", kcal: 22, protein: 3, aliases: ["표고버섯", "느타리버섯"] },
   { name: "옥수수", category: "채소", emoji: "🌽", kcal: 96, protein: 3, aliases: [] },
   { name: "가지", category: "채소", emoji: "🍆", kcal: 25, protein: 1, aliases: [] },
-  { name: "아보카도", category: "채소", emoji: "🥑", kcal: 160, protein: 2, aliases: [] },
+  { name: "아보카도", category: "채소", emoji: "🥑", kcal: 160, protein: 2, aliases: [], rarity: "rare" as const },
   { name: "시금치", category: "채소", emoji: "🥬", kcal: 23, protein: 3, aliases: [] },
   // 유제품
   { name: "버터", category: "유제품", emoji: "🧈", kcal: 717, protein: 1, aliases: [] },
