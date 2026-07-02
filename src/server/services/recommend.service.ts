@@ -32,15 +32,17 @@ export async function getRecommendations(
 ): Promise<RecommendationResponse[]> {
   const skip = page * size;
 
-  // 취향(선호·비선호·알러지) + 표시 모드 — 로그인 시에만. detail이면 kcal을 응답에 포함(#4).
-  const [prefTags, user] = userId
+  // 취향 + 표시 모드 + 즐겨찾기 — 로그인 시에만. detail이면 kcal 포함(#4), 즐겨찾기 플래그(#7).
+  const [prefTags, user, favRows] = userId
     ? await Promise.all([
         db.preferenceTag.findMany({ where: { userId }, select: { kind: true, label: true } }),
         db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+        db.favorite.findMany({ where: { userId }, select: { refId: true } }),
       ])
-    : [[] as { kind: string; label: string }[], null];
+    : [[] as { kind: string; label: string }[], null, [] as { refId: string }[]];
   const prefs = groupPreferences(prefTags);
   const detail = user?.displayMode === "detail";
+  const favoriteSet = new Set(favRows.map((f) => f.refId));
 
   if (mode === "cook") {
     // 시드 카탈로그(ownerId=null) + 내 요리(ownerId=userId)만. 남의 요리는 노출 안 함.
@@ -97,6 +99,7 @@ export async function getRecommendations(
             }),
           mine: r.ownerId != null,
           usesExpiring: required.some((n) => expiringSet.has(n)),
+          favorited: favoriteSet.has(r.id),
           subtitle: null,
           rarity: r.rarity,
           steps: r.steps,
@@ -137,6 +140,7 @@ export async function getRecommendations(
         ingredients: [],
         mine: false,
         usesExpiring: false,
+        favorited: favoriteSet.has(m.id),
         subtitle: m.category,
         rarity: m.rarity,
         steps: [],
@@ -166,6 +170,7 @@ export async function getRecommendations(
       ingredients: [],
       mine: false,
       usesExpiring: false,
+      favorited: favoriteSet.has(c.id),
       subtitle: c.brand,
       rarity: c.rarity,
       steps: [],

@@ -3,21 +3,36 @@ import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import type { RecommendationResponse } from "../types";
 
-/** 추천 카드 — 랭킹 뱃지 + (요리 모드) 매칭률·추가구매 (PRD 5.3). */
+/** 추천 카드 — 랭킹 뱃지 + (요리 모드) 매칭률·추가구매 (PRD 5.3). 우상단 하트=즐겨찾기(#7). */
 export function RecipeCard({
   item,
   onClick,
+  onToggleFavorite,
 }: {
   item: RecommendationResponse;
   onClick?: () => void;
+  onToggleFavorite?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
-    >
-      <Card>
+    <div className="relative">
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-label={item.favorited ? "즐겨찾기 해제" : "즐겨찾기"}
+          className={`absolute right-3 top-3 z-10 text-xl transition-transform ease-jelly active:scale-90 ${
+            item.favorited ? "text-peach-deep" : "text-cocoa-faint"
+          }`}
+        >
+          {item.favorited ? "♥" : "♡"}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
+      >
+        <Card>
         <div className="flex items-center gap-3">
           {item.imageUrl ? (
             <Image
@@ -70,7 +85,8 @@ export function RecipeCard({
             )}
           </div>
         )}
-      </Card>
-    </button>
+        </Card>
+      </button>
+    </div>
   );
 }

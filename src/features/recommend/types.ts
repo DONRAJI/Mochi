@@ -49,6 +49,7 @@ export interface RecommendationResponse {
   ingredients: RecipeIngredient[]; // cook (재료 + 대체/선택 힌트)
   mine: boolean; // cook — 내가 등록한 요리 (PRD 11.3)
   usesExpiring: boolean; // cook — 유통기한 임박 재료를 쓰는 레시피 (PRD 5.2)
+  favorited: boolean; // 즐겨찾기 여부 (#7)
   subtitle: string | null; // eatout=카테고리, convenience=브랜드
   rarity: string;
   steps: string[]; // cook 조리 단계
