@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/server/db";
-import { nextStreakCount } from "@/features/record/streak";
+import { AppError } from "@/lib/api-response";
+import { messages } from "@/lib/messages";
+import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
 import { computeBMR, computeTDEE, ageFromBirthYear } from "@/features/record/energy";
@@ -55,13 +57,22 @@ export async function markMealEaten(
       data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo },
     });
 
-    // 스트릭 (죄책감 제로: 끊지 않고 새 날에만 +1)
+    // 스트릭 + 보호권 (#9): 연속이면 +1, 빠지면 보호권이 막아주고, 없으면 오늘의 1부터 새 시작.
     const streak = await tx.streak.findUnique({ where: { userId } });
-    const count = nextStreakCount(streak?.count ?? 0, streak?.lastCheckedAt ?? now, now);
+    const s = advanceStreak(
+      { count: streak?.count ?? 0, shieldCount: streak?.shieldCount ?? 1 },
+      streak?.lastCheckedAt ?? now,
+      now,
+    );
     if (streak) {
-      await tx.streak.update({ where: { userId }, data: { count, lastCheckedAt: now } });
+      await tx.streak.update({
+        where: { userId },
+        data: { count: s.count, shieldCount: s.shieldCount, lastCheckedAt: now },
+      });
     } else {
-      await tx.streak.create({ data: { userId, count, lastCheckedAt: now } });
+      await tx.streak.create({
+        data: { userId, count: s.count, shieldCount: s.shieldCount, lastCheckedAt: now },
+      });
     }
 
     // 도감 적립 — 중복(이미 가진 카드)이면 추가 없음
@@ -87,7 +98,14 @@ export async function markMealEaten(
       update: { state: mochiState },
     });
 
-    return { recordId: record.id, mochiState, slot, streakCount: count, cardAcquired };
+    return {
+      recordId: record.id,
+      mochiState,
+      slot,
+      streakCount: s.count,
+      cardAcquired,
+      shieldUsed: s.shieldUsed,
+    };
   });
 }
 
@@ -117,6 +135,15 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
     eatenAt: r.eatenAt.toISOString(),
     kcal: detail ? r.kcal : null,
   }));
+}
+
+/** 오늘 기록 삭제(#2) — 실수 정정용. 소유자 검증. 스트릭·도감은 되돌리지 않음(죄책감 제로·단순). */
+export async function deleteMealRecord(userId: string, id: string): Promise<void> {
+  const record = await db.mealRecord.findUnique({ where: { id } });
+  if (!record || record.userId !== userId) {
+    throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
+  }
+  await db.mealRecord.delete({ where: { id } });
 }
 
 /** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */

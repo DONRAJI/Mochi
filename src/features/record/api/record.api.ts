@@ -15,6 +15,10 @@ export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
 }
 
+export function deleteMeal(id: string): Promise<{ done: true }> {
+  return fetcher<{ done: true }>(`/api/records/meals/${id}`, { method: "DELETE" });
+}
+
 export function fetchDailyBudget(): Promise<DailyBudgetResponse> {
   return fetcher<DailyBudgetResponse>("/api/records/budget");
 }

@@ -64,6 +64,9 @@ export function RecipeDetailModal({
               {result.cardAcquired ? "담았어요 · 도감에 한 칸 🎉" : "기록했어요 😊"}
             </p>
             <p className="text-sm text-cocoa-faint">스트릭 {result.streakCount}일째 🍮</p>
+            {result.shieldUsed && (
+              <p className="text-sm text-cocoa-soft">🛡️ 보호권이 스트릭을 지켜줬어요!</p>
+            )}
             <Button className="w-full" onClick={close}>
               닫기
             </Button>

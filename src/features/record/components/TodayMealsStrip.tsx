@@ -1,8 +1,9 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
-import { useTodayMeals, useDailyBudget } from "../hooks/useRecord";
+import { useTodayMeals, useDailyBudget, useDeleteMeal } from "../hooks/useRecord";
 import { dailyBalanceMessage } from "../balance";
 import { SLOT_LABEL, SLOT_EMOJI } from "../slot";
 import type { MealSlot } from "../types";
@@ -20,6 +21,7 @@ const MODE_LABEL: Record<"cook" | "eatout" | "convenience", string> = {
 export function TodayMealsStrip() {
   const { data: meals } = useTodayMeals();
   const { data: budgetData } = useDailyBudget();
+  const del = useDeleteMeal();
   const total = (meals ?? []).reduce((sum, m) => sum + (m.kcal ?? 0), 0);
   const budget = budgetData?.budget ?? null; // detail 모드 + 프로필 완비 시만
 
@@ -35,6 +37,17 @@ export function TodayMealsStrip() {
               <span className="text-cocoa">{SLOT_LABEL[m.slot as MealSlot]}</span>
               <span className="text-cocoa-faint">· {MODE_LABEL[m.mode]}</span>
               {m.kcal != null && <span className="ml-auto text-cocoa-faint">{m.kcal} kcal</span>}
+              <button
+                type="button"
+                onClick={() => del.mutate(m.id)}
+                aria-label="기록 삭제"
+                className={cn(
+                  "px-1 text-cocoa-faint transition-transform ease-jelly active:scale-90",
+                  m.kcal == null && "ml-auto",
+                )}
+              >
+                ✕
+              </button>
             </li>
           ))}
         </ul>
