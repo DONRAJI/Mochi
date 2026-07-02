@@ -14,6 +14,8 @@ import { deliverySearchUrl } from "../delivery";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
+const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
+
 /** 레시피/메뉴 상세 + '먹었어요'(기록→수집). 성공 시 모찌 cheer 축하 연출 (PRD 4.2 데일리 루프). */
 export function RecipeDetailModal({
   item,
@@ -30,13 +32,14 @@ export function RecipeDetailModal({
   const result = mark.data;
   const [plannedDay, setPlannedDay] = useState<string | null>(null);
   const [shopped, setShopped] = useState(false);
+  const [slot, setSlot] = useState<MealSlot>(estimateSlot(new Date())); // 자동추정, 바꿀 수 있음
   const week = weekDates(new Date());
 
   function eat() {
     if (!item) return;
     mark.mutate({
       mode,
-      slot: estimateSlot(new Date()), // 브라우저 로컬 시간(KST)으로 끼니 추정
+      slot, // 자동추정값 또는 사용자가 고른 끼니 (PRD 11.2)
       refId: item.id,
       rarity: item.rarity as MarkMealRequest["rarity"],
     });
@@ -120,7 +123,23 @@ export function RecipeDetailModal({
               <p className="mt-4 text-center text-sm text-cocoa-soft">가까운 편의점에서 만나요 🏪</p>
             )}
 
-            <Button className="mt-4 w-full" onClick={eat}>
+            <div className="mt-4 flex items-center gap-1.5">
+              <span className="text-xs text-cocoa-faint">끼니</span>
+              {SLOTS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSlot(s)}
+                  className={`rounded-mochi-sm px-2 py-0.5 text-xs transition-transform ease-jelly active:scale-90 ${
+                    slot === s ? "bg-mint text-cocoa" : "bg-cream-200 text-cocoa-faint"
+                  }`}
+                >
+                  {SLOT_LABEL[s]}
+                </button>
+              ))}
+            </div>
+
+            <Button className="mt-2 w-full" onClick={eat}>
               {mark.isPending ? "기록하는 중…" : "잘 먹었어요! 도감에 담기"}
             </Button>
             {mark.isError && (
