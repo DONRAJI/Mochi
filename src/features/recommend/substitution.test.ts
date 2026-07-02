@@ -32,4 +32,15 @@ describe("재료 다이어트 힌트 (재료 대체·직관화)", () => {
     expect(hasLighterOption(["두부", "상추", "마요네즈"])).toBe(true);
     expect(hasLighterOption(["두부", "상추"])).toBe(false);
   });
+
+  it("대분류로 묶어 같은 분류 재료를 폭넓게 커버한다(#1)", () => {
+    // 고기류: 개별 등록 없이도 대표 대체로
+    expect(ingredientHint("목살").swap?.to).toBe("닭가슴살");
+    expect(ingredientHint("차돌박이").swap?.to).toBe("닭가슴살");
+    // 당류
+    expect(ingredientHint("황설탕").swap?.to).toBe("알룰로스");
+    expect(ingredientHint("꿀").swap?.to).toBe("알룰로스");
+    // 면류
+    expect(ingredientHint("우동면").swap?.to).toBe("곤약면");
+  });
 });
