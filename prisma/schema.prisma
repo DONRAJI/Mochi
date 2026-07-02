@@ -85,8 +85,28 @@ model User {
   streak      Streak?
   mochi       MochiProfile?
   profile     UserProfile?
+  plannedMeals PlannedMeal[]
 
   @@map("users")
+}
+
+// 주간 식단 계획 (PRD 4.3·5.3) — 미래의 끼니. record(과거)와 대칭.
+model PlannedMeal {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  date      DateTime  @db.Date // 계획 날짜(캘린더 일자)
+  slot      MealSlot? // 끼니 슬롯(선택)
+  mode      MealMode
+  refId     String?   @map("ref_id") // 레시피/메뉴/간편식 id
+  title     String // 표시용 이름 스냅샷
+  emoji     String?
+  eaten     Boolean   @default(false) // 계획을 실제로 먹었는지
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("planned_meals")
 }
 
 // opt-in 개인 프로필 (PRD 11.4) — 마이 탭에서 원하는 사람만 입력. 전부 nullable.
