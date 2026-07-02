@@ -6,7 +6,7 @@ import { SortFilterChips } from "./SortFilterChips";
 import { RecipeCard } from "./RecipeCard";
 import { RecipeDetailModal } from "./RecipeDetailModal";
 import { AddMyRecipeSheet } from "./AddMyRecipeSheet";
-import { WeeklyPlanStrip } from "./WeeklyPlanStrip";
+import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
 import { useRecommendations } from "../hooks/useRecommend";
 import type { MealMode, RecommendationResponse } from "../types";
 import { messages } from "@/lib/messages";
@@ -45,7 +45,7 @@ export function MealsScreen() {
         ))}
       </div>
 
-      <WeeklyPlanStrip />
+      <WeeklyPlanCalendar />
       <RecipeDetailModal item={selected} mode={mode} onClose={() => setSelected(null)} />
       <AddMyRecipeSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </div>

@@ -1,0 +1,97 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { weekDates, ymd, WEEKDAY_LABEL } from "../week";
+import { usePlanWeek, useRemovePlan, useEatPlan } from "../hooks/usePlan";
+import { SLOT_LABEL } from "@/features/record/slot";
+import type { MealSlot } from "@/features/record/types";
+import type { PlannedMealResponse } from "../plan";
+
+/**
+ * 주간 식단 캘린더 (PRD 4.3·5.3) — 이번 주(월~일) 계획을 실데이터로.
+ * 추천/상세에서 "이 날에 담기"로 채우고, 계획을 '먹었어요'하면 기록 루프로 이어진다.
+ * 숫자(칼로리)는 없음(불변 #2).
+ */
+export function WeeklyPlanCalendar() {
+  const week = weekDates(new Date());
+  const today = ymd(new Date());
+  const { data: meals } = usePlanWeek();
+  const remove = useRemovePlan();
+  const eat = useEatPlan();
+
+  const byDate = new Map<string, PlannedMealResponse[]>();
+  for (const m of meals ?? []) {
+    const arr = byDate.get(m.date) ?? [];
+    arr.push(m);
+    byDate.set(m.date, arr);
+  }
+
+  return (
+    <section>
+      <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단</p>
+      <div className="flex flex-col gap-2">
+        {week.map((date, i) => {
+          const dayMeals = byDate.get(date) ?? [];
+          const isToday = date === today;
+          return (
+            <div
+              key={date}
+              className={cn(
+                "rounded-mochi px-3 py-2 shadow-mochi-press",
+                isToday ? "bg-mint-soft" : "bg-cream-50",
+              )}
+            >
+              <div className="mb-1 flex items-center gap-1.5">
+                <span className="font-display text-sm text-cocoa">{WEEKDAY_LABEL[i]}</span>
+                <span className="text-xs text-cocoa-faint">
+                  {Number(date.slice(8, 10))}일{isToday ? " · 오늘" : ""}
+                </span>
+              </div>
+
+              {dayMeals.length === 0 ? (
+                <p className="text-xs text-cocoa-faint">비어 있어요</p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {dayMeals.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 text-sm">
+                      <span>{m.emoji ?? "🍽️"}</span>
+                      <span
+                        className={cn("flex-1", m.eaten ? "text-cocoa-faint line-through" : "text-cocoa")}
+                      >
+                        {m.slot && (
+                          <span className="text-cocoa-faint">{SLOT_LABEL[m.slot as MealSlot]} · </span>
+                        )}
+                        {m.title}
+                      </span>
+                      {m.eaten ? (
+                        <span className="text-xs text-cocoa-faint">먹음 ✓</span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => eat.mutate(m.id)}
+                            className="rounded-mochi-sm bg-mint px-2 py-0.5 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+                          >
+                            먹었어요
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => remove.mutate(m.id)}
+                            className="px-1 text-cocoa-faint transition-transform ease-jelly active:scale-90"
+                            aria-label="삭제"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

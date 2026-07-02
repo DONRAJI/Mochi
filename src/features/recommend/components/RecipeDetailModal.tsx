@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
 import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
+import { useAddPlan } from "../hooks/usePlan";
+import { weekDates, WEEKDAY_LABEL } from "../week";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
@@ -19,7 +22,10 @@ export function RecipeDetailModal({
   onClose: () => void;
 }) {
   const mark = useMarkMealEaten();
+  const addPlan = useAddPlan();
   const result = mark.data;
+  const [plannedDay, setPlannedDay] = useState<string | null>(null);
+  const week = weekDates(new Date());
 
   function eat() {
     if (!item) return;
@@ -31,8 +37,17 @@ export function RecipeDetailModal({
     });
   }
 
+  function planTo(date: string, label: string) {
+    if (!item) return;
+    addPlan.mutate(
+      { date, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
+      { onSuccess: () => setPlannedDay(label) },
+    );
+  }
+
   function close() {
     mark.reset();
+    setPlannedDay(null);
     onClose();
   }
 
@@ -87,6 +102,26 @@ export function RecipeDetailModal({
             {mark.isError && (
               <p className="mt-2 text-center text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
             )}
+
+            <div className="mt-4 border-t border-cream-200 pt-3">
+              <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단에 담기</p>
+              {plannedDay ? (
+                <p className="text-sm text-cocoa-soft">{plannedDay}요일 식단에 담았어요 🗓️</p>
+              ) : (
+                <div className="flex gap-1.5">
+                  {week.map((date, i) => (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => planTo(date, WEEKDAY_LABEL[i])}
+                      className="flex-1 rounded-mochi-sm bg-cream-200 py-2 text-sm text-cocoa transition-transform ease-jelly active:scale-90"
+                    >
+                      {WEEKDAY_LABEL[i]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         ))}
     </Modal>
