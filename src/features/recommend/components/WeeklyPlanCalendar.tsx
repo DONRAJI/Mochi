@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { weekDates, ymd, WEEKDAY_LABEL } from "../week";
-import { usePlanWeek, useRemovePlan, useEatPlan } from "../hooks/usePlan";
+import { usePlanWeek, useRemovePlan, useEatPlan, useAutoFillWeek } from "../hooks/usePlan";
 import { SLOT_LABEL } from "@/features/record/slot";
 import type { MealSlot } from "@/features/record/types";
 import type { PlannedMealResponse } from "../plan";
@@ -18,6 +18,7 @@ export function WeeklyPlanCalendar() {
   const { data: meals } = usePlanWeek();
   const remove = useRemovePlan();
   const eat = useEatPlan();
+  const autoFill = useAutoFillWeek();
 
   const byDate = new Map<string, PlannedMealResponse[]>();
   for (const m of meals ?? []) {
@@ -25,10 +26,22 @@ export function WeeklyPlanCalendar() {
     arr.push(m);
     byDate.set(m.date, arr);
   }
+  const hasEmpty = week.some((d) => !byDate.has(d));
 
   return (
     <section>
-      <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단</p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm text-cocoa-faint">이번 주 식단</p>
+        {hasEmpty && (
+          <button
+            type="button"
+            onClick={() => autoFill.mutate(week)}
+            className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+          >
+            {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
+          </button>
+        )}
+      </div>
       <div className="flex flex-col gap-2">
         {week.map((date, i) => {
           const dayMeals = byDate.get(date) ?? [];

@@ -19,6 +19,10 @@ export type AddPlanRequest = z.infer<typeof addPlanSchema>;
 /** 주간 범위 조회 (from~to, YYYY-MM-DD 포함). */
 export const planRangeSchema = z.object({ from: dateStr, to: dateStr });
 
+/** 이번 주 빈 날 자동 채우기 (PRD 4.3) — 클라가 이번 주 날짜들을 넘긴다. */
+export const autoFillSchema = z.object({ dates: z.array(dateStr).min(1).max(7) });
+export type AutoFillRequest = z.infer<typeof autoFillSchema>;
+
 export interface PlannedMealResponse {
   id: string;
   date: string; // YYYY-MM-DD
