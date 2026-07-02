@@ -6,9 +6,10 @@ import type {
   RecommendationResponse,
 } from "../types";
 
-/** 추천 목록 조회 (컴포넌트 → 이 함수 → TanStack Query 순, conventions.md). */
+/** 추천 목록 조회 (컴포넌트 → 이 함수 → TanStack Query 순, conventions.md).
+ *  size=50: 외식·간편식(≤36)은 전량 받아 카테고리 내비를 클라에서 필터(#5). */
 export function fetchRecommendations(mode: MealMode): Promise<RecommendationResponse[]> {
-  return fetcher<RecommendationResponse[]>(`/api/recommend/meals?mode=${mode}`);
+  return fetcher<RecommendationResponse[]>(`/api/recommend/meals?mode=${mode}&size=50`);
 }
 
 /** 내 요리 등록 (PRD 11.3). */
