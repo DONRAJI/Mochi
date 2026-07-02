@@ -6,10 +6,17 @@ import { CompleteGauge } from "./CompleteGauge";
 import { CollectibleCard } from "./CollectibleCard";
 import { CardDetailModal } from "./CardDetailModal";
 import { RewardChest } from "./RewardChest";
+import { ShareButton } from "./ShareButton";
 import { useCollection } from "../hooks/useCollection";
 import { COLLECTION_TABS } from "../data";
 import type { CollectionTab, CollectibleResponse } from "../types";
 import { messages } from "@/lib/messages";
+
+const TAB_LABEL: Record<CollectionTab, string> = {
+  recipe: "요리",
+  ingredient: "재료",
+  convenience: "간편식",
+};
 
 /** 📖 도감 화면 — 실데이터. 먹었어요로 적립된 카드가 풀컬러로 뜬다 (리텐션 엔진, PRD 7장). */
 export function CollectionScreen() {
@@ -52,6 +59,7 @@ export function CollectionScreen() {
             </>
           )}
           <RewardChest />
+          <ShareButton tabLabel={TAB_LABEL[tab]} acquired={have} />
         </>
       )}
 
