@@ -48,6 +48,11 @@ export function RecipeCard({
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-display text-cocoa">{item.name}</p>
+              {item.hidden && (
+                <span className="rounded-mochi-sm bg-butter-deep px-2 py-0.5 text-xs text-cocoa">
+                  🔓 히든
+                </span>
+              )}
               {item.mine && (
                 <span className="rounded-mochi-sm bg-lavender-soft px-2 py-0.5 text-xs text-cocoa">
                   🧑‍🍳 내 요리

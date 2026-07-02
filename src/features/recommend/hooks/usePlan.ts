@@ -26,6 +26,15 @@ export function useAddPlan() {
   });
 }
 
+/** 이번 주 자동 채우기 (PRD 4.3). */
+export function useAutoFillWeek() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dates: string[]) => planApi.autoFillWeek(dates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+  });
+}
+
 export function useRemovePlan() {
   const qc = useQueryClient();
   return useMutation({

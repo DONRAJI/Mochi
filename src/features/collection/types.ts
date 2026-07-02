@@ -15,3 +15,13 @@ export interface CollectibleResponse {
   acquired: boolean;
   acquiredAt: string | null; // ISO, 획득 시
 }
+
+/**
+ * 도감 응답 — 게이지엔 전체(total)/획득(acquired), 그리드엔 items.
+ * 레시피는 카탈로그가 1150개라 items를 '획득분 + 미획득 티저 일부'로 제한한다(압도감·성능).
+ */
+export interface CollectionResponse {
+  total: number;
+  acquired: number;
+  items: CollectibleResponse[];
+}

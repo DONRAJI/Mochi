@@ -7,7 +7,7 @@ export function MeMenuList() {
       {ME_MENU.map((i) => (
         <div
           key={i.label}
-          className="flex items-center justify-between rounded-mochi bg-cream-50 px-4 py-3 shadow-mochi-press"
+          className="flex items-center justify-between rounded-mochi bg-cream-50 px-4 py-3 opacity-70 shadow-mochi-press"
         >
           <div className="flex items-center gap-3">
             <span className="text-xl">{i.emoji}</span>

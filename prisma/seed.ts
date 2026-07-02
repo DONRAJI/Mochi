@@ -11,7 +11,7 @@ const ingredientMasters = [
   { name: "계란", category: "단백질", emoji: "🥚", kcal: 155, protein: 13, aliases: ["달걀"] },
   { name: "두부", category: "단백질", emoji: "🧈", kcal: 80, protein: 8, aliases: [] },
   { name: "닭가슴살", category: "단백질", emoji: "🍗", kcal: 165, protein: 31, aliases: ["닭"] },
-  { name: "새우", category: "단백질", emoji: "🦐", kcal: 99, protein: 24, aliases: [] },
+  { name: "새우", category: "단백질", emoji: "🦐", kcal: 99, protein: 24, aliases: [], rarity: "rare" as const },
   { name: "양파", category: "채소", emoji: "🧅", kcal: 40, protein: 1, aliases: [] },
   { name: "당근", category: "채소", emoji: "🥕", kcal: 41, protein: 1, aliases: [] },
   { name: "상추", category: "채소", emoji: "🥬", kcal: 15, protein: 1, aliases: [] },
@@ -22,6 +22,38 @@ const ingredientMasters = [
   { name: "치즈", category: "유제품", emoji: "🧀", kcal: 402, protein: 25, aliases: [] },
   { name: "우유", category: "유제품", emoji: "🥛", kcal: 60, protein: 3, aliases: [] },
   { name: "쌀", category: "곡물", emoji: "🍚", kcal: 130, protein: 2, aliases: ["밥"] },
+  // 단백질
+  { name: "돼지고기", category: "단백질", emoji: "🥓", kcal: 242, protein: 17, aliases: ["삼겹살", "목살"] },
+  { name: "소고기", category: "단백질", emoji: "🥩", kcal: 250, protein: 26, aliases: ["쇠고기", "한우"] },
+  { name: "참치", category: "단백질", emoji: "🐟", kcal: 132, protein: 28, aliases: [] },
+  { name: "연어", category: "단백질", emoji: "🍣", kcal: 208, protein: 20, aliases: [], rarity: "rare" as const },
+  { name: "오징어", category: "단백질", emoji: "🦑", kcal: 92, protein: 18, aliases: [], rarity: "rare" as const },
+  { name: "콩", category: "단백질", emoji: "🫘", kcal: 127, protein: 9, aliases: ["대두"] },
+  // 채소
+  { name: "감자", category: "채소", emoji: "🥔", kcal: 77, protein: 2, aliases: [] },
+  { name: "고구마", category: "채소", emoji: "🍠", kcal: 86, protein: 1, aliases: [] },
+  { name: "마늘", category: "채소", emoji: "🧄", kcal: 149, protein: 6, aliases: ["다진마늘"] },
+  { name: "오이", category: "채소", emoji: "🥒", kcal: 15, protein: 1, aliases: [] },
+  { name: "파프리카", category: "채소", emoji: "🫑", kcal: 31, protein: 1, aliases: ["피망"] },
+  { name: "버섯", category: "채소", emoji: "🍄", kcal: 22, protein: 3, aliases: ["표고버섯", "느타리버섯"] },
+  { name: "옥수수", category: "채소", emoji: "🌽", kcal: 96, protein: 3, aliases: [] },
+  { name: "가지", category: "채소", emoji: "🍆", kcal: 25, protein: 1, aliases: [] },
+  { name: "아보카도", category: "채소", emoji: "🥑", kcal: 160, protein: 2, aliases: [], rarity: "rare" as const },
+  { name: "시금치", category: "채소", emoji: "🥬", kcal: 23, protein: 3, aliases: [] },
+  // 유제품
+  { name: "버터", category: "유제품", emoji: "🧈", kcal: 717, protein: 1, aliases: [] },
+  { name: "요거트", category: "유제품", emoji: "🍦", kcal: 59, protein: 10, aliases: ["그릭요거트", "요구르트"] },
+  // 곡물
+  { name: "현미", category: "곡물", emoji: "🌾", kcal: 112, protein: 2, aliases: ["현미밥"] },
+  { name: "빵", category: "곡물", emoji: "🍞", kcal: 265, protein: 9, aliases: ["식빵"] },
+  { name: "오트밀", category: "곡물", emoji: "🥣", kcal: 389, protein: 17, aliases: ["귀리"] },
+  // 과일
+  { name: "바나나", category: "과일", emoji: "🍌", kcal: 89, protein: 1, aliases: [] },
+  { name: "사과", category: "과일", emoji: "🍎", kcal: 52, protein: 0, aliases: [] },
+  { name: "딸기", category: "과일", emoji: "🍓", kcal: 32, protein: 1, aliases: [] },
+  { name: "블루베리", category: "과일", emoji: "🫐", kcal: 57, protein: 1, aliases: [] },
+  { name: "포도", category: "과일", emoji: "🍇", kcal: 69, protein: 1, aliases: [] },
+  { name: "레몬", category: "과일", emoji: "🍋", kcal: 29, protein: 1, aliases: [] },
 ];
 
 const recipes = [
@@ -29,6 +61,10 @@ const recipes = [
   { id: "seed-recipe-tofu", name: "김치두부조림", emoji: "🍲", minutes: 15, servings: 1, rarity: "common" as const, kcal: 360, protein: 18, ingredients: ["두부", "김치", "대파"], steps: ["두부를 도톰하게 썰어요", "김치와 자작하게 끓여요", "참기름 한 방울"] },
   { id: "seed-recipe-bowl", name: "단백질 볼", emoji: "🥗", minutes: 20, servings: 1, rarity: "rare" as const, kcal: 420, protein: 35, ingredients: ["닭가슴살", "방울토마토", "현미밥", "올리브유"], steps: ["닭가슴살을 구워요", "채소를 담아요", "올리브유를 둘러요"] },
   { id: "seed-recipe-salad", name: "두부 샐러드", emoji: "🥬", minutes: 10, servings: 1, rarity: "common" as const, kcal: 180, protein: 12, ingredients: ["두부", "상추", "방울토마토"], steps: ["채소를 한 입 크기로", "두부를 올려요", "드레싱 살짝"] },
+  // 🔓 히든 콤보 (PRD 7.3#3) — 조합을 다 가지면 해금. rarity로 아스피레이션.
+  { id: "seed-recipe-hidden-tofukimchi", name: "두부김치계란볶음", emoji: "🍳", minutes: 15, servings: 1, rarity: "rare" as const, kcal: 340, protein: 22, ingredients: ["두부", "김치", "계란", "대파"], steps: ["두부를 으깨 볶아요", "김치를 넣어 볶아요", "계란을 풀어 마무리"], hiddenCombo: ["두부", "김치", "계란"] },
+  { id: "seed-recipe-hidden-chicken", name: "닭가슴살 현미볼", emoji: "🥗", minutes: 20, servings: 1, rarity: "rare" as const, kcal: 400, protein: 38, ingredients: ["닭가슴살", "현미", "브로콜리"], steps: ["닭가슴살을 구워요", "현미밥을 담아요", "브로콜리를 올려요"], hiddenCombo: ["닭가슴살", "현미", "브로콜리"] },
+  { id: "seed-recipe-hidden-shrimpavo", name: "새우 아보카도 포케", emoji: "🍤", minutes: 15, servings: 1, rarity: "epic" as const, kcal: 380, protein: 26, ingredients: ["새우", "아보카도", "방울토마토", "현미"], steps: ["새우를 데쳐요", "아보카도를 썰어요", "현미밥 위에 담아요"], hiddenCombo: ["새우", "아보카도", "방울토마토"] },
 ];
 
 // 비요리 포용(불변 #5): 외식·간편식도 요리처럼 풍부한 카탈로그를 가져야 제안→기록→수집이 산다.

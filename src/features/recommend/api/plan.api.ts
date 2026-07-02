@@ -23,3 +23,10 @@ export function eatPlan(id: string): Promise<MealRecordResponse> {
     body: JSON.stringify({}),
   });
 }
+
+export function autoFillWeek(dates: string[]): Promise<PlannedMealResponse[]> {
+  return fetcher<PlannedMealResponse[]>("/api/recommend/plan/auto", {
+    method: "POST",
+    body: JSON.stringify({ dates }),
+  });
+}

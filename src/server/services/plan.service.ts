@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { markMealEaten } from "./record.service";
+import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import type { AddPlanRequest, PlannedMealResponse } from "@/features/recommend/plan";
@@ -43,6 +44,37 @@ export async function listPlan(
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
   return rows.map(toPlan);
+}
+
+/**
+ * 이번 주 빈 날을 cook 추천으로 자동 채운다 (PRD 4.3 위클리 루프).
+ * 이미 계획된 날은 건너뛰고, 상위 추천을 로테이션으로 배정해 날마다 다르게.
+ */
+export async function autoFillWeek(
+  userId: string,
+  dates: string[],
+): Promise<PlannedMealResponse[]> {
+  const existing = await db.plannedMeal.findMany({
+    where: { userId, date: { in: dates.map((d) => new Date(d)) } },
+    select: { date: true },
+  });
+  const planned = new Set(existing.map((e) => e.date.toISOString().slice(0, 10)));
+  const empty = dates.filter((d) => !planned.has(d));
+
+  if (empty.length > 0) {
+    const recs = await getRecommendations("cook", userId, 0, 20);
+    if (recs.length > 0) {
+      await Promise.all(
+        empty.map((date, i) => {
+          const r = recs[i % recs.length];
+          return db.plannedMeal.create({
+            data: { userId, date: new Date(date), mode: "cook", refId: r.id, title: r.name, emoji: r.emoji },
+          });
+        }),
+      );
+    }
+  }
+  return listPlan(userId, dates[0], dates[dates.length - 1]);
 }
 
 export async function addPlan(

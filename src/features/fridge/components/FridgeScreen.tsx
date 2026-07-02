@@ -7,6 +7,7 @@ import { ExpiryShelf } from "./ExpiryShelf";
 import { TagFilterChips } from "./TagFilterChips";
 import { AddIngredientFab } from "./AddIngredientFab";
 import { AddIngredientSheet } from "./AddIngredientSheet";
+import { ShoppingList } from "./ShoppingList";
 import { EmptyFridgeState } from "./EmptyFridgeState";
 import { useIngredients, useRemoveIngredient } from "../hooks/useFridge";
 import { daysUntil, isExpiringSoon } from "../expiry";
@@ -48,6 +49,8 @@ export function FridgeScreen() {
         ) : (
           !isPending && <EmptyFridgeState />
         ))}
+
+      <ShoppingList />
 
       <AddIngredientFab onClick={() => setSheetOpen(true)} />
       <AddIngredientSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />

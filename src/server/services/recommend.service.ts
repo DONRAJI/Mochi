@@ -69,7 +69,14 @@ export async function getRecommendations(
     const likesC = canonLabels(prefs.likes);
     const dislikesC = canonLabels(prefs.dislikes);
 
-    const cards = recipes
+    // 히든 콤보(PRD 7.3#3): 조합을 다 가진 것만 노출, 나머지 히든은 숨김.
+    const visibleRecipes = recipes.filter(
+      (r) =>
+        r.hiddenCombo.length === 0 ||
+        r.hiddenCombo.every((i) => ownedSet.has(canonicalize(i, canon))),
+    );
+
+    const cards = visibleRecipes
       .map((r) => {
         const required = r.ingredients.map((i) => canonicalize(i, canon));
         const seen = new Set<string>();
@@ -100,6 +107,7 @@ export async function getRecommendations(
           mine: r.ownerId != null,
           usesExpiring: required.some((n) => expiringSet.has(n)),
           favorited: favoriteSet.has(r.id),
+          hidden: r.hiddenCombo.length > 0,
           subtitle: null,
           rarity: r.rarity,
           steps: r.steps,
@@ -141,6 +149,7 @@ export async function getRecommendations(
         mine: false,
         usesExpiring: false,
         favorited: favoriteSet.has(m.id),
+        hidden: false,
         subtitle: m.category,
         rarity: m.rarity,
         steps: [],
@@ -171,6 +180,7 @@ export async function getRecommendations(
       mine: false,
       usesExpiring: false,
       favorited: favoriteSet.has(c.id),
+      hidden: false,
       subtitle: c.brand,
       rarity: c.rarity,
       steps: [],
