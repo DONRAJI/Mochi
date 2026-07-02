@@ -15,6 +15,7 @@ import type {
   StreakResponse,
   TodayMealResponse,
   WeightLogResponse,
+  DailyBudgetResponse,
 } from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
 import type { Prisma } from "@prisma/client";
@@ -97,19 +98,24 @@ function kstDayStart(nowMs = Date.now()): Date {
   return new Date(shifted - (shifted % 86_400_000) - KST);
 }
 
-/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. */
+/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. detail이면 kcal 포함(#4). */
 export async function listTodayMeals(userId: string): Promise<TodayMealResponse[]> {
   const since = kstDayStart();
-  const rows = await db.mealRecord.findMany({
-    where: { userId, eatenAt: { gte: since } },
-    orderBy: { eatenAt: "asc" },
-    select: { id: true, slot: true, mode: true, eatenAt: true },
-  });
+  const [rows, user] = await Promise.all([
+    db.mealRecord.findMany({
+      where: { userId, eatenAt: { gte: since } },
+      orderBy: { eatenAt: "asc" },
+      select: { id: true, slot: true, mode: true, eatenAt: true, kcal: true },
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+  ]);
+  const detail = user?.displayMode === "detail";
   return rows.map((r) => ({
     id: r.id,
     slot: (r.slot ?? "snack") as MealSlot,
     mode: r.mode,
     eatenAt: r.eatenAt.toISOString(),
+    kcal: detail ? r.kcal : null,
   }));
 }
 
@@ -185,41 +191,54 @@ export async function saveProfile(
   return toProfile(row);
 }
 
+/** 프로필 4항목 + 최신 체중이 모두 있으면 TDEE(kcal/day), 아니면 null. (넛지·예산 공용) */
+async function computeUserTDEE(userId: string): Promise<number | null> {
+  const [profile, latestWeight] = await Promise.all([
+    db.userProfile.findUnique({ where: { userId } }),
+    db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+  ]);
+  if (
+    profile?.birthYear == null ||
+    profile.gender == null ||
+    profile.heightCm == null ||
+    profile.activityLevel == null ||
+    latestWeight == null
+  ) {
+    return null;
+  }
+  const bmr = computeBMR(
+    Number(latestWeight.weight),
+    profile.heightCm,
+    ageFromBirthYear(profile.birthYear),
+    profile.gender as Gender,
+  );
+  return computeTDEE(bmr, profile.activityLevel as ActivityLevel);
+}
+
 /**
  * 밸런싱 넛지 (PRD 11.5) — 최근 끼니 kcal 추세(+opt-in 프로필 TDEE)로 오늘의 부드러운 제안.
  * 과거엔 벌 없음, 미래만 유도. kcal 숫자는 근거로만 쓰고 노출 안 함(불변 #2).
  */
 export async function getBalanceNudge(userId: string): Promise<Nudge> {
-  const [meals, profile, latestWeight] = await Promise.all([
+  const [meals, tdee] = await Promise.all([
     db.mealRecord.findMany({
       where: { userId, kcal: { not: null } },
       orderBy: { eatenAt: "desc" },
       take: 9,
       select: { kcal: true },
     }),
-    db.userProfile.findUnique({ where: { userId } }),
-    db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
+    computeUserTDEE(userId),
   ]);
-
   const kcals = meals.map((m) => m.kcal).filter((k): k is number => k != null);
-
-  // 프로필 4항목 + 체중이 모두 있어야 TDEE 산출(없으면 끼니 평균 휴리스틱).
-  let tdee: number | null = null;
-  if (
-    profile?.birthYear != null &&
-    profile.gender != null &&
-    profile.heightCm != null &&
-    profile.activityLevel != null &&
-    latestWeight != null
-  ) {
-    const bmr = computeBMR(
-      Number(latestWeight.weight),
-      profile.heightCm,
-      ageFromBirthYear(profile.birthYear),
-      profile.gender as Gender,
-    );
-    tdee = computeTDEE(bmr, profile.activityLevel as ActivityLevel);
-  }
-
   return balanceNudge(kcals, tdee);
+}
+
+/**
+ * 오늘의 kcal 예산 (#4 detail 모드) — TDEE. detail이 아니거나 프로필 미완비면 null(미표시).
+ * 죄책감 제로: 초과해도 경고가 아니라 그냥 숫자. (섭취량은 클라가 오늘 끼니에서 합산)
+ */
+export async function getDailyBudget(userId: string): Promise<DailyBudgetResponse> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { displayMode: true } });
+  if (user?.displayMode !== "detail") return { budget: null };
+  return { budget: await computeUserTDEE(userId) };
 }

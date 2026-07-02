@@ -43,3 +43,18 @@ export function balanceNudge(recentMealKcals: number[], tdee: number | null): Nu
 
   return { kind: "steady", message: "요즘 밸런스가 좋아요, 이대로 같이 가요 😊" };
 }
+
+/** 여유/딱좋음을 가르는 여유 폭(kcal) — 이 안쪽은 "딱 좋아요". */
+const BALANCE_MARGIN = 150;
+
+/**
+ * detail(관리) 모드 오늘 잔여 예산 한 줄 (#4 심화) — TDEE 대비 오늘 섭취.
+ * 죄책감 제로: 넘겨도 경고가 아니라 "내일은 가볍게" 부드러운 제안. (숫자는 detail 모드에서만)
+ */
+export function dailyBalanceMessage(consumed: number, budget: number): string {
+  const remaining = budget - consumed;
+  if (remaining >= BALANCE_MARGIN) return `오늘 ${remaining.toLocaleString()}kcal 여유 있어요 🍃`;
+  if (remaining <= -BALANCE_MARGIN)
+    return `오늘 ${Math.abs(remaining).toLocaleString()}kcal 넉넉했어요. 내일은 가볍게 어때요? 😊`;
+  return "오늘 딱 좋아요 😊";
+}

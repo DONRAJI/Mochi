@@ -8,6 +8,7 @@ import type {
   SignupRequest,
   LoginRequest,
   AuthUserResponse,
+  DisplayMode,
   PreferencesRequest,
   PreferencesResponse,
 } from "@/features/auth/types";
@@ -21,8 +22,15 @@ function toAuthUser(user: {
   email: string;
   nickname: string;
   cooksOften: boolean;
+  displayMode: string;
 }): AuthUserResponse {
-  return { id: user.id, email: user.email, nickname: user.nickname, cooksOften: user.cooksOften };
+  return {
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname,
+    cooksOften: user.cooksOften,
+    displayMode: user.displayMode as AuthUserResponse["displayMode"],
+  };
 }
 
 export async function signup(input: SignupRequest): Promise<AuthUserResponse> {
@@ -71,6 +79,12 @@ export async function getMe(): Promise<AuthUserResponse> {
 
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) throw new AppError("UNAUTHORIZED", messages.auth.loginRequired, 401);
+  return toAuthUser(user);
+}
+
+/** 숫자 표시 모드 변경 (#4). detail=관리 모드로 kcal 노출. */
+export async function setDisplayMode(userId: string, mode: DisplayMode): Promise<AuthUserResponse> {
+  const user = await db.user.update({ where: { id: userId }, data: { displayMode: mode } });
   return toAuthUser(user);
 }
 

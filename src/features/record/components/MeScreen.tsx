@@ -8,6 +8,7 @@ import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
 import { PreferencesSection } from "@/features/auth/components/PreferencesSection";
+import { DisplayModeToggle } from "@/features/auth/components/DisplayModeToggle";
 import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
 import { useMochiState } from "@/features/mochi/hooks/useMochi";
@@ -38,6 +39,8 @@ export function MeScreen() {
           </p>
         </div>
       </Card>
+
+      <DisplayModeToggle />
 
       <TodayMealsStrip />
 

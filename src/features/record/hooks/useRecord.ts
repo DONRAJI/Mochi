@@ -9,6 +9,7 @@ import {
   fetchProfile,
   saveProfile,
   fetchNudge,
+  fetchDailyBudget,
   addWeight,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
@@ -22,6 +23,11 @@ export function useStreak() {
 /** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
 export function useTodayMeals() {
   return useQuery({ queryKey: ["record", "today"], queryFn: fetchTodayMeals, retry: false });
+}
+
+/** 오늘의 kcal 예산(TDEE, detail 모드) — 프로필·모드·먹었어요 변경 시 ["record"] 무효화로 갱신. */
+export function useDailyBudget() {
+  return useQuery({ queryKey: ["record", "budget"], queryFn: fetchDailyBudget, retry: false });
 }
 
 /** opt-in 개인 프로필 (PRD 11.4). */

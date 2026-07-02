@@ -8,10 +8,15 @@ import type {
   StreakResponse,
   TodayMealResponse,
   WeightLogResponse,
+  DailyBudgetResponse,
 } from "../types";
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
+}
+
+export function fetchDailyBudget(): Promise<DailyBudgetResponse> {
+  return fetcher<DailyBudgetResponse>("/api/records/budget");
 }
 
 export function fetchNudge(): Promise<Nudge> {

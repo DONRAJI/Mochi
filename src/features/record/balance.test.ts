@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { balanceNudge } from "./balance";
+import { balanceNudge, dailyBalanceMessage } from "./balance";
 
 describe("밸런싱 넛지 (PRD 11.5 — 경고 아닌 제안)", () => {
   it("데이터가 적으면 판단하지 않고 응원한다", () => {
@@ -32,5 +32,22 @@ describe("밸런싱 넛지 (PRD 11.5 — 경고 아닌 제안)", () => {
       balanceNudge([300, 300], null),
     ];
     for (const n of all) for (const w of banned) expect(n.message.includes(w)).toBe(false);
+  });
+});
+
+describe("detail 예산 잔여 메시지 (#4 심화)", () => {
+  it("여유가 있으면 남은 kcal을 알려준다", () => {
+    expect(dailyBalanceMessage(1500, 1800)).toContain("300kcal 여유");
+  });
+
+  it("근소하면 딱 좋다", () => {
+    expect(dailyBalanceMessage(1750, 1800)).toBe("오늘 딱 좋아요 😊");
+  });
+
+  it("넘겨도 경고가 아니라 내일 제안(죄책감 제로)", () => {
+    const m = dailyBalanceMessage(2200, 1800);
+    expect(m).toContain("400kcal");
+    expect(m).toContain("내일은 가볍게");
+    for (const w of ["초과", "경고", "실패", "안 돼"]) expect(m.includes(w)).toBe(false);
   });
 });

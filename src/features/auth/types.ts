@@ -39,10 +39,18 @@ export interface PreferencesResponse {
   allergies: string[];
 }
 
+/** 숫자 표시 모드 (#4). cozy=숨김(기본), detail=관리 모드(kcal 노출). */
+export type DisplayMode = "cozy" | "detail";
+
+export const displayModeSchema = z.object({
+  displayMode: z.enum(["cozy", "detail"]),
+});
+
 /** 클라에 노출하는 안전한 유저 형태 (passwordHash 등 제외). */
 export interface AuthUserResponse {
   id: string;
   email: string;
   nickname: string;
   cooksOften: boolean;
+  displayMode: DisplayMode;
 }

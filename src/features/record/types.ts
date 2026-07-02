@@ -28,11 +28,17 @@ export interface TodayMealResponse {
   slot: MealSlot;
   mode: "cook" | "eatout" | "convenience";
   eatenAt: string; // ISO
+  kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4)
 }
 
 export interface StreakResponse {
   count: number;
   shieldCount: number;
+}
+
+/** 오늘의 kcal 예산 (#4 detail 모드). null이면 미표시(cozy거나 프로필 미완비). */
+export interface DailyBudgetResponse {
+  budget: number | null;
 }
 
 /** 체중 기록 — 숫자는 마이>더보기에서만 (불변 #2). */
