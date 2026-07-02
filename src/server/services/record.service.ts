@@ -1,5 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
+import { AppError } from "@/lib/api-response";
+import { messages } from "@/lib/messages";
 import { nextStreakCount } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
@@ -117,6 +119,15 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
     eatenAt: r.eatenAt.toISOString(),
     kcal: detail ? r.kcal : null,
   }));
+}
+
+/** 오늘 기록 삭제(#2) — 실수 정정용. 소유자 검증. 스트릭·도감은 되돌리지 않음(죄책감 제로·단순). */
+export async function deleteMealRecord(userId: string, id: string): Promise<void> {
+  const record = await db.mealRecord.findUnique({ where: { id } });
+  if (!record || record.userId !== userId) {
+    throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
+  }
+  await db.mealRecord.delete({ where: { id } });
 }
 
 /** 현재 스트릭 (홈 위젯·마이). 없으면 0 / 보호권 1. */
