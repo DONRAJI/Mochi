@@ -36,6 +36,11 @@ export interface StreakResponse {
   shieldCount: number;
 }
 
+/** 오늘의 kcal 예산 (#4 detail 모드). null이면 미표시(cozy거나 프로필 미완비). */
+export interface DailyBudgetResponse {
+  budget: number | null;
+}
+
 /** 체중 기록 — 숫자는 마이>더보기에서만 (불변 #2). */
 export const createWeightSchema = z.object({
   weight: z.coerce.number().min(20, "체중을 한 번만 더 봐줄래요?").max(300),
