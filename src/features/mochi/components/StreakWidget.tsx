@@ -18,7 +18,9 @@ export function StreakWidget({ days = 7, shields = 1 }: StreakWidgetProps) {
       </div>
       <div className="text-right text-sm text-cocoa-soft">
         <p>🛡️ 보호권 {shields}</p>
-        <p className="text-xs text-cocoa-faint">하루 빠져도 안 깨져요</p>
+        <p className="text-xs text-cocoa-faint">
+          {shields > 0 ? "하루 빠져도 보호권이 지켜줘요" : "연속 7일이면 보호권이 생겨요"}
+        </p>
       </div>
     </Card>
   );

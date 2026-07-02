@@ -20,6 +20,7 @@ export interface MealRecordResponse {
   slot: MealSlot; // 기록된 끼니 슬롯
   streakCount: number;
   cardAcquired: boolean; // 새 도감 카드 획득 여부
+  shieldUsed: boolean; // 보호권이 이번에 빠진 날을 막았는지 (#9)
 }
 
 /** 오늘의 끼니 한 줄 (마이 '오늘의 기록' 스트립). */
