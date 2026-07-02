@@ -9,6 +9,7 @@ import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
 import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
 import { useAddPlan } from "../hooks/usePlan";
 import { weekDates, WEEKDAY_LABEL } from "../week";
+import { deliverySearchUrl } from "../delivery";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
@@ -102,8 +103,17 @@ export function RecipeDetailModal({
                   </li>
                 ))}
               </ol>
+            ) : mode === "eatout" ? (
+              <a
+                href={deliverySearchUrl(item.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 block rounded-mochi bg-mint px-4 py-3 text-center text-sm text-cocoa shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+              >
+                🛵 배달로 주문하기
+              </a>
             ) : (
-              <p className="mt-4 text-center text-sm text-cocoa-soft">주변 매장·배달로 바로 연결돼요</p>
+              <p className="mt-4 text-center text-sm text-cocoa-soft">가까운 편의점에서 만나요 🏪</p>
             )}
 
             <Button className="mt-4 w-full" onClick={eat}>
