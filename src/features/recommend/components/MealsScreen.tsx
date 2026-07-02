@@ -12,6 +12,7 @@ import { FavoritesList } from "./FavoritesList";
 import { BalanceBanner } from "@/features/record/components/BalanceBanner";
 import { Chip } from "@/components/ui/Chip";
 import { useRecommendations, useToggleFavorite } from "../hooks/useRecommend";
+import { matchesCookFilter } from "../cookFilter";
 import type { MealMode, RecommendationResponse } from "../types";
 import { messages } from "@/lib/messages";
 
@@ -20,6 +21,7 @@ export function MealsScreen() {
   const [view, setView] = useState<"recommend" | "favorites">("recommend");
   const [mode, setMode] = useState<MealMode>("cook");
   const [category, setCategory] = useState("전체");
+  const [cookFilter, setCookFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const { data, isPending, isError } = useRecommendations(mode);
@@ -28,13 +30,16 @@ export function MealsScreen() {
   function changeMode(v: string) {
     setMode(v as MealMode);
     setCategory("전체"); // 모드 바뀌면 카테고리 초기화
+    setCookFilter(null);
   }
 
-  // 외식·간편식은 카테고리(subtitle)로 필터. 요리는 전체.
+  // 요리는 정렬/필터 칩, 외식·간편식은 카테고리(subtitle)로 필터.
   const shown =
-    mode === "cook" || category === "전체"
-      ? data
-      : data?.filter((r) => r.subtitle === category);
+    mode === "cook"
+      ? data?.filter((r) => matchesCookFilter(r, cookFilter))
+      : category === "전체"
+        ? data
+        : data?.filter((r) => r.subtitle === category);
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,7 +61,7 @@ export function MealsScreen() {
           <BalanceBanner />
           <ModeToggle value={mode} onChange={changeMode} />
           {mode === "cook" ? (
-            <SortFilterChips />
+            <SortFilterChips value={cookFilter} onChange={setCookFilter} />
           ) : (
             <CategoryFilterChips items={data ?? []} value={category} onChange={setCategory} />
           )}
