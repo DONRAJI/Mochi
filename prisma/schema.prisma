@@ -225,6 +225,7 @@ model Recipe {
   protein     Int? // g
   ingredients String[] // 필요한 재료(이름) — 냉장고 매칭률 계산용
   steps       String[] // 조리 단계
+  hiddenCombo String[] @map("hidden_combo") // 비면 일반, 값 있으면 이 조합을 다 가져야 해금(히든, PRD 7.3#3)
 
   @@index([ownerId])
   @@map("recipes")

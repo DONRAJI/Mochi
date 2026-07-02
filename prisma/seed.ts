@@ -29,6 +29,10 @@ const recipes = [
   { id: "seed-recipe-tofu", name: "김치두부조림", emoji: "🍲", minutes: 15, servings: 1, rarity: "common" as const, kcal: 360, protein: 18, ingredients: ["두부", "김치", "대파"], steps: ["두부를 도톰하게 썰어요", "김치와 자작하게 끓여요", "참기름 한 방울"] },
   { id: "seed-recipe-bowl", name: "단백질 볼", emoji: "🥗", minutes: 20, servings: 1, rarity: "rare" as const, kcal: 420, protein: 35, ingredients: ["닭가슴살", "방울토마토", "현미밥", "올리브유"], steps: ["닭가슴살을 구워요", "채소를 담아요", "올리브유를 둘러요"] },
   { id: "seed-recipe-salad", name: "두부 샐러드", emoji: "🥬", minutes: 10, servings: 1, rarity: "common" as const, kcal: 180, protein: 12, ingredients: ["두부", "상추", "방울토마토"], steps: ["채소를 한 입 크기로", "두부를 올려요", "드레싱 살짝"] },
+  // 🔓 히든 콤보 (PRD 7.3#3) — 조합을 다 가지면 해금. rarity로 아스피레이션.
+  { id: "seed-recipe-hidden-tofukimchi", name: "두부김치계란볶음", emoji: "🍳", minutes: 15, servings: 1, rarity: "rare" as const, kcal: 340, protein: 22, ingredients: ["두부", "김치", "계란", "대파"], steps: ["두부를 으깨 볶아요", "김치를 넣어 볶아요", "계란을 풀어 마무리"], hiddenCombo: ["두부", "김치", "계란"] },
+  { id: "seed-recipe-hidden-chicken", name: "닭가슴살 현미볼", emoji: "🥗", minutes: 20, servings: 1, rarity: "rare" as const, kcal: 400, protein: 38, ingredients: ["닭가슴살", "현미", "브로콜리"], steps: ["닭가슴살을 구워요", "현미밥을 담아요", "브로콜리를 올려요"], hiddenCombo: ["닭가슴살", "현미", "브로콜리"] },
+  { id: "seed-recipe-hidden-shrimpavo", name: "새우 아보카도 포케", emoji: "🍤", minutes: 15, servings: 1, rarity: "epic" as const, kcal: 380, protein: 26, ingredients: ["새우", "아보카도", "방울토마토", "현미"], steps: ["새우를 데쳐요", "아보카도를 썰어요", "현미밥 위에 담아요"], hiddenCombo: ["새우", "아보카도", "방울토마토"] },
 ];
 
 // 비요리 포용(불변 #5): 외식·간편식도 요리처럼 풍부한 카탈로그를 가져야 제안→기록→수집이 산다.

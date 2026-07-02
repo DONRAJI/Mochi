@@ -50,6 +50,7 @@ export interface RecommendationResponse {
   mine: boolean; // cook — 내가 등록한 요리 (PRD 11.3)
   usesExpiring: boolean; // cook — 유통기한 임박 재료를 쓰는 레시피 (PRD 5.2)
   favorited: boolean; // 즐겨찾기 여부 (#7)
+  hidden: boolean; // cook — 히든 콤보로 해금된 레시피 (PRD 7.3#3)
   subtitle: string | null; // eatout=카테고리, convenience=브랜드
   rarity: string;
   steps: string[]; // cook 조리 단계
