@@ -95,8 +95,24 @@ model User {
   profile     UserProfile?
   plannedMeals PlannedMeal[]
   favorites    Favorite[]
+  shopping     ShoppingItem[]
 
   @@map("users")
+}
+
+// 장보기 리스트 (PRD 5.3) — 레시피 추가구매 재료를 모아 체크. 사면 냉장고로 옮긴다.
+model ShoppingItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("shopping_items")
 }
 
 // 식단 즐겨찾기 (#7) — 추천 항목(요리/외식/간편식)을 하트로 저장. title/emoji는 표시용 스냅샷.

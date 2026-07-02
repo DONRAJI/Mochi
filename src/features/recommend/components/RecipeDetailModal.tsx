@@ -8,6 +8,7 @@ import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
 import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
 import { useAddPlan } from "../hooks/usePlan";
+import { useAddShopping } from "@/features/fridge/hooks/useShopping";
 import { weekDates, WEEKDAY_LABEL } from "../week";
 import { deliverySearchUrl } from "../delivery";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
@@ -25,8 +26,10 @@ export function RecipeDetailModal({
 }) {
   const mark = useMarkMealEaten();
   const addPlan = useAddPlan();
+  const addShopping = useAddShopping();
   const result = mark.data;
   const [plannedDay, setPlannedDay] = useState<string | null>(null);
+  const [shopped, setShopped] = useState(false);
   const week = weekDates(new Date());
 
   function eat() {
@@ -50,6 +53,7 @@ export function RecipeDetailModal({
   function close() {
     mark.reset();
     setPlannedDay(null);
+    setShopped(false);
     onClose();
   }
 
@@ -122,6 +126,22 @@ export function RecipeDetailModal({
             {mark.isError && (
               <p className="mt-2 text-center text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
             )}
+
+            {mode === "cook" &&
+              item.missingIngredients.length > 0 &&
+              (shopped ? (
+                <p className="mt-2 text-center text-sm text-cocoa-soft">장보기 리스트에 담았어요 🛒</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    addShopping.mutate(item.missingIngredients, { onSuccess: () => setShopped(true) })
+                  }
+                  className="mt-2 w-full rounded-mochi border border-dashed border-mint-deep bg-cream-50 px-4 py-2.5 text-sm text-cocoa-soft transition-transform ease-jelly active:scale-[0.98]"
+                >
+                  🛒 추가구매 {item.missingIngredients.length}개 장보기에 담기
+                </button>
+              ))}
 
             <div className="mt-4 border-t border-cream-200 pt-3">
               <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단에 담기</p>
