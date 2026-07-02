@@ -17,8 +17,10 @@ export function CollectionScreen() {
   const [selected, setSelected] = useState<CollectibleResponse | null>(null);
   const { data, isPending, isError } = useCollection(tab);
 
-  const items = data ?? [];
-  const have = items.filter((i) => i.acquired).length;
+  const items = data?.items ?? [];
+  const have = data?.acquired ?? 0;
+  const total = data?.total ?? 0;
+  const hiddenCount = total - items.length; // 그리드에 안 뜬(티저 밖) 미획득 수
 
   return (
     <div className="flex flex-col gap-4">
@@ -32,15 +34,22 @@ export function CollectionScreen() {
       {isError && <p className="px-1 text-sm text-cocoa-soft">로그인하면 도감을 모을 수 있어요.</p>}
       {!isError && (
         <>
-          <CompleteGauge have={have} total={items.length} />
+          <CompleteGauge have={have} total={total} />
           {isPending ? (
             <p className="px-1 text-sm text-cocoa-faint">{messages.empty.collection}</p>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {items.map((i) => (
-                <CollectibleCard key={i.refId} item={i} onClick={() => setSelected(i)} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {items.map((i) => (
+                  <CollectibleCard key={i.refId} item={i} onClick={() => setSelected(i)} />
+                ))}
+              </div>
+              {hiddenCount > 0 && (
+                <p className="px-1 text-center text-xs text-cocoa-faint">
+                  그 밖에도 {hiddenCount.toLocaleString()}개의 요리가 기다려요 🍳
+                </p>
+              )}
+            </>
           )}
           <RewardChest />
         </>
