@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
@@ -69,6 +70,11 @@ export function RecipeDetailModal({
           </div>
         ) : (
           <>
+            {item.imageUrl && (
+              <div className="relative mb-3 h-40 w-full overflow-hidden rounded-mochi">
+                <Image src={item.imageUrl} alt={item.name} fill sizes="100vw" className="object-cover" />
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
               <div>

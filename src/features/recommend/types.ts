@@ -39,6 +39,7 @@ export interface RecommendationResponse {
   id: string;
   name: string;
   emoji: string | null;
+  imageUrl: string | null; // 완성 요리 사진(cook). 없으면 emoji로 폴백
   badge: string | null;
   minutes: number | null; // cook
   servings: number | null; // cook
