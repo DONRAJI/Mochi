@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSignup } from "../hooks/useAuth";
@@ -16,10 +16,33 @@ export function SignupForm() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [cooksOften, setCooksOften] = useState(true); // 온보딩 A/B 페르소나 분기 (PRD 4.1)
+  const [allergies, setAllergies] = useState<string[]>([]); // 온보딩 알러지(선택) → 첫날부터 추천 반영
+  const [allergyDraft, setAllergyDraft] = useState("");
+
+  function addAllergy() {
+    const t = allergyDraft.trim();
+    if (!t || allergies.includes(t) || allergies.length >= 10) {
+      setAllergyDraft("");
+      return;
+    }
+    setAllergies((prev) => [...prev, t]);
+    setAllergyDraft("");
+  }
+
+  function onAllergyKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addAllergy();
+    }
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    signup.mutate({ email, password, nickname, cooksOften }, { onSuccess: () => router.push("/") });
+    const tags = allergies.map((label) => ({ kind: "allergy" as const, label }));
+    signup.mutate(
+      { email, password, nickname, cooksOften, tags },
+      { onSuccess: () => router.push("/") },
+    );
   }
 
   return (
@@ -58,6 +81,36 @@ export function SignupForm() {
               거의 안 해요
             </ChoiceChip>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-cocoa-soft">알러지 있나요? (선택)</span>
+          {allergies.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {allergies.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAllergies((prev) => prev.filter((x) => x !== a))}
+                  className="rounded-mochi-sm bg-peach-soft px-2.5 py-1 text-sm text-cocoa transition-transform ease-jelly active:scale-90"
+                >
+                  {a} ✕
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="예: 새우 (Enter로 추가)"
+              value={allergyDraft}
+              onChange={(e) => setAllergyDraft(e.target.value)}
+              onKeyDown={onAllergyKey}
+            />
+            <Button type="button" variant="soft" onClick={addAllergy}>
+              추가
+            </Button>
+          </div>
+          <span className="text-xs text-cocoa-faint">알러지 재료는 추천에서 빼드려요 🌿</span>
         </div>
 
         {signup.isError && (
