@@ -97,19 +97,24 @@ function kstDayStart(nowMs = Date.now()): Date {
   return new Date(shifted - (shifted % 86_400_000) - KST);
 }
 
-/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. */
+/** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. detail이면 kcal 포함(#4). */
 export async function listTodayMeals(userId: string): Promise<TodayMealResponse[]> {
   const since = kstDayStart();
-  const rows = await db.mealRecord.findMany({
-    where: { userId, eatenAt: { gte: since } },
-    orderBy: { eatenAt: "asc" },
-    select: { id: true, slot: true, mode: true, eatenAt: true },
-  });
+  const [rows, user] = await Promise.all([
+    db.mealRecord.findMany({
+      where: { userId, eatenAt: { gte: since } },
+      orderBy: { eatenAt: "asc" },
+      select: { id: true, slot: true, mode: true, eatenAt: true, kcal: true },
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+  ]);
+  const detail = user?.displayMode === "detail";
   return rows.map((r) => ({
     id: r.id,
     slot: (r.slot ?? "snack") as MealSlot,
     mode: r.mode,
     eatenAt: r.eatenAt.toISOString(),
+    kcal: detail ? r.kcal : null,
   }));
 }
 

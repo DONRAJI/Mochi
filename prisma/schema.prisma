@@ -40,6 +40,13 @@ enum MealMode {
   convenience
 }
 
+// 표시 모드 (#4) — cozy=숫자 숨김(기본, 죄책감 제로), detail=관리 모드(식단·기록에 kcal 노출).
+// 홈은 모드 무관하게 숫자 없음. 서버가 이 값으로 응답에 kcal 포함 여부를 결정.
+enum DisplayMode {
+  cozy
+  detail
+}
+
 // 끼니 슬롯 (PRD 11.2) — 시간대로 자동추정, 사용자가 바꿀 수 있음.
 enum MealSlot {
   breakfast
@@ -74,6 +81,7 @@ model User {
   passwordHash String   @map("password_hash")
   nickname     String
   cooksOften   Boolean  @default(true) @map("cooks_often") // 온보딩 "요리하는 편?" → A/B 페르소나 분기
+  displayMode  DisplayMode @default(cozy) @map("display_mode") // #4 숫자 표시 모드
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions    Session[]

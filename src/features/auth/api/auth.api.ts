@@ -3,6 +3,7 @@ import type {
   SignupRequest,
   LoginRequest,
   AuthUserResponse,
+  DisplayMode,
   PreferencesRequest,
   PreferencesResponse,
 } from "../types";
@@ -31,6 +32,13 @@ export function logout(): Promise<{ done: true }> {
 
 export function fetchMe(): Promise<AuthUserResponse> {
   return fetcher<AuthUserResponse>("/api/auth/me");
+}
+
+export function setDisplayMode(displayMode: DisplayMode): Promise<AuthUserResponse> {
+  return fetcher<AuthUserResponse>("/api/auth/display-mode", {
+    method: "PUT",
+    body: JSON.stringify({ displayMode }),
+  });
 }
 
 export function fetchPreferences(): Promise<PreferencesResponse> {

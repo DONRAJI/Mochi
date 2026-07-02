@@ -32,11 +32,15 @@ export async function getRecommendations(
 ): Promise<RecommendationResponse[]> {
   const skip = page * size;
 
-  // 취향(선호·비선호·알러지) — 로그인 시에만. 알러지=제외, 비선호=하향, 선호=상향.
-  const prefTags = userId
-    ? await db.preferenceTag.findMany({ where: { userId }, select: { kind: true, label: true } })
-    : [];
+  // 취향(선호·비선호·알러지) + 표시 모드 — 로그인 시에만. detail이면 kcal을 응답에 포함(#4).
+  const [prefTags, user] = userId
+    ? await Promise.all([
+        db.preferenceTag.findMany({ where: { userId }, select: { kind: true, label: true } }),
+        db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+      ])
+    : [[] as { kind: string; label: string }[], null];
   const prefs = groupPreferences(prefTags);
+  const detail = user?.displayMode === "detail";
 
   if (mode === "cook") {
     // 시드 카탈로그(ownerId=null) + 내 요리(ownerId=userId)만. 남의 요리는 노출 안 함.
@@ -72,6 +76,7 @@ export async function getRecommendations(
           name: r.name,
           emoji: r.emoji,
           imageUrl: r.imageUrl,
+          kcal: detail ? r.kcal : null,
           badge: deriveBadge(r.kcal, r.protein),
           minutes: r.minutes,
           servings: r.servings,
@@ -123,6 +128,7 @@ export async function getRecommendations(
         name: m.name,
         emoji: m.emoji,
         imageUrl: null,
+        kcal: detail ? m.kcal : null,
         badge: deriveBadge(m.kcal, m.protein),
         minutes: null,
         servings: null,
@@ -151,6 +157,7 @@ export async function getRecommendations(
       name: c.name,
       emoji: c.emoji,
       imageUrl: null,
+      kcal: detail ? c.kcal : null,
       badge: deriveBadge(c.kcal, c.protein),
       minutes: null,
       servings: null,

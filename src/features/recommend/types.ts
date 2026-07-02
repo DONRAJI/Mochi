@@ -40,6 +40,7 @@ export interface RecommendationResponse {
   name: string;
   emoji: string | null;
   imageUrl: string | null; // 완성 요리 사진(cook). 없으면 emoji로 폴백
+  kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4). cozy면 null
   badge: string | null;
   minutes: number | null; // cook
   servings: number | null; // cook

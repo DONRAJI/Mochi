@@ -6,6 +6,7 @@ import type {
   SignupRequest,
   LoginRequest,
   AuthUserResponse,
+  DisplayMode,
   PreferencesRequest,
 } from "../types";
 
@@ -38,6 +39,19 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => authApi.logout(),
     onSuccess: () => qc.setQueryData(meKey, null),
+  });
+}
+
+/** 숫자 표시 모드 변경 (#4) — 성공 시 me 갱신 + 식단·기록 무효화(숫자 노출 반영). */
+export function useSetDisplayMode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (mode: DisplayMode) => authApi.setDisplayMode(mode),
+    onSuccess: (user) => {
+      qc.setQueryData(meKey, user);
+      qc.invalidateQueries({ queryKey: ["recommend"] });
+      qc.invalidateQueries({ queryKey: ["record"] });
+    },
   });
 }
 

@@ -28,6 +28,7 @@ export interface TodayMealResponse {
   slot: MealSlot;
   mode: "cook" | "eatout" | "convenience";
   eatenAt: string; // ISO
+  kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4)
 }
 
 export interface StreakResponse {

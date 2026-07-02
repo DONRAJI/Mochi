@@ -51,6 +51,7 @@ export function RecipeCard({
             </div>
             <p className="text-sm text-cocoa-faint">
               {item.minutes != null ? `⏱ ${item.minutes}분 · ${item.servings}인분` : item.subtitle}
+              {item.kcal != null && ` · ${item.kcal} kcal`}
             </p>
           </div>
         </div>
