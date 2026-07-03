@@ -28,7 +28,7 @@ export function Sheet({ open, onClose, children, title }: SheetProps) {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md rounded-t-mochi bg-cream-50 p-5 pb-8 shadow-mochi"
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[85vh] max-w-md overflow-y-auto rounded-t-mochi bg-cream-50 p-5 pb-8 shadow-mochi"
           >
             {title && <h3 className="mb-4 text-center font-bold text-cocoa">{title}</h3>}
             {children}

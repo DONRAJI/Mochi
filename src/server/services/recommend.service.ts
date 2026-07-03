@@ -4,6 +4,7 @@ import { computeMatchRate, missingIngredients } from "@/features/recommend/ranki
 import { deriveBadge } from "@/features/recommend/nutrition";
 import { ingredientHint } from "@/features/recommend/substitution";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
+import { soloFriendlyScore } from "@/features/recommend/soloFriendly";
 import {
   groupPreferences,
   hasAllergen,
@@ -122,7 +123,13 @@ export async function getRecommendations(
         key:
           c.matchRate +
           preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC) +
-          expiryBonus(c.ingredients.map((i) => i.name), expiringSet),
+          expiryBonus(c.ingredients.map((i) => i.name), expiringSet) +
+          // 자취생이 혼자 할 만한 현실적인 요리를 위로 (사용자 피드백).
+          soloFriendlyScore({
+            ingredientCount: c.ingredients.length,
+            stepCount: c.steps.length,
+            minutes: c.minutes,
+          }),
       }))
       .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
       .slice(skip, skip + size)

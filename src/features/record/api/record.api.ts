@@ -49,8 +49,9 @@ export function fetchStreak(): Promise<StreakResponse> {
   return fetcher<StreakResponse>("/api/records/streak");
 }
 
-export function fetchWeights(): Promise<WeightLogResponse[]> {
-  return fetcher<WeightLogResponse[]>("/api/records/weight");
+/** 월별/연도별 정리 뷰까지 그리려면 넉넉한 기록이 필요 — 최근 1년치를 한 번에. */
+export function fetchWeights(size = 365): Promise<WeightLogResponse[]> {
+  return fetcher<WeightLogResponse[]>(`/api/records/weight?size=${size}`);
 }
 
 export function addWeight(weight: number): Promise<WeightLogResponse> {

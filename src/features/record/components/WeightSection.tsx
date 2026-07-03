@@ -20,7 +20,8 @@ export function WeightSection() {
     add.mutate(w, { onSuccess: () => setValue("") });
   }
 
-  const points = data ?? [];
+  // 넉넉히 받아온 기록 중 최근 흐름은 30개까지만 그려 곡선이 뭉치지 않게.
+  const recent = (data ?? []).slice(-30);
 
   return (
     <Card className="flex flex-col gap-3">
@@ -37,8 +38,8 @@ export function WeightSection() {
         <Button type="submit">{add.isPending ? "기록…" : "기록"}</Button>
       </form>
 
-      {points.length >= 2 ? (
-        <WeightTrendChart points={points} />
+      {recent.length >= 2 ? (
+        <WeightTrendChart points={recent} />
       ) : (
         <p className="py-3 text-center text-sm text-cocoa-soft">
           기록이 쌓이면 부드러운 흐름이 보여요 🌿

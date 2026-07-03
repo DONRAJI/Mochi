@@ -49,7 +49,8 @@ export const createWeightSchema = z.object({
 });
 
 export const weightQuerySchema = z.object({
-  size: z.coerce.number().int().min(1).max(120).default(30),
+  // 월별/연도별 정리 뷰(마이>더보기)를 위해 1년치 이상을 한 번에. 여전히 본인 기록만.
+  size: z.coerce.number().int().min(1).max(400).default(30),
 });
 
 export interface WeightLogResponse {
