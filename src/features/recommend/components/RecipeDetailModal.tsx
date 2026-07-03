@@ -48,8 +48,8 @@ export function RecipeDetailModal({
   function planTo(date: string, label: string) {
     if (!item) return;
     addPlan.mutate(
-      { date, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
-      { onSuccess: () => setPlannedDay(label) },
+      { date, slot, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
+      { onSuccess: () => setPlannedDay(`${label}요일 ${SLOT_LABEL[slot]}`) },
     );
   }
 
@@ -163,9 +163,11 @@ export function RecipeDetailModal({
               ))}
 
             <div className="mt-4 border-t border-cream-200 pt-3">
-              <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단에 담기</p>
+              <p className="mb-2 text-sm text-cocoa-faint">
+                이번 주 식단에 담기 · <span className="text-cocoa">{SLOT_LABEL[slot]}</span>
+              </p>
               {plannedDay ? (
-                <p className="text-sm text-cocoa-soft">{plannedDay}요일 식단에 담았어요 🗓️</p>
+                <p className="text-sm text-cocoa-soft">{plannedDay}에 담았어요 🗓️</p>
               ) : (
                 <div className="flex gap-1.5">
                   {week.map((date, i) => (

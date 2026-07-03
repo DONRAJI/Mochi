@@ -67,8 +67,9 @@ export async function autoFillWeek(
       await Promise.all(
         empty.map((date, i) => {
           const r = recs[i % recs.length];
+          // 자동 채우기는 '오늘 저녁 뭐 먹지'가 기본 — 하루 대표 한 끼(저녁)로 배정(끼니 구조 유지).
           return db.plannedMeal.create({
-            data: { userId, date: new Date(date), mode: "cook", refId: r.id, title: r.name, emoji: r.emoji },
+            data: { userId, date: new Date(date), slot: "dinner", mode: "cook", refId: r.id, title: r.name, emoji: r.emoji },
           });
         }),
       );

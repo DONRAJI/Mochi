@@ -14,10 +14,11 @@ const GENDERS: { value: Gender; label: string }[] = [
   { value: "other", label: "기타" },
 ];
 
-const ACTIVITIES: { value: ActivityLevel; label: string }[] = [
-  { value: "low", label: "낮음" },
-  { value: "medium", label: "보통" },
-  { value: "high", label: "높음" },
+// 표준 활동계수(Mifflin-St Jeor) 기준. desc는 사용자가 자기 활동량을 고를 수 있게 하는 짧은 안내.
+const ACTIVITIES: { value: ActivityLevel; label: string; desc: string }[] = [
+  { value: "low", label: "낮음", desc: "거의 앉아서" },
+  { value: "medium", label: "보통", desc: "가벼운 운동" },
+  { value: "high", label: "높음", desc: "주 3~5회" },
 ];
 
 /**
@@ -106,11 +107,12 @@ export function ProfileSection() {
               type="button"
               onClick={() => setActivity(a.value)}
               className={cn(
-                "flex-1 rounded-mochi-sm px-3 py-2 text-sm transition-transform ease-jelly active:scale-95",
+                "flex-1 rounded-mochi-sm px-2 py-2 leading-tight transition-transform ease-jelly active:scale-95",
                 activity === a.value ? "bg-mint text-cocoa" : "bg-cream-200 text-cocoa-faint",
               )}
             >
-              {a.label}
+              <span className="block text-sm">{a.label}</span>
+              <span className="mt-0.5 block text-[11px] text-cocoa-faint">{a.desc}</span>
             </button>
           ))}
         </div>
