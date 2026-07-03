@@ -4,7 +4,11 @@ import { computeMatchRate, missingIngredients } from "@/features/recommend/ranki
 import { deriveBadge } from "@/features/recommend/nutrition";
 import { ingredientHint } from "@/features/recommend/substitution";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
-import { soloFriendlyScore } from "@/features/recommend/soloFriendly";
+import {
+  soloFriendlyScore,
+  commonIngredientRatio,
+  buildIngredientFrequency,
+} from "@/features/recommend/soloFriendly";
 import {
   groupPreferences,
   hasAllergen,
@@ -58,6 +62,8 @@ export async function getRecommendations(
     ]);
     const now = new Date();
     const canon = buildCanonicalMap(masters);
+    // 카탈로그 전체로 재료 등장 빈도 집계 → '흔한 재료'로 만든 요리를 자취 점수에 반영(추가 쿼리 0).
+    const ingFreq = buildIngredientFrequency(recipes, (name) => canonicalize(name, canon));
     const owned = fridge.map((f) => canonicalize(f.name, canon));
     const ownedSet = new Set(owned);
     // 유통기한 임박(3일 이내·지난 것 포함) 재료 — 먼저 쓰도록 추천 가산점 (PRD 5.2).
@@ -124,11 +130,16 @@ export async function getRecommendations(
           c.matchRate +
           preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC) +
           expiryBonus(c.ingredients.map((i) => i.name), expiringSet) +
-          // 자취생이 혼자 할 만한 현실적인 요리를 위로 (사용자 피드백).
+          // 자취생이 혼자 할 만한 현실적인 요리를 위로 — 쉬움(재료·단계·시간) + 흔한 재료 비율.
           soloFriendlyScore({
             ingredientCount: c.ingredients.length,
             stepCount: c.steps.length,
             minutes: c.minutes,
+            commonRatio: commonIngredientRatio(
+              c.ingredients.map((i) => i.name),
+              ingFreq,
+              recipes.length,
+            ),
           }),
       }))
       .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
