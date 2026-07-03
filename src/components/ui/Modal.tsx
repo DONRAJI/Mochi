@@ -27,7 +27,7 @@ export function Modal({ open, onClose, children }: ModalProps) {
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-mochi bg-cream-50 p-5 shadow-mochi"
+            className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-mochi bg-cream-50 p-5 shadow-mochi"
           >
             {children}
           </motion.div>

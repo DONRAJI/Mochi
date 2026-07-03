@@ -19,7 +19,11 @@ export function BottomTabBar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 mx-auto flex max-w-md justify-around rounded-t-mochi bg-cream-50 px-2 py-2 shadow-mochi">
       {tabs.map((tab) => {
-        const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+        // 세그먼트 경계로 매칭 — "/meals"가 "/me" 탭까지 켜던 prefix 버그 방지.
+        const active =
+          tab.href === "/"
+            ? pathname === "/"
+            : pathname === tab.href || pathname.startsWith(tab.href + "/");
         return (
           <Link
             key={tab.href}

@@ -60,7 +60,7 @@ export function useBalanceNudge() {
 }
 
 export function useWeightLogs() {
-  return useQuery({ queryKey: ["record", "weight"], queryFn: fetchWeights, retry: false });
+  return useQuery({ queryKey: ["record", "weight"], queryFn: () => fetchWeights(), retry: false });
 }
 
 export function useAddWeight() {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { WeightSection } from "./WeightSection";
+import { WeightHistorySection } from "./WeightHistorySection";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
@@ -58,6 +59,7 @@ export function MeScreen() {
         <>
           <ProfileSection />
           <WeightSection />
+          <WeightHistorySection />
         </>
       )}
 
