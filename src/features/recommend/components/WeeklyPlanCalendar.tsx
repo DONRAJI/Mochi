@@ -3,9 +3,13 @@
 import { cn } from "@/lib/utils";
 import { weekDates, ymd, WEEKDAY_LABEL } from "../week";
 import { usePlanWeek, useRemovePlan, useEatPlan, useAutoFillWeek } from "../hooks/usePlan";
-import { SLOT_LABEL } from "@/features/record/slot";
+import { SLOT_LABEL, SLOT_EMOJI } from "@/features/record/slot";
 import type { MealSlot } from "@/features/record/types";
 import type { PlannedMealResponse } from "../plan";
+
+/** 아침→점심→저녁→간식 순으로 정렬(끼니 없는 건 뒤로) — 식단표처럼 보이게. */
+const SLOT_ORDER: Record<MealSlot, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
+const slotRank = (s: MealSlot | null) => (s ? SLOT_ORDER[s] : 9);
 
 /**
  * 주간 식단 캘린더 (PRD 4.3·5.3) — 이번 주(월~일) 계획을 실데이터로.
@@ -26,6 +30,8 @@ export function WeeklyPlanCalendar() {
     arr.push(m);
     byDate.set(m.date, arr);
   }
+  // 각 날짜의 끼니를 아침→점심→저녁 순으로 정렬.
+  for (const arr of byDate.values()) arr.sort((a, b) => slotRank(a.slot) - slotRank(b.slot));
   const hasEmpty = week.some((d) => !byDate.has(d));
 
   return (
@@ -67,13 +73,15 @@ export function WeeklyPlanCalendar() {
                 <div className="flex flex-col gap-1">
                   {dayMeals.map((m) => (
                     <div key={m.id} className="flex items-center gap-2 text-sm">
+                      {m.slot && (
+                        <span className="rounded-mochi-sm bg-lavender-soft px-1.5 py-0.5 text-[11px] text-cocoa-soft">
+                          {SLOT_EMOJI[m.slot as MealSlot]} {SLOT_LABEL[m.slot as MealSlot]}
+                        </span>
+                      )}
                       <span>{m.emoji ?? "🍽️"}</span>
                       <span
                         className={cn("flex-1", m.eaten ? "text-cocoa-faint line-through" : "text-cocoa")}
                       >
-                        {m.slot && (
-                          <span className="text-cocoa-faint">{SLOT_LABEL[m.slot as MealSlot]} · </span>
-                        )}
                         {m.title}
                       </span>
                       {m.eaten ? (

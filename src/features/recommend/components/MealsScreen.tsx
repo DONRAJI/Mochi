@@ -24,6 +24,7 @@ export function MealsScreen() {
   const [cookFilter, setCookFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false); // 기본은 몇 개만 — 주간 식단이 금방 보이게
   const { data, isPending, isError } = useRecommendations(mode);
   const toggleFav = useToggleFavorite();
 
@@ -31,6 +32,7 @@ export function MealsScreen() {
     setMode(v as MealMode);
     setCategory("전체"); // 모드 바뀌면 카테고리 초기화
     setCookFilter(null);
+    setShowAll(false);
   }
 
   // 요리는 정렬/필터 칩, 외식·간편식은 카테고리(subtitle)로 필터.
@@ -40,6 +42,11 @@ export function MealsScreen() {
       : category === "전체"
         ? data
         : data?.filter((r) => r.subtitle === category);
+
+  // 추천은 상위 몇 개만 먼저 보여주고 나머지는 '더 보기'로 — 스크롤을 짧게 유지(주간 식단 접근성).
+  const RECIPE_LIMIT = 6;
+  const visible = showAll ? shown : shown?.slice(0, RECIPE_LIMIT);
+  const hiddenCount = (shown?.length ?? 0) - (visible?.length ?? 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,7 +89,7 @@ export function MealsScreen() {
           )}
 
           <div className="flex flex-col gap-3">
-            {shown?.map((r) => (
+            {visible?.map((r) => (
               <RecipeCard
                 key={r.id}
                 item={r}
@@ -98,6 +105,16 @@ export function MealsScreen() {
               />
             ))}
           </div>
+
+          {!showAll && hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="rounded-mochi bg-cream-50 px-4 py-3 text-sm text-cocoa-soft shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+            >
+              추천 {hiddenCount}개 더 보기
+            </button>
+          )}
 
           <WeeklyPlanCalendar />
         </>
