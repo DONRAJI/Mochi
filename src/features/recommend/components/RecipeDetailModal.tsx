@@ -32,7 +32,8 @@ export function RecipeDetailModal({
   const result = mark.data;
   const [plannedDay, setPlannedDay] = useState<string | null>(null);
   const [shopped, setShopped] = useState(false);
-  const [slot, setSlot] = useState<MealSlot>(estimateSlot(new Date())); // 자동추정, 바꿀 수 있음
+  const [slot, setSlot] = useState<MealSlot>(estimateSlot(new Date())); // 먹었어요: 시간대 자동추정
+  const [planSlot, setPlanSlot] = useState<MealSlot>("dinner"); // 담기: '저녁 뭐 먹지'가 기본
   const week = weekDates(new Date());
 
   function eat() {
@@ -48,8 +49,8 @@ export function RecipeDetailModal({
   function planTo(date: string, label: string) {
     if (!item) return;
     addPlan.mutate(
-      { date, slot, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
-      { onSuccess: () => setPlannedDay(`${label}요일 ${SLOT_LABEL[slot]}`) },
+      { date, slot: planSlot, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
+      { onSuccess: () => setPlannedDay(`${label}요일 ${SLOT_LABEL[planSlot]}`) },
     );
   }
 
@@ -163,24 +164,40 @@ export function RecipeDetailModal({
               ))}
 
             <div className="mt-4 border-t border-cream-200 pt-3">
-              <p className="mb-2 text-sm text-cocoa-faint">
-                이번 주 식단에 담기 · <span className="text-cocoa">{SLOT_LABEL[slot]}</span>
-              </p>
+              <p className="mb-2 text-sm text-cocoa-faint">이번 주 식단에 담기</p>
               {plannedDay ? (
                 <p className="text-sm text-cocoa-soft">{plannedDay}에 담았어요 🗓️</p>
               ) : (
-                <div className="flex gap-1.5">
-                  {week.map((date, i) => (
-                    <button
-                      key={date}
-                      type="button"
-                      onClick={() => planTo(date, WEEKDAY_LABEL[i])}
-                      className="flex-1 rounded-mochi-sm bg-cream-200 py-2 text-sm text-cocoa transition-transform ease-jelly active:scale-90"
-                    >
-                      {WEEKDAY_LABEL[i]}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  {/* 담을 끼니 — 기본 저녁, 아침/점심도 담아 하루 여러 끼니 계획 가능 */}
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <span className="text-xs text-cocoa-faint">끼니</span>
+                    {SLOTS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setPlanSlot(s)}
+                        className={`rounded-mochi-sm px-2 py-0.5 text-xs transition-transform ease-jelly active:scale-90 ${
+                          planSlot === s ? "bg-lavender text-cocoa" : "bg-cream-200 text-cocoa-faint"
+                        }`}
+                      >
+                        {SLOT_LABEL[s]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    {week.map((date, i) => (
+                      <button
+                        key={date}
+                        type="button"
+                        onClick={() => planTo(date, WEEKDAY_LABEL[i])}
+                        className="flex-1 rounded-mochi-sm bg-cream-200 py-2 text-sm text-cocoa transition-transform ease-jelly active:scale-90"
+                      >
+                        {WEEKDAY_LABEL[i]}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </>
