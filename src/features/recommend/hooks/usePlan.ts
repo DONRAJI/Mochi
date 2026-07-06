@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as planApi from "../api/plan.api";
 import { weekDates } from "../week";
-import type { AddPlanRequest } from "../plan";
+import type { AddPlanRequest, MovePlanRequest } from "../plan";
 import { useMochiStore } from "@/store/mochi";
 
 /** 이번 주(월~일) 계획. queryKey에 from/to를 넣어 주가 바뀌면 자동 갱신. */
@@ -39,6 +39,15 @@ export function useRemovePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => planApi.removePlan(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+  });
+}
+
+/** 계획 이동(드래그 재배치) — 다른 날짜/끼니로. */
+export function useMovePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string } & MovePlanRequest) => planApi.movePlan(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }

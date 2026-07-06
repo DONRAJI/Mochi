@@ -5,6 +5,7 @@ import { MochiSpeechBubble } from "@/components/ui/MochiSpeechBubble";
 import { TodaySuggestionCard } from "./TodaySuggestionCard";
 import { StreakWidget } from "./StreakWidget";
 import { QuickActionBar } from "./QuickActionBar";
+import { WeeklyPlanCalendar } from "@/features/recommend/components/WeeklyPlanCalendar";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
 import { messages } from "@/lib/messages";
@@ -50,6 +51,10 @@ export function MochiRoom() {
         ))}
       </div>
       <TodaySuggestionCard />
+      {/* 이번 주 식단 — 홈에서 바로 보이게(식단탭에 숨지 않도록). 계획·먹었어요를 여기서. */}
+      <div className="w-full">
+        <WeeklyPlanCalendar />
+      </div>
       <StreakWidget days={streak?.count ?? 0} shields={streak?.shieldCount ?? 1} />
       <QuickActionBar />
     </main>
