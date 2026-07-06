@@ -16,6 +16,7 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [steps, setSteps] = useState("");
+  const [kcal, setKcal] = useState(""); // 선택 — 1인분 kcal
 
   function addIngredient() {
     const t = draft.trim();
@@ -39,6 +40,7 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
     setIngredients([]);
     setDraft("");
     setSteps("");
+    setKcal("");
   }
 
   function submit(e: FormEvent) {
@@ -52,6 +54,7 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
           .split("\n")
           .map((s) => s.trim())
           .filter(Boolean),
+        ...(kcal ? { kcal: Number(kcal) } : {}),
       },
       {
         onSuccess: () => {
@@ -107,6 +110,17 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
             rows={3}
             placeholder={"두부를 깍둑 썰어요\n계란을 풀어 함께 볶아요"}
             className="w-full resize-none rounded-mochi-sm bg-cream-50 px-4 py-3 text-cocoa shadow-mochi-press outline-none placeholder:text-cocoa-faint focus:bg-cream-200"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm text-cocoa-faint">칼로리 (선택 · 1인분 kcal)</label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            placeholder="예: 320 — 넣으면 관리 모드에서 보여요"
+            value={kcal}
+            onChange={(e) => setKcal(e.target.value)}
           />
         </div>
 

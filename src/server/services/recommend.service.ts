@@ -224,6 +224,7 @@ export async function createUserRecipe(
       minutes: input.minutes ?? estimateMinutes(input.steps.length),
       ingredients: input.ingredients,
       steps: input.steps,
+      kcal: input.kcal ?? null, // 선택 입력 — detail 모드 표시·예산·넛지에 반영(1인분)
     },
   });
   return { id: recipe.id };
