@@ -1,4 +1,4 @@
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, FetchError } from "@/lib/fetcher";
 import type { Nudge } from "../balance";
 import type {
   MarkMealRequest,
@@ -43,6 +43,23 @@ export function markMealEaten(input: MarkMealRequest): Promise<MealRecordRespons
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+/** 사진 한 장 기록(PRD 8-3) — multipart라 fetcher(JSON) 대신 직접 fetch. Content-Type은 브라우저가 설정. */
+export async function recordPhoto(file: Blob, mode = "eatout"): Promise<MealRecordResponse> {
+  const form = new FormData();
+  form.append("photo", file, "meal.jpg");
+  form.append("mode", mode);
+  const res = await fetch("/api/records/photo", { method: "POST", body: form });
+  const body = await res.json().catch(() => null);
+  if (!body?.success) {
+    throw new FetchError(
+      body?.error?.code ?? "INTERNAL",
+      body?.error?.message ?? "사진을 올리지 못했어요.",
+      res.status,
+    );
+  }
+  return body.data as MealRecordResponse;
 }
 
 export function fetchStreak(): Promise<StreakResponse> {
