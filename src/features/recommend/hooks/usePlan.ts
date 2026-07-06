@@ -1,9 +1,15 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import * as planApi from "../api/plan.api";
 import { weekDates } from "../week";
-import type { AddPlanRequest, MovePlanRequest } from "../plan";
+import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "../plan";
 import { useMochiStore } from "@/store/mochi";
 
 /** 이번 주(월~일) 계획. queryKey에 from/to를 넣어 주가 바뀌면 자동 갱신. */
@@ -18,15 +24,50 @@ export function usePlanWeek() {
   });
 }
 
+// ── 낙관적 업데이트 헬퍼 (담기·삭제·먹었어요·이동 공용) ──
+// 서버 왕복을 기다리지 않고 캐시부터 바꿔 화면이 즉시 반응하게 한다(conventions.md).
+type PlanSnapshot = [QueryKey, PlannedMealResponse[] | undefined][];
+
+/** 진행 중 조회를 멈추고 현재 캐시를 스냅샷(실패 시 복구용). */
+async function snapshotPlan(qc: QueryClient): Promise<PlanSnapshot> {
+  await qc.cancelQueries({ queryKey: ["plan"] });
+  return qc.getQueriesData<PlannedMealResponse[]>({ queryKey: ["plan"] });
+}
+/** 캐시의 모든 주간 계획 목록에 updater 적용. */
+function patchPlan(qc: QueryClient, fn: (list: PlannedMealResponse[]) => PlannedMealResponse[]) {
+  qc.setQueriesData<PlannedMealResponse[]>({ queryKey: ["plan"] }, (old) => (old ? fn(old) : old));
+}
+/** 실패 시 스냅샷으로 조용히 복구(죄책감 제로). */
+function rollbackPlan(qc: QueryClient, prev: PlanSnapshot | undefined) {
+  prev?.forEach(([key, data]) => qc.setQueryData(key, data));
+}
+
 export function useAddPlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: AddPlanRequest) => planApi.addPlan(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onMutate: async (input) => {
+      const prev = await snapshotPlan(qc);
+      // 서버 id가 오기 전 임시 항목으로 즉시 표시(재조회 시 실제 항목으로 교체됨).
+      const optimistic: PlannedMealResponse = {
+        id: `temp-${Date.now()}`,
+        date: input.date,
+        slot: input.slot ?? null,
+        mode: input.mode,
+        refId: input.refId ?? null,
+        title: input.title,
+        emoji: input.emoji ?? null,
+        eaten: false,
+      };
+      patchPlan(qc, (list) => [...list, optimistic]);
+      return { prev };
+    },
+    onError: (_e, _vars, ctx) => rollbackPlan(qc, ctx?.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }
 
-/** 이번 주 자동 채우기 (PRD 4.3). */
+/** 이번 주 자동 채우기 (PRD 4.3). 서버가 고른 레시피라 낙관적 예측은 생략(‘채우는 중…’). */
 export function useAutoFillWeek() {
   const qc = useQueryClient();
   return useMutation({
@@ -39,16 +80,30 @@ export function useRemovePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => planApi.removePlan(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onMutate: async (id) => {
+      const prev = await snapshotPlan(qc);
+      patchPlan(qc, (list) => list.filter((m) => m.id !== id));
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => rollbackPlan(qc, ctx?.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }
 
-/** 계획 이동(드래그 재배치) — 다른 날짜/끼니로. */
+/** 계획 이동(드래그 재배치) — 다른 날짜/끼니로. 낙관적 업데이트로 즉시 반영. */
 export function useMovePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...input }: { id: string } & MovePlanRequest) => planApi.movePlan(id, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onMutate: async ({ id, date, slot }) => {
+      const prev = await snapshotPlan(qc);
+      patchPlan(qc, (list) =>
+        list.map((m) => (m.id === id ? { ...m, date, ...(slot ? { slot } : {}) } : m)),
+      );
+      return { prev };
+    },
+    onError: (_e, _vars, ctx) => rollbackPlan(qc, ctx?.prev),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }
 
@@ -58,12 +113,19 @@ export function useEatPlan() {
   const setMochi = useMochiStore((s) => s.setState);
   return useMutation({
     mutationFn: (id: string) => planApi.eatPlan(id),
+    // 캘린더에서 바로 '먹음 ✓'으로 보이게(취소선). 도감·모찌 등 다른 도메인은 성공 후 동기화.
+    onMutate: async (id) => {
+      const prev = await snapshotPlan(qc);
+      patchPlan(qc, (list) => list.map((m) => (m.id === id ? { ...m, eaten: true } : m)));
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => rollbackPlan(qc, ctx?.prev),
     onSuccess: () => {
       setMochi("cheer");
-      qc.invalidateQueries({ queryKey: ["plan"] });
       qc.invalidateQueries({ queryKey: ["collection"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] });
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }
