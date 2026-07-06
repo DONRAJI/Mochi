@@ -18,6 +18,8 @@ export const createRecipeSchema = z.object({
     .max(20),
   steps: z.array(z.string().min(1).max(200)).max(20).default([]),
   minutes: z.coerce.number().int().min(1).max(300).optional(),
+  // 1인분 kcal(선택) — 넣으면 detail 모드 표시·예산 합산·넛지에 반영. 강요 아님(죄책감 제로).
+  kcal: z.coerce.number().int().min(1).max(3000).optional(),
 });
 
 export type CreateRecipeRequest = z.infer<typeof createRecipeSchema>;
