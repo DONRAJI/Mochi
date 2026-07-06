@@ -6,6 +6,7 @@ import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
+import { mealSeeds } from "@/features/collection/gacha";
 import {
   computeBMR,
   computeTDEE,
@@ -97,6 +98,11 @@ export async function markMealEaten(
       }
     }
 
+    // 뽑기 재화(씨앗) 적립 (PRD 12.2) — 건강 행동으로만. 첫 발견·스트릭 이어감 보너스.
+    const streakAdvanced = s.count > (streak?.count ?? 0);
+    const seedsEarned = mealSeeds({ firstDiscovery: cardAcquired, streakAdvanced, streakCount: s.count });
+    await tx.user.update({ where: { id: userId }, data: { mochiSeeds: { increment: seedsEarned } } });
+
     // 모찌 cheer 반응
     const mochiState: MochiState = "cheer";
     await tx.mochiProfile.upsert({
@@ -112,6 +118,7 @@ export async function markMealEaten(
       streakCount: s.count,
       cardAcquired,
       shieldUsed: s.shieldUsed,
+      seedsEarned,
     };
   });
 }
