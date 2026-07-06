@@ -5,6 +5,7 @@ const meta: Record<string, { label: string; cls: string }> = {
   common: { label: "일반", cls: "bg-cream-200 text-cocoa-faint" },
   rare: { label: "레어", cls: "bg-mint-soft text-cocoa" },
   epic: { label: "에픽", cls: "bg-lavender-soft text-cocoa" },
+  legendary: { label: "전설", cls: "bg-butter-soft text-cocoa" },
   seasonal: { label: "한정", cls: "bg-peach-soft text-cocoa" },
 };
 
