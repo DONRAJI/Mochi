@@ -4,7 +4,7 @@ import { markMealEaten } from "./record.service";
 import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
-import type { AddPlanRequest, PlannedMealResponse } from "@/features/recommend/plan";
+import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "@/features/recommend/plan";
 import type { MealMode } from "@/features/recommend/types";
 import type { MealRecordResponse, MealSlot } from "@/features/record/types";
 
@@ -92,6 +92,23 @@ export async function addPlan(
       title: input.title,
       emoji: input.emoji,
     },
+  });
+  return toPlan(row);
+}
+
+/** 계획 이동(드래그 재배치) — 소유자 검증 후 날짜(그리고 선택적 끼니) 변경. */
+export async function movePlan(
+  userId: string,
+  id: string,
+  input: MovePlanRequest,
+): Promise<PlannedMealResponse> {
+  const plan = await db.plannedMeal.findUnique({ where: { id } });
+  if (!plan || plan.userId !== userId) {
+    throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
+  }
+  const row = await db.plannedMeal.update({
+    where: { id },
+    data: { date: new Date(input.date), ...(input.slot ? { slot: input.slot } : {}) },
   });
   return toPlan(row);
 }

@@ -16,6 +16,14 @@ export const addPlanSchema = z.object({
 
 export type AddPlanRequest = z.infer<typeof addPlanSchema>;
 
+/** 계획 이동(드래그 재배치) — 다른 날짜(그리고 선택적으로 다른 끼니)로 옮긴다. */
+export const movePlanSchema = z.object({
+  date: dateStr,
+  slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(),
+});
+
+export type MovePlanRequest = z.infer<typeof movePlanSchema>;
+
 /** 주간 범위 조회 (from~to, YYYY-MM-DD 포함). */
 export const planRangeSchema = z.object({ from: dateStr, to: dateStr });
 
