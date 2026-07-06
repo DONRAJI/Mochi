@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as planApi from "../api/plan.api";
 import { weekDates } from "../week";
-import type { AddPlanRequest, MovePlanRequest } from "../plan";
+import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "../plan";
 import { useMochiStore } from "@/store/mochi";
 
 /** 이번 주(월~일) 계획. queryKey에 from/to를 넣어 주가 바뀌면 자동 갱신. */
@@ -43,12 +43,26 @@ export function useRemovePlan() {
   });
 }
 
-/** 계획 이동(드래그 재배치) — 다른 날짜/끼니로. */
+/** 계획 이동(드래그 재배치) — 다른 날짜/끼니로. 낙관적 업데이트로 화면이 즉시 반영된다. */
 export function useMovePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...input }: { id: string } & MovePlanRequest) => planApi.movePlan(id, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    // 서버 왕복(PATCH+재조회)을 기다리지 않고 캐시를 바로 바꿔 드래그가 즉시 옮겨 보이게(conventions.md).
+    onMutate: async ({ id, date, slot }) => {
+      await qc.cancelQueries({ queryKey: ["plan"] });
+      const prev = qc.getQueriesData<PlannedMealResponse[]>({ queryKey: ["plan"] });
+      qc.setQueriesData<PlannedMealResponse[]>({ queryKey: ["plan"] }, (old) =>
+        old?.map((m) => (m.id === id ? { ...m, date, ...(slot ? { slot } : {}) } : m)),
+      );
+      return { prev };
+    },
+    // 실패하면 원래대로 되돌린다(죄책감 제로: 조용히 복구).
+    onError: (_e, _vars, ctx) => {
+      ctx?.prev?.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+    // 서버와 최종 동기화.
+    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
   });
 }
 
