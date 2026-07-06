@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { CompleteGauge } from "./CompleteGauge";
 import { RarityBadge } from "./RarityBadge";
 import { DrawRevealModal } from "./DrawRevealModal";
+import { MochiRewardShelf } from "./MochiRewardShelf";
 import { ShareButton } from "./ShareButton";
 import { useMochiCollection, useDrawCard } from "../hooks/useCollection";
 import { RARITY_TINT } from "../rarityTint";
@@ -77,6 +78,7 @@ export function MochiCollectionScreen() {
             ))}
           </div>
 
+          <MochiRewardShelf cards={cards} />
           <ShareButton tabLabel="모찌" acquired={acquired} />
         </>
       )}

@@ -70,8 +70,10 @@ export function RecipeDetailModal({
             <p className="font-display text-lg text-cocoa">잘 먹었어요!</p>
             <p className="text-sm text-cocoa-soft">
               {SLOT_LABEL[result.slot as MealSlot]}으로{" "}
-              {result.cardAcquired ? "담았어요 · 도감에 한 칸 🎉" : "기록했어요 😊"}
+              {result.cardAcquired ? "기록했어요 · 첫 발견! 🎉" : "기록했어요 😊"}
             </p>
+            {/* 뽑기 씨앗 적립 — 건강 행동의 보상(PRD 12.2) */}
+            <p className="text-sm font-display text-cocoa">🌱 씨앗 +{result.seedsEarned}</p>
             <p className="text-sm text-cocoa-faint">스트릭 {result.streakCount}일째 🍮</p>
             {result.shieldUsed && (
               <p className="text-sm text-cocoa-soft">🛡️ 보호권이 스트릭을 지켜줬어요!</p>

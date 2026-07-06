@@ -11,7 +11,7 @@ import { useRecordPhoto } from "../hooks/useRecord";
 export function PhotoRecordButton() {
   const inputRef = useRef<HTMLInputElement>(null);
   const record = useRecordPhoto();
-  const [done, setDone] = useState(false);
+  const [earned, setEarned] = useState<number | null>(null); // 방금 적립한 씨앗
 
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -19,9 +19,9 @@ export function PhotoRecordButton() {
     if (!file) return;
     const blob = await resizeImage(file);
     record.mutate(blob, {
-      onSuccess: () => {
-        setDone(true);
-        setTimeout(() => setDone(false), 2500);
+      onSuccess: (r) => {
+        setEarned(r.seedsEarned);
+        setTimeout(() => setEarned(null), 2500);
       },
     });
   }
@@ -44,8 +44,8 @@ export function PhotoRecordButton() {
       >
         {record.isPending
           ? "올리는 중이에요… 📷"
-          : done
-            ? "잘 먹었어요! 📷✨"
+          : earned != null
+            ? `잘 먹었어요! 🌱 씨앗 +${earned}`
             : "📷 사진 한 장으로 기록"}
       </button>
       {record.isError && (
