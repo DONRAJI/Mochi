@@ -30,6 +30,7 @@ export interface TodayMealResponse {
   mode: "cook" | "eatout" | "convenience";
   eatenAt: string; // ISO
   kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4)
+  photoUrl: string | null; // 사진 한 장 기록의 서명 URL(비공개 버킷, 짧은 만료). 없으면 null.
 }
 
 export interface StreakResponse {

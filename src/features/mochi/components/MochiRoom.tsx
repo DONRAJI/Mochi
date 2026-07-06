@@ -6,6 +6,7 @@ import { TodaySuggestionCard } from "./TodaySuggestionCard";
 import { StreakWidget } from "./StreakWidget";
 import { QuickActionBar } from "./QuickActionBar";
 import { WeeklyPlanCalendar } from "@/features/recommend/components/WeeklyPlanCalendar";
+import { PhotoRecordButton } from "@/features/record/components/PhotoRecordButton";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
 import { messages } from "@/lib/messages";
@@ -57,6 +58,8 @@ export function MochiRoom() {
       </div>
       <StreakWidget days={streak?.count ?? 0} shields={streak?.shieldCount ?? 1} />
       <QuickActionBar />
+      {/* 사진 한 장으로 기록 (PRD 8-3) — 요리 안 해도 먹기→찍기→기록→모찌 칭찬 */}
+      <PhotoRecordButton />
     </main>
   );
 }

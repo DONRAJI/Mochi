@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
@@ -33,6 +34,15 @@ export function TodayMealsStrip() {
         <ul className="flex flex-col gap-1.5">
           {meals.map((m) => (
             <li key={m.id} className="flex items-center gap-2 text-sm text-cocoa-soft">
+              {m.photoUrl && (
+                <Image
+                  src={m.photoUrl}
+                  alt="식사 사진"
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 rounded-mochi-sm object-cover"
+                />
+              )}
               <span className="text-base">{SLOT_EMOJI[m.slot as MealSlot]}</span>
               <span className="text-cocoa">{SLOT_LABEL[m.slot as MealSlot]}</span>
               <span className="text-cocoa-faint">· {MODE_LABEL[m.mode]}</span>

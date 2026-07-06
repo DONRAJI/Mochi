@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
+import { signMealPhoto } from "@/server/storage/photo-storage";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
@@ -52,6 +53,7 @@ async function lookupKcal(
 export async function markMealEaten(
   userId: string,
   input: MarkMealRequest,
+  photoUrl?: string, // 사진 한 장 기록(PRD 8-3) — 스토리지 경로. 일반 '먹었어요'는 undefined.
 ): Promise<MealRecordResponse> {
   const now = new Date();
   const slot: MealSlot = input.slot ?? estimateSlot(now);
@@ -59,7 +61,7 @@ export async function markMealEaten(
   return db.$transaction(async (tx) => {
     const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : null;
     const record = await tx.mealRecord.create({
-      data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo },
+      data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo, photoUrl },
     });
 
     // 스트릭 + 보호권 (#9): 연속이면 +1, 빠지면 보호권이 막아주고, 없으면 오늘의 1부터 새 시작.
@@ -128,18 +130,22 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
     db.mealRecord.findMany({
       where: { userId, eatenAt: { gte: since } },
       orderBy: { eatenAt: "asc" },
-      select: { id: true, slot: true, mode: true, eatenAt: true, kcal: true },
+      select: { id: true, slot: true, mode: true, eatenAt: true, kcal: true, photoUrl: true },
     }),
     db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
   ]);
   const detail = user?.displayMode === "detail";
-  return rows.map((r) => ({
-    id: r.id,
-    slot: (r.slot ?? "snack") as MealSlot,
-    mode: r.mode,
-    eatenAt: r.eatenAt.toISOString(),
-    kcal: detail ? r.kcal : null,
-  }));
+  // 사진 있는 기록만 서명 URL 발급(비공개 버킷). 대부분 사진이 없어 서명 호출은 최소.
+  return Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      slot: (r.slot ?? "snack") as MealSlot,
+      mode: r.mode,
+      eatenAt: r.eatenAt.toISOString(),
+      kcal: detail ? r.kcal : null,
+      photoUrl: r.photoUrl ? await signMealPhoto(r.photoUrl) : null,
+    })),
+  );
 }
 
 /** 오늘 기록 삭제(#2) — 실수 정정용. 소유자 검증. 스트릭·도감은 되돌리지 않음(죄책감 제로·단순). */

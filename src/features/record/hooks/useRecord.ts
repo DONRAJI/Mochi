@@ -12,6 +12,7 @@ import {
   fetchDailyBudget,
   deleteMeal,
   addWeight,
+  recordPhoto,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
 import type { MarkMealRequest, ProfileRequest } from "../types";
@@ -68,6 +69,21 @@ export function useAddWeight() {
   return useMutation({
     mutationFn: (weight: number) => addWeight(weight),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["record", "weight"] }),
+  });
+}
+
+/** 사진 한 장 기록(PRD 8-3) — 성공 시 모찌 cheer + 오늘 기록·모찌·도감 갱신. */
+export function useRecordPhoto() {
+  const qc = useQueryClient();
+  const setMochi = useMochiStore((s) => s.setState);
+  return useMutation({
+    mutationFn: (file: Blob) => recordPhoto(file),
+    onSuccess: () => {
+      setMochi("cheer");
+      qc.invalidateQueries({ queryKey: ["record"] });
+      qc.invalidateQueries({ queryKey: ["mochi"] });
+      qc.invalidateQueries({ queryKey: ["collection"] });
+    },
   });
 }
 
