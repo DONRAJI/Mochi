@@ -163,6 +163,11 @@ const mochiCards: {
   { id: "egg", name: "계란 모찌", rarity: "common", foodTheme: "계란", sortOrder: 2, flavor: "동글동글 노른자를 쏙! 아침을 깨우는 모찌예요 🥚" },
   { id: "milk", name: "우유 모찌", rarity: "common", foodTheme: "우유", sortOrder: 3, flavor: "하얗고 고소해요. 뼈가 튼튼해지는 기분! 🥛" },
   { id: "banana", name: "바나나 모찌", rarity: "common", foodTheme: "바나나", sortOrder: 4, flavor: "달콤하고 말랑해요. 기운이 쑥 나요 🍌" },
+  // COMMON — 확장팩 2
+  { id: "cabbage", name: "양배추 모찌", rarity: "common", foodTheme: "양배추", sortOrder: 5, flavor: "아삭아삭 초록 잎을 얹었어요. 속이 편안해져요 🥬" },
+  { id: "apple", name: "사과 모찌", rarity: "common", foodTheme: "사과", sortOrder: 6, flavor: "빨갛고 아삭! 하루 한 알 기분 좋은 모찌 🍎" },
+  { id: "carrot", name: "당근 모찌", rarity: "common", foodTheme: "당근", sortOrder: 7, flavor: "주황 당근을 쏙. 눈이 반짝반짝해져요 🥕" },
+  { id: "corn", name: "옥수수 모찌", rarity: "common", foodTheme: "옥수수", sortOrder: 8, flavor: "노랗고 톡톡 달콤해요. 기분까지 노란빛 🌽" },
   // RARE
   { id: "shrimp", name: "새우 모찌", rarity: "rare", foodTheme: "새우", sortOrder: 5, flavor: "탱글탱글 새우를 얹었어요. 조금 특별한 날 🦐" },
   { id: "cheese", name: "치즈 모찌", rarity: "rare", foodTheme: "치즈", sortOrder: 6, flavor: "고소함이 사르르 녹아요. 기분 좋은 발견! 🧀" },
@@ -187,8 +192,12 @@ async function main() {
   for (const m of menus) await db.menu.upsert({ where: { id: m.id }, create: m, update: m });
   for (const c of convenience)
     await db.convenienceItem.upsert({ where: { id: c.id }, create: c, update: c });
-  for (const c of mochiCards) {
-    const data = { ...c, imageUrl: `/mochi-cards/${c.id}.webp` };
+  // sortOrder를 등급 순(일반→레어→에픽→전설)으로 재계산 — 카드를 추가해도 도감이 등급별로 묶인다.
+  const RANK: Record<string, number> = { common: 0, rare: 1, epic: 2, legendary: 3, seasonal: 4 };
+  const orderedCards = [...mochiCards].sort((a, b) => RANK[a.rarity] - RANK[b.rarity]);
+  for (let i = 0; i < orderedCards.length; i++) {
+    const c = orderedCards[i];
+    const data = { ...c, imageUrl: `/mochi-cards/${c.id}.webp`, sortOrder: i + 1 };
     await db.mochiCard.upsert({ where: { id: c.id }, create: data, update: data });
   }
 
