@@ -26,6 +26,7 @@ enum Rarity {
   rare
   epic
   seasonal
+  legendary // 전설급 (모찌 뽑기 도감 최고 등급, PRD 12.3)
 }
 
 enum PreferenceKind {
@@ -59,6 +60,20 @@ enum CollectionType {
   ingredient
   recipe
   convenience
+  mochi // 모찌 뽑기 카드 (PRD 12 — 수집 개편)
+}
+
+// 모찌 뽑기 카드 카탈로그 (PRD 12) — 시드 16종(4등급×4). refId = MochiCard.id.
+model MochiCard {
+  id        String @id // 안정적 슬러그 (예: "tofu", "steak") — 이미지 파일명·refId로 사용
+  name      String // 표시명 (예: "두부 모찌")
+  rarity    Rarity
+  imageUrl  String @map("image_url") // public/mochi-cards/{id}.webp
+  flavor    String // 모찌 플레이버 텍스트 (카드 코멘트)
+  foodTheme String @map("food_theme") // 연결 음식 테마 (예: "두부") — 획득 힌트·연결용
+  sortOrder Int    @default(0) @map("sort_order") // 도감 정렬(01~16)
+
+  @@map("mochi_cards")
 }
 
 // opt-in 개인 프로필 (PRD 11.4) — 원하는 사람만. 맞춤 가이드용.
@@ -82,6 +97,7 @@ model User {
   nickname     String
   cooksOften   Boolean  @default(true) @map("cooks_often") // 온보딩 "요리하는 편?" → A/B 페르소나 분기
   displayMode  DisplayMode @default(cozy) @map("display_mode") // #4 숫자 표시 모드
+  mochiSeeds   Int      @default(0) @map("mochi_seeds") // 뽑기 재화 🌱 — 건강 행동으로만 적립 (PRD 12.2)
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions    Session[]
@@ -321,8 +337,9 @@ model CollectionEntry {
   id         String         @id @default(cuid())
   userId     String         @map("user_id")
   type       CollectionType
-  refId      String         @map("ref_id") // 재료/레시피/간편식 식별자 (도메인 간 ID 참조 — project.md)
+  refId      String         @map("ref_id") // 재료/레시피/간편식/모찌카드 식별자 (도메인 간 ID 참조 — project.md)
   rarity     Rarity         @default(common)
+  count      Int            @default(1) // 뽑기 중복 친밀도 (PRD 12.4 — 같은 카드 여러 번)
   acquiredAt DateTime       @default(now()) @map("acquired_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

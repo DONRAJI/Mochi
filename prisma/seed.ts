@@ -149,6 +149,37 @@ const convenience: SeedConv[] = [
   { id: "seed-conv-yakult", name: "요구르트", emoji: "🥛", brand: "hy", rarity: "common", kcal: 60, protein: 2 },
 ];
 
+// 모찌 뽑기 카드 16종 (PRD 12) — 4등급×4. imageUrl = public/mochi-cards/{id}.webp.
+const mochiCards: {
+  id: string;
+  name: string;
+  rarity: Rarity;
+  flavor: string;
+  foodTheme: string;
+  sortOrder: number;
+}[] = [
+  // COMMON — 냉장고 기본 재료
+  { id: "tofu", name: "두부 모찌", rarity: "common", foodTheme: "두부", sortOrder: 1, flavor: "부드럽고 든든해요. 모찌가 제일 자주 만나는 친구예요 🧈" },
+  { id: "egg", name: "계란 모찌", rarity: "common", foodTheme: "계란", sortOrder: 2, flavor: "동글동글 노른자를 쏙! 아침을 깨우는 모찌예요 🥚" },
+  { id: "milk", name: "우유 모찌", rarity: "common", foodTheme: "우유", sortOrder: 3, flavor: "하얗고 고소해요. 뼈가 튼튼해지는 기분! 🥛" },
+  { id: "banana", name: "바나나 모찌", rarity: "common", foodTheme: "바나나", sortOrder: 4, flavor: "달콤하고 말랑해요. 기운이 쑥 나요 🍌" },
+  // RARE
+  { id: "shrimp", name: "새우 모찌", rarity: "rare", foodTheme: "새우", sortOrder: 5, flavor: "탱글탱글 새우를 얹었어요. 조금 특별한 날 🦐" },
+  { id: "cheese", name: "치즈 모찌", rarity: "rare", foodTheme: "치즈", sortOrder: 6, flavor: "고소함이 사르르 녹아요. 기분 좋은 발견! 🧀" },
+  { id: "broccoli", name: "브로콜리 모찌", rarity: "rare", foodTheme: "브로콜리", sortOrder: 7, flavor: "초록초록 건강해요. 모찌가 힘이 나요 🥦" },
+  { id: "tomato", name: "토마토 모찌", rarity: "rare", foodTheme: "토마토", sortOrder: 8, flavor: "새콤달콤 반짝여요. 상큼한 하루 🍅" },
+  // EPIC — 든든한 영양
+  { id: "salmon", name: "연어 모찌", rarity: "epic", foodTheme: "연어", sortOrder: 9, flavor: "분홍빛 연어를 폭! 영양 가득 든든해요 🍣" },
+  { id: "avocado", name: "아보카도 모찌", rarity: "epic", foodTheme: "아보카도", sortOrder: 10, flavor: "부드러운 초록 크림 같아요. 귀한 손님 🥑" },
+  { id: "steak", name: "스테이크 모찌", rarity: "epic", foodTheme: "스테이크", sortOrder: 11, flavor: "육즙 가득! 오늘은 든든하게 먹은 날 🥩" },
+  { id: "sweet-potato", name: "고구마 모찌", rarity: "epic", foodTheme: "고구마", sortOrder: 12, flavor: "포근하고 달콤해요. 마음까지 따뜻 🍠" },
+  // LEGENDARY — 완성 요리
+  { id: "bibimbap", name: "비빔밥 모찌", rarity: "legendary", foodTheme: "비빔밥", sortOrder: 13, flavor: "알록달록 다 모였어요. 만나서 정말 반가워요! 🍲" },
+  { id: "ramen", name: "라멘 모찌", rarity: "legendary", foodTheme: "라멘", sortOrder: 14, flavor: "따끈한 국물에 퐁당! 전설의 한 그릇 🍜" },
+  { id: "bento", name: "도시락 모찌", rarity: "legendary", foodTheme: "도시락", sortOrder: 15, flavor: "정성 가득 도시락. 오늘도 잘 챙겨 먹었어요 🍱" },
+  { id: "dessert", name: "디저트 모찌", rarity: "legendary", foodTheme: "디저트", sortOrder: 16, flavor: "달콤한 마무리. 가장 특별한 모찌예요 🍰" },
+];
+
 async function main() {
   for (const m of ingredientMasters)
     await db.ingredientMaster.upsert({ where: { name: m.name }, create: m, update: m });
@@ -156,9 +187,13 @@ async function main() {
   for (const m of menus) await db.menu.upsert({ where: { id: m.id }, create: m, update: m });
   for (const c of convenience)
     await db.convenienceItem.upsert({ where: { id: c.id }, create: c, update: c });
+  for (const c of mochiCards) {
+    const data = { ...c, imageUrl: `/mochi-cards/${c.id}.webp` };
+    await db.mochiCard.upsert({ where: { id: c.id }, create: data, update: data });
+  }
 
   console.log(
-    `🧊 seed 완료 — master ${ingredientMasters.length} · recipe ${recipes.length} · menu ${menus.length} · convenience ${convenience.length}`,
+    `🧊 seed 완료 — master ${ingredientMasters.length} · recipe ${recipes.length} · menu ${menus.length} · convenience ${convenience.length} · mochiCard ${mochiCards.length}`,
   );
 }
 
