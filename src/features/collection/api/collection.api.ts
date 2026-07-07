@@ -1,14 +1,5 @@
 import { fetcher } from "@/lib/fetcher";
-import type {
-  CollectionTab,
-  CollectionResponse,
-  MochiCollectionResponse,
-  DrawResultResponse,
-} from "../types";
-
-export function fetchCollection(type: CollectionTab): Promise<CollectionResponse> {
-  return fetcher<CollectionResponse>(`/api/collection?type=${type}`);
-}
+import type { MochiCollectionResponse, DrawResultResponse } from "../types";
 
 /** 모찌 뽑기 도감 (PRD 12). */
 export function fetchMochiCollection(): Promise<MochiCollectionResponse> {

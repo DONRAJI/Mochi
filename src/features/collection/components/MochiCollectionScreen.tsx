@@ -85,7 +85,8 @@ export function MochiCollectionScreen() {
 
       <DrawRevealModal
         result={reveal}
-        canDrawAgain={seeds >= cost}
+        // 방금 뽑기 후엔 서버가 알려준 잔여 씨앗(seedsLeft)으로 판단 — 캐시 갱신 전 stale 방지.
+        canDrawAgain={(reveal?.seedsLeft ?? seeds) >= cost}
         drawing={draw.isPending}
         onDrawAgain={onDraw}
         onClose={() => setReveal(null)}

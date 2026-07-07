@@ -99,6 +99,8 @@ model User {
   displayMode  DisplayMode @default(cozy) @map("display_mode") // #4 숫자 표시 모드
   mochiSeeds   Int      @default(0) @map("mochi_seeds") // 뽑기 재화 🌱 — 건강 행동으로만 적립 (PRD 12.2)
   drawPity     Int      @default(0) @map("draw_pity") // 직전 epic↑ 이후 허탕 횟수 (10회 보장, PRD 12.3)
+  seedDay      String?  @map("seed_day") // 씨앗 일일 상한 추적 KST일(YYYY-MM-DD) — 등록/취소 farming 방지
+  seedsToday   Int      @default(0) @map("seeds_today") // 그날 이미 획득한 씨앗(삭제해도 안 줄어듦)
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions    Session[]

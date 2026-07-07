@@ -6,7 +6,7 @@ import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
-import { mealSeeds } from "@/features/collection/gacha";
+import { mealSeeds, cappedSeedGrant } from "@/features/collection/gacha";
 import {
   computeBMR,
   computeTDEE,
@@ -100,8 +100,23 @@ export async function markMealEaten(
 
     // 뽑기 재화(씨앗) 적립 (PRD 12.2) — 건강 행동으로만. 첫 발견·스트릭 이어감 보너스.
     const streakAdvanced = s.count > (streak?.count ?? 0);
-    const seedsEarned = mealSeeds({ firstDiscovery: cardAcquired, streakAdvanced, streakCount: s.count });
-    await tx.user.update({ where: { id: userId }, data: { mochiSeeds: { increment: seedsEarned } } });
+    const want = mealSeeds({ firstDiscovery: cardAcquired, streakAdvanced, streakCount: s.count });
+    // 일일 상한 — 등록/취소 반복 farming 방지. seedsToday는 삭제해도 안 줄어드는 그날 누적치.
+    const today = kstDayKey(now.getTime());
+    const acct = await tx.user.findUnique({
+      where: { id: userId },
+      select: { seedDay: true, seedsToday: true },
+    });
+    const usedToday = acct?.seedDay === today ? acct.seedsToday : 0;
+    const seedsEarned = cappedSeedGrant(want, usedToday);
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        mochiSeeds: { increment: seedsEarned },
+        seedDay: today,
+        seedsToday: usedToday + seedsEarned,
+      },
+    });
 
     // 모찌 cheer 반응
     const mochiState: MochiState = "cheer";
@@ -121,6 +136,11 @@ export async function markMealEaten(
       seedsEarned,
     };
   });
+}
+
+/** 한국 기준 오늘 날짜 키(YYYY-MM-DD) — 씨앗 일일 상한 추적용. */
+function kstDayKey(nowMs = Date.now()): string {
+  return new Date(nowMs + 9 * 3_600_000).toISOString().slice(0, 10);
 }
 
 /** KST 자정의 UTC 순간 — 서버가 UTC(Vercel)라도 한국 기준 '오늘'을 정확히 자른다. */

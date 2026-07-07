@@ -5,6 +5,7 @@ import {
   isPityReady,
   nextPity,
   pickIndex,
+  cappedSeedGrant,
   DRAW_COST,
 } from "./gacha";
 
@@ -22,6 +23,13 @@ describe("모찌 뽑기 경제", () => {
   it("씨앗: 스트릭 이어감 +1, 7일 마일스톤 +3", () => {
     expect(mealSeeds({ firstDiscovery: false, streakAdvanced: true, streakCount: 3 })).toBe(2);
     expect(mealSeeds({ firstDiscovery: true, streakAdvanced: true, streakCount: 7 })).toBe(1 + 1 + 1 + 3);
+  });
+
+  it("일일 상한 — 등록/취소 farming 방지", () => {
+    expect(cappedSeedGrant(2, 0, 10)).toBe(2); // 여유 있음
+    expect(cappedSeedGrant(2, 9, 10)).toBe(1); // 1개만 남음
+    expect(cappedSeedGrant(2, 10, 10)).toBe(0); // 상한 도달 → 더는 없음
+    expect(cappedSeedGrant(5, 8, 10)).toBe(2); // 남은 만큼만
   });
 });
 
