@@ -1,7 +1,7 @@
 /** 식단 모드/정렬 UI 상수 (추천 데이터 자체는 API로 — features/recommend/api). */
 export const MEAL_MODES = [
   { value: "cook", label: "요리" },
-  { value: "eatout", label: "외식/배달" },
+  { value: "eatout", label: "외식" },
   { value: "convenience", label: "간편식" },
 ] as const;
 
