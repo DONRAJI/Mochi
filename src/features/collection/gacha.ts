@@ -11,6 +11,13 @@ export const DRAW_COST = 5;
 export const DUPE_REFUND = 2;
 /** 이 횟수째엔 epic↑ 보장 (직전 epic↑ 이후 9번 허탕 → 10번째 보장). */
 export const PITY_THRESHOLD = 10;
+/** 하루 씨앗 획득 상한 — 등록/취소 반복 farming 방지(약 2회 뽑기치). */
+export const DAILY_SEED_CAP = 10;
+
+/** 오늘 이미 usedToday만큼 받았을 때, want 중 실제로 줄 수 있는 씨앗(상한 초과분은 잘림). */
+export function cappedSeedGrant(want: number, usedToday: number, cap = DAILY_SEED_CAP): number {
+  return Math.max(0, Math.min(want, cap - usedToday));
+}
 
 /** 등급 가중치(%) — 합 100. */
 const WEIGHTS: [CardRarity, number][] = [
