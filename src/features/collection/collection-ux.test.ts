@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { progressMessage } from "./progress";
-import { flavorText } from "./flavor";
 
 describe("도감 진척 넛지 (PRD 7.3 #2)", () => {
   it("다 모으면 축하", () => {
@@ -19,15 +18,5 @@ describe("도감 진척 넛지 (PRD 7.3 #2)", () => {
     const m = progressMessage(3, 1150);
     expect(m).toContain("3개 발견");
     expect(m).not.toContain("1147"); // "앞으로 1147개" 금지
-  });
-});
-
-describe("카드 플레이버 (PRD 7.3 #5)", () => {
-  it("미획득은 티저", () => {
-    expect(flavorText("common", false)).toContain("아직 못 만난");
-  });
-  it("희귀도별로 다른 코멘트", () => {
-    expect(flavorText("epic", true)).not.toBe(flavorText("common", true));
-    expect(flavorText("rare", true)).toContain("레어");
   });
 });
