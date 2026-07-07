@@ -146,6 +146,10 @@ export async function drawMochiCard(userId: string): Promise<DrawResultResponse>
     const rarity = rollRarity(Math.random(), isPityReady(user.drawPity));
     const pool = await tx.mochiCard.findMany({ where: { rarity } });
     const card = pool[pickIndex(pool.length, Math.random())];
+    if (!card) {
+      // 해당 등급 카드가 아직 없을 때(예: 시즌 카드 미시드) 크래시 대신 부드러운 안내.
+      throw new AppError("INTERNAL", "지금은 뽑을 카드가 없어요. 잠시 후 다시 해볼까요?", 500);
+    }
 
     const existing = await tx.collectionEntry.findUnique({
       where: { userId_type_refId: { userId, type: "mochi", refId: card.id } },
