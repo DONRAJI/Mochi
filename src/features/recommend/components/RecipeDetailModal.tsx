@@ -216,7 +216,8 @@ export function RecipeDetailModal({
 
 /**
  * 재료 + 다이어트 힌트 — "냉장고 재료로 가볍게" 컨셉.
- * 가진 재료는 민트로 체크, 없어도 되는 재료엔 태그, 고열량은 가벼운 대체를 부드럽게 제안(강요 아님).
+ * 가진 재료는 민트로 체크, 고열량은 가벼운 대체를 부드럽게 제안(강요 아님).
+ * '없어도 괜찮아요'(optional)는 잘 안 쓰는 희귀 재료만 — 흔한 양념(후추·깨)엔 침묵(사용자 피드백).
  */
 function IngredientHints({ ingredients }: { ingredients: RecipeIngredient[] }) {
   const swaps = ingredients.filter((i) => i.swap);
@@ -254,7 +255,7 @@ function IngredientHints({ ingredients }: { ingredients: RecipeIngredient[] }) {
               </li>
             ))}
             {optionals.map((i) => (
-              <li key={i.name}>{i.name}는 없어도 괜찮아요</li>
+              <li key={i.name}>{i.name}는 잘 안 쓰는 재료예요 — 없어도 괜찮아요</li>
             ))}
           </ul>
         </div>

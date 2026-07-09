@@ -11,30 +11,9 @@ export interface IngredientSwap {
   note: string; // 모찌 보이스 한마디 (부드럽게)
 }
 
-export interface IngredientHint {
-  optional: boolean; // 없어도 요리가 성립하는 고명·선택 재료
-  swap: IngredientSwap | null; // 고열량 → 가벼운 대체 제안
-}
-
-/** 없어도 괜찮은 고명·선택 재료 (빼면 더 가볍고, 요리는 그대로 성립). */
-const OPTIONAL = new Set([
-  "통깨",
-  "참깨",
-  "깨",
-  "깨소금",
-  "실고추",
-  "파슬리",
-  "파슬리가루",
-  "후추",
-  "후춧가루",
-  "고명",
-  "쪽파",
-  "견과류",
-  "땅콩",
-  "잣",
-  "슬라이스치즈",
-  "체다치즈",
-]);
+// '없어도 괜찮아요'(optional)는 이제 흔한 양념 고명이 아니라 **코퍼스 희귀 재료**에 대해 말한다
+// (사용자 피드백: "후추 빼도 돼요"류는 노이즈). 판정은 practicality.isSkippableRare —
+// 빈도 데이터가 필요해 recommend 서비스에서 조합한다. 이 모듈은 대체(swap)만 담당.
 
 /**
  * 대분류별 가벼운 대체 (#1) — 같은 고열량 분류의 재료는 대표 대체로 묶어 커버리지를 넓힌다.
@@ -91,21 +70,13 @@ const SWAP_GROUPS: { members: string[]; to: string; note: string }[] = [
   },
 ];
 
-/** 재료명이 속한 대체 그룹(첫 매칭). */
-function swapFor(name: string): IngredientSwap | null {
+/** 재료명이 속한 대체 그룹(첫 매칭). (recommend 서비스에서 재료마다 호출) */
+export function swapFor(name: string): IngredientSwap | null {
   const group = SWAP_GROUPS.find((g) => g.members.includes(name));
   return group ? { to: group.to, note: group.note } : null;
 }
 
-/** 재료명 하나에 대한 다이어트 힌트. (recommend 서비스에서 재료마다 호출) */
-export function ingredientHint(name: string): IngredientHint {
-  return {
-    optional: OPTIONAL.has(name),
-    swap: swapFor(name),
-  };
-}
-
-/** 이 레시피에 가벼운 제안이 하나라도 있는지 (카드에 "가볍게 바꾸기" 뱃지 노출용). */
+/** 이 레시피에 가벼운 대체 제안이 하나라도 있는지 (카드에 "가볍게 바꾸기" 뱃지 노출용). */
 export function hasLighterOption(names: string[]): boolean {
-  return names.some((n) => OPTIONAL.has(n) || swapFor(n) !== null);
+  return names.some((n) => swapFor(n) !== null);
 }

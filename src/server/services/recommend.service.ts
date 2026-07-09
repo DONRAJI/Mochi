@@ -2,7 +2,8 @@ import "server-only";
 import { db } from "@/server/db";
 import { computeMatchRate, missingIngredients } from "@/features/recommend/ranking";
 import { deriveBadge } from "@/features/recommend/nutrition";
-import { ingredientHint } from "@/features/recommend/substitution";
+import { swapFor } from "@/features/recommend/substitution";
+import { isPractical, isSkippableRare } from "@/features/recommend/practicality";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
 import {
   soloFriendlyScore,
@@ -83,7 +84,15 @@ export async function getRecommendations(
         r.hiddenCombo.every((i) => ownedSet.has(canonicalize(i, canon))),
     );
 
-    const cards = visibleRecipes
+    // 실용성 하드 컷 — 초희귀 재료·재료 과다 '정식 요리'는 추천에서 제외(1153→약 509).
+    // 빈도는 전체 코퍼스로 집계(ingFreq), 내 요리(ownerId)는 항상 노출.
+    const practicalRecipes = visibleRecipes.filter(
+      (r) =>
+        r.ownerId != null ||
+        isPractical([...new Set(r.ingredients.map((i) => canonicalize(i, canon)))], ingFreq),
+    );
+
+    const cards = practicalRecipes
       .map((r) => {
         const required = r.ingredients.map((i) => canonicalize(i, canon));
         const seen = new Set<string>();
@@ -108,8 +117,15 @@ export async function getRecommendations(
             })
             .map((raw) => {
               const name = canonicalize(raw, canon);
-              const hint = ingredientHint(raw);
-              return { name, owned: ownedSet.has(name), optional: hint.optional, swap: hint.swap };
+              const isOwned = ownedSet.has(name);
+              return {
+                name,
+                owned: isOwned,
+                // '없어도 괜찮아요'는 미보유 + 코퍼스 희귀 재료만 — 흔한 양념(후추·깨)엔 침묵.
+                // 요리 이름의 주인공 재료도 제외 (practicality.isSkippableRare).
+                optional: !isOwned && isSkippableRare(name, ingFreq, r.name),
+                swap: swapFor(raw),
+              };
             }),
           mine: r.ownerId != null,
           usesExpiring: required.some((n) => expiringSet.has(n)),
