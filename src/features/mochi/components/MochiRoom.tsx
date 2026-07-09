@@ -18,7 +18,7 @@ const bubbleFor: Record<string, string> = {
   happy: "오늘도 잘 먹었네요, 뿌듯해요 😊",
   sleepy: "쉬어가도 괜찮아요 😴",
   idle: messages.mochi.greet,
-  cheer: "도감이 한 칸 늘었어요 🎉",
+  cheer: "잘 먹었네요! 씨앗이 쑥 자랐어요 🌱",
 };
 
 /** 🏠 홈 (모찌의 방) — 모찌 상태·스트릭이 실데이터로 반응. 숫자(체중/칼로리)는 없음(불변 #2). */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +26,7 @@ export function RecipeDetailModal({
   mode: MealMode;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const mark = useMarkMealEaten();
   const addPlan = useAddPlan();
   const addShopping = useAddShopping();
@@ -77,9 +79,21 @@ export function RecipeDetailModal({
             {result.shieldUsed && (
               <p className="text-sm text-cocoa-soft">🛡️ 보호권이 스트릭을 지켜줬어요!</p>
             )}
-            <Button className="w-full" onClick={close}>
-              닫기
-            </Button>
+            {/* 기록→뽑기 브릿지 — 씨앗이 다 모였으면 도감으로 바로 (루프의 마지막 연결) */}
+            {result.canDraw ? (
+              <div className="flex w-full gap-2">
+                <Button variant="soft" className="flex-1" onClick={close}>
+                  닫기
+                </Button>
+                <Button className="flex-1" onClick={() => router.push("/collection")}>
+                  🎁 뽑으러 가기
+                </Button>
+              </div>
+            ) : (
+              <Button className="w-full" onClick={close}>
+                닫기
+              </Button>
+            )}
           </div>
         ) : (
           <>
@@ -135,7 +149,7 @@ export function RecipeDetailModal({
             </div>
 
             <Button className="mt-2 w-full" onClick={eat}>
-              {mark.isPending ? "기록하는 중…" : "잘 먹었어요! 도감에 담기"}
+              {mark.isPending ? "기록하는 중…" : "잘 먹었어요! 🌱 씨앗 받기"}
             </Button>
             {mark.isError && (
               <p className="mt-2 text-center text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>

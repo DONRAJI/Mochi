@@ -22,6 +22,7 @@ export interface MealRecordResponse {
   cardAcquired: boolean; // 새 도감 카드 획득 여부
   shieldUsed: boolean; // 보호권이 이번에 빠진 날을 막았는지 (#9)
   seedsEarned: number; // 이번 기록으로 얻은 뽑기 씨앗 🌱 (PRD 12.2)
+  canDraw: boolean; // 씨앗이 뽑기 1회분 이상 모였는지 — 기록→뽑기 브릿지(서버가 결정)
 }
 
 /** 오늘의 끼니 한 줄 (마이 '오늘의 기록' 스트립). */
