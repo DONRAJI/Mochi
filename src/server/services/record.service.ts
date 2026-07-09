@@ -6,7 +6,7 @@ import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
-import { mealSeeds, cappedSeedGrant } from "@/features/collection/gacha";
+import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
 import {
   computeBMR,
   computeTDEE,
@@ -109,13 +109,14 @@ export async function markMealEaten(
     });
     const usedToday = acct?.seedDay === today ? acct.seedsToday : 0;
     const seedsEarned = cappedSeedGrant(want, usedToday);
-    await tx.user.update({
+    const updated = await tx.user.update({
       where: { id: userId },
       data: {
         mochiSeeds: { increment: seedsEarned },
         seedDay: today,
         seedsToday: usedToday + seedsEarned,
       },
+      select: { mochiSeeds: true },
     });
 
     // 모찌 cheer 반응
@@ -134,6 +135,7 @@ export async function markMealEaten(
       cardAcquired,
       shieldUsed: s.shieldUsed,
       seedsEarned,
+      canDraw: updated.mochiSeeds >= DRAW_COST, // 기록→뽑기 브릿지 — 뽑기 가능 여부는 서버가 결정
     };
   });
 }

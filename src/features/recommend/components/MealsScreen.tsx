@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ModeToggle } from "./ModeToggle";
 import { SortFilterChips } from "./SortFilterChips";
 import { CategoryFilterChips } from "./CategoryFilterChips";
@@ -27,6 +28,19 @@ export function MealsScreen() {
   const [showAll, setShowAll] = useState(false); // 기본은 몇 개만 — 주간 식단이 금방 보이게
   const { data, isPending, isError } = useRecommendations(mode);
   const toggleFav = useToggleFavorite();
+
+  // ?open=<id> 딥링크 — 홈 '오늘의 제안' 탭 시 그 메뉴 상세가 바로 열린다(다시 찾지 않게, PRD 4.2).
+  // 한 번 열고 나면 소비 처리 — 모달 닫은 뒤 데이터 갱신으로 다시 열리지 않게.
+  const openId = useSearchParams().get("open");
+  const openConsumed = useRef(false);
+  useEffect(() => {
+    if (!openId || openConsumed.current || !data) return;
+    const found = data.find((r) => r.id === openId);
+    if (found) {
+      setSelected(found);
+      openConsumed.current = true;
+    }
+  }, [openId, data]);
 
   function changeMode(v: string) {
     setMode(v as MealMode);

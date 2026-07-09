@@ -19,7 +19,6 @@ export const messages = {
   },
   empty: {
     fridge: "냉장고가 비어도 괜찮아요 — 외식 모드 볼까요?",
-    collection: "아직 비어 있어요. 오늘 한 칸 채워볼까요?",
     meals: "오늘은 모찌가 메뉴를 고르는 중이에요.",
   },
   mochi: {

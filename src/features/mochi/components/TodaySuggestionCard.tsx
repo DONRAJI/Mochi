@@ -14,7 +14,7 @@ function hintFor(r: RecommendationResponse): string {
   return r.badge ?? "오늘 이거 어때요?";
 }
 
-/** 오늘의 제안 — 실제 요리 추천 상위 3(냉장고·취향 반영). 탭하면 식단으로 (PRD 5.1). */
+/** 오늘의 제안 — 실제 요리 추천 상위 3(냉장고·취향 반영). 탭하면 그 메뉴 상세가 바로 열린다 (PRD 4.2 30초 완결). */
 export function TodaySuggestionCard() {
   const { data } = useRecommendations("cook");
   const top = (data ?? []).slice(0, 3);
@@ -26,7 +26,7 @@ export function TodaySuggestionCard() {
       <p className="mb-2 text-sm text-cocoa-faint">오늘의 제안</p>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {top.map((r, i) => (
-          <Link key={r.id} href="/meals" className="min-w-[78%]">
+          <Link key={r.id} href={`/meals?open=${encodeURIComponent(r.id)}`} className="min-w-[78%]">
             <Card className={TONES[i % TONES.length]}>
               <div className="flex items-center gap-3">
                 {r.imageUrl ? (
