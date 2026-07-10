@@ -11,6 +11,7 @@ import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
 import { useAddPlan } from "../hooks/usePlan";
 import { useAddShopping } from "@/features/fridge/hooks/useShopping";
 import { weekDates, WEEKDAY_LABEL } from "../week";
+import { mgrSourceUrl } from "../mgrParse";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
@@ -128,8 +129,20 @@ export function RecipeDetailModal({
               </ol>
             ) : mode === "eatout" ? (
               <p className="mt-4 text-center text-sm text-cocoa-soft">맛있게 즐기고 아래로 기록해요 😊</p>
-            ) : (
+            ) : mode === "convenience" ? (
               <p className="mt-4 text-center text-sm text-cocoa-soft">가까운 편의점에서 만나요 🏪</p>
+            ) : mgrSourceUrl(item.id) ? (
+              // 만개의레시피 인기 레시피 — 덤프에 조리 단계가 없어 원문으로 연결 (결정은 모찌, 조리법은 원문)
+              <a
+                href={mgrSourceUrl(item.id)!}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 block rounded-mochi bg-cream-50 px-4 py-2.5 text-center text-sm text-cocoa-soft shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+              >
+                📖 자세한 조리법 보기 — 만개의레시피
+              </a>
+            ) : (
+              <p className="mt-4 text-center text-sm text-cocoa-soft">재료만 있으면 금방이에요 😊</p>
             )}
 
             <div className="mt-4 flex items-center gap-1.5">
@@ -216,7 +229,8 @@ export function RecipeDetailModal({
 
 /**
  * 재료 + 다이어트 힌트 — "냉장고 재료로 가볍게" 컨셉.
- * 가진 재료는 민트로 체크, 없어도 되는 재료엔 태그, 고열량은 가벼운 대체를 부드럽게 제안(강요 아님).
+ * 가진 재료는 민트로 체크, 고열량은 가벼운 대체를 부드럽게 제안(강요 아님).
+ * '없어도 괜찮아요'(optional)는 잘 안 쓰는 희귀 재료만 — 흔한 양념(후추·깨)엔 침묵(사용자 피드백).
  */
 function IngredientHints({ ingredients }: { ingredients: RecipeIngredient[] }) {
   const swaps = ingredients.filter((i) => i.swap);
@@ -254,7 +268,7 @@ function IngredientHints({ ingredients }: { ingredients: RecipeIngredient[] }) {
               </li>
             ))}
             {optionals.map((i) => (
-              <li key={i.name}>{i.name}는 없어도 괜찮아요</li>
+              <li key={i.name}>{i.name}는 잘 안 쓰는 재료예요 — 없어도 괜찮아요</li>
             ))}
           </ul>
         </div>

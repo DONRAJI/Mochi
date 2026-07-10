@@ -11,7 +11,11 @@ describe("deriveBadge", () => {
   it("고칼로리는 포만감", () => {
     expect(deriveBadge(600, 16)).toBe("🫧 포만감"); // 64/600 = 0.1, kcal>350
   });
-  it("영양 정보 없으면 포만감 기본", () => {
-    expect(deriveBadge(null, null)).toBe("🫧 포만감");
+  it("영양 정보를 아예 모르면 뱃지 없음 — 지어내지 않는다(정직화)", () => {
+    expect(deriveBadge(null, null)).toBeNull();
+  });
+  it("kcal만 알아도 그 근거로는 뱃지를 준다", () => {
+    expect(deriveBadge(300, null)).toBe("🍃 가벼움");
+    expect(deriveBadge(600, null)).toBe("🫧 포만감");
   });
 });
