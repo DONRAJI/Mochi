@@ -179,7 +179,7 @@ async function main(): Promise<void> {
         // Match spoon
         const spoonMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:스푼|T|큰술|수저)/i);
         if (spoonMatch) {
-           let s = parseFloat(spoonMatch[1]);
+           const s = parseFloat(spoonMatch[1]);
            if (/볼록|수북|듬뿍/.test(t)) amountGrams = s * 13.5;
            else amountGrams = s * 8.5;
         } else if (/볼록하게\s*1스푼|듬뿍\s*1스푼/.test(t)) {
