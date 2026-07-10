@@ -7,6 +7,7 @@ import {
   parseMgrMinutes,
   parseMgrServings,
   emojiForKind,
+  dishKey,
   MGR_ID_PREFIX,
 } from "../src/features/recommend/mgrParse";
 
@@ -123,11 +124,13 @@ async function main(): Promise<void> {
   );
   console.log(`페르소나 필터 통과: ${persona.length}개`);
 
-  // 같은 요리명은 조회수 최고(동률 시 추천수)만 — 사용자 지정 dedup 규칙
+  // 같은 요리는 조회수 최고(동률 시 추천수)만 — dedup 키는 동의어·어순 정규화(dishKey)로
+  // "간장계란밥/간장달걀밥"처럼 표기만 다른 같은 요리까지 하나로 본다.
   const byDish = new Map<string, MgrRow>();
   for (const r of persona) {
-    const cur = byDish.get(r.nm);
-    if (!cur || r.inq > cur.inq || (r.inq === cur.inq && r.rcmm > cur.rcmm)) byDish.set(r.nm, r);
+    const key = dishKey(r.nm);
+    const cur = byDish.get(key);
+    if (!cur || r.inq > cur.inq || (r.inq === cur.inq && r.rcmm > cur.rcmm)) byDish.set(key, r);
   }
   const picked = [...byDish.values()].sort((a, b) => b.inq - a.inq).slice(0, TOP);
   console.log(`요리명 dedup ${byDish.size}개 → top${TOP} 적재 (컷 조회수 ${picked[picked.length - 1]?.inq ?? "-"})`);

@@ -103,6 +103,40 @@ export function emojiForKind(knd: string): string {
   return KIND_EMOJI[knd] ?? "🍳";
 }
 
+/**
+ * 요리명 동의어 → 표준형 (같은 요리 다른 표기 dedup용). 긴 패턴 먼저 두어 부분 겹침 방지.
+ * 실측(2026-07-09): top1000에서 참 중복 20그룹(간장계란밥/간장달걀밥, 닭도리탕/닭볶음탕…), 오탐 0.
+ */
+const DISH_SYNONYMS: [string, string][] = [
+  ["닭도리탕", "닭볶음탕"],
+  ["계란후라이", "계란프라이"],
+  ["달걀", "계란"],
+  ["쇠고기", "소고기"],
+  ["오뎅", "어묵"],
+  ["소세지", "소시지"],
+  ["후라이", "프라이"],
+  ["돈까스", "돈가스"],
+  ["스파게티", "파스타"],
+  ["쭈꾸미", "주꾸미"],
+  ["만둣국", "만두국"],
+  ["순댓국", "순대국"],
+  ["북엇국", "북어국"],
+  ["김칫국", "김치국"],
+  ["떡볶기", "떡볶이"],
+  ["찌게", "찌개"],
+];
+
+/**
+ * 요리명 → dedup 키. 공백 제거 → 동의어 표준화 → **글자 정렬(어순 무시)**.
+ * "간장달걀밥"과 "간장계란밥", "진미채간장볶음"과 "간장진미채볶음"이 같은 키가 된다.
+ * ⚠️ 재료 유사도 병합은 의도적으로 안 함 — 어묵잡채/부추잡채(Jaccard 0.92)처럼 과병합됨.
+ */
+export function dishKey(name: string): string {
+  let k = name.replace(/\s+/g, "");
+  for (const [from, to] of DISH_SYNONYMS) k = k.split(from).join(to);
+  return [...k].sort().join("");
+}
+
 /** id `mgr-<sno>` ↔ 만개의레시피 원문 URL (클라 RecipeDetailModal '조리법 보기' 링크 공용). */
 export const MGR_ID_PREFIX = "mgr-";
 

@@ -5,6 +5,7 @@ import {
   parseMgrMinutes,
   parseMgrServings,
   mgrSourceUrl,
+  dishKey,
 } from "./mgrParse";
 
 describe("mgrParse — CSV", () => {
@@ -59,5 +60,22 @@ describe("mgrParse — 메타", () => {
     expect(mgrSourceUrl("mgr-6889186")).toBe("https://www.10000recipe.com/recipe/6889186");
     expect(mgrSourceUrl("cookrcp-123")).toBeNull();
     expect(mgrSourceUrl("seed-recipe-egg")).toBeNull();
+  });
+});
+
+describe("mgrParse — 같은 요리 dedup 키(dishKey)", () => {
+  it("동의어 표기(달걀↔계란·도리탕↔볶음탕·오뎅↔어묵)를 같은 요리로 본다", () => {
+    expect(dishKey("간장달걀밥")).toBe(dishKey("간장계란밥"));
+    expect(dishKey("닭도리탕")).toBe(dishKey("닭볶음탕"));
+    expect(dishKey("오뎅탕")).toBe(dishKey("어묵탕"));
+    expect(dishKey("쇠고기 미역국")).toBe(dishKey("소고기미역국"));
+  });
+  it("어순만 다른 이름도 같은 요리로 본다", () => {
+    expect(dishKey("진미채간장볶음")).toBe(dishKey("간장진미채볶음"));
+  });
+  it("다른 요리는 재료가 비슷해도 다른 키다(과병합 방지)", () => {
+    expect(dishKey("오이무침")).not.toBe(dishKey("오징어초무침"));
+    expect(dishKey("어묵잡채")).not.toBe(dishKey("부추잡채"));
+    expect(dishKey("계란찜")).not.toBe(dishKey("계란국"));
   });
 });
