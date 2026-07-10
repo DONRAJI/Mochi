@@ -1,4 +1,5 @@
 import { PrismaClient, type Rarity } from "@prisma/client";
+import { massiveIngredientMasters } from "./massive_seed";
 
 /**
  * 시드 콘텐츠 (PRD 리스크 #4). 실행: `npx -y tsx prisma/seed.ts` 또는 `npx prisma db seed`
@@ -54,6 +55,42 @@ const ingredientMasters = [
   { name: "블루베리", category: "과일", emoji: "🫐", kcal: 57, protein: 1, aliases: [] },
   { name: "포도", category: "과일", emoji: "🍇", kcal: 69, protein: 1, aliases: [] },
   { name: "레몬", category: "과일", emoji: "🍋", kcal: 29, protein: 1, aliases: [] },
+  
+  // 1스푼(10g) 기준 양념류 (당류, 오일, 양념 카테고리는 파싱 시 1스푼 단위로 취급)
+  { name: "설탕", category: "당류", emoji: "🧂", kcal: 40, protein: 0, aliases: [] },
+  { name: "올리고당", category: "당류", emoji: "🍯", kcal: 30, protein: 0, aliases: [] },
+  { name: "물엿", category: "당류", emoji: "🍯", kcal: 30, protein: 0, aliases: [] },
+  { name: "꿀", category: "당류", emoji: "🍯", kcal: 30, protein: 0, aliases: [] },
+  { name: "매실액", category: "당류", emoji: "🍯", kcal: 25, protein: 0, aliases: ["매실청"] },
+  { name: "참기름", category: "오일", emoji: "🫙", kcal: 90, protein: 0, aliases: [] },
+  { name: "들기름", category: "오일", emoji: "🫙", kcal: 90, protein: 0, aliases: [] },
+  { name: "식용유", category: "오일", emoji: "🫙", kcal: 90, protein: 0, aliases: [] },
+  { name: "올리브유", category: "오일", emoji: "🫙", kcal: 90, protein: 0, aliases: ["올리브오일"] },
+  { name: "마요네즈", category: "오일", emoji: "🥣", kcal: 70, protein: 0, aliases: [] },
+  { name: "간장", category: "양념", emoji: "🍶", kcal: 5, protein: 0, aliases: ["진간장", "국간장"] },
+  { name: "굴소스", category: "양념", emoji: "🫙", kcal: 10, protein: 0, aliases: [] },
+  { name: "고추장", category: "양념", emoji: "🌶️", kcal: 20, protein: 1, aliases: [] },
+  { name: "된장", category: "양념", emoji: "🫘", kcal: 20, protein: 1, aliases: [] },
+  { name: "액젓", category: "양념", emoji: "🐟", kcal: 5, protein: 0, aliases: ["멸치액젓", "까나리액젓", "새우젓"] },
+  { name: "맛술", category: "양념", emoji: "🍶", kcal: 15, protein: 0, aliases: ["미림", "청주"] },
+  { name: "케찹", category: "양념", emoji: "🍅", kcal: 12, protein: 0, aliases: [] },
+  
+  // 추가 100g 기준 식재료
+  { name: "청양고추", category: "채소", emoji: "🌶️", kcal: 40, protein: 2, aliases: [] },
+  { name: "애호박", category: "채소", emoji: "🥒", kcal: 15, protein: 1, aliases: ["호박"] },
+  { name: "무", category: "채소", emoji: "🥬", kcal: 15, protein: 1, aliases: [] },
+  { name: "양배추", category: "채소", emoji: "🥬", kcal: 25, protein: 1, aliases: [] },
+  { name: "콩나물", category: "채소", emoji: "🌱", kcal: 30, protein: 3, aliases: ["숙주"] },
+  { name: "부추", category: "채소", emoji: "🌿", kcal: 30, protein: 2, aliases: [] },
+  { name: "깻잎", category: "채소", emoji: "🌿", kcal: 40, protein: 3, aliases: [] },
+  { name: "홍고추", category: "채소", emoji: "🌶️", kcal: 40, protein: 2, aliases: [] },
+  { name: "스팸", category: "가공육", emoji: "🥓", kcal: 280, protein: 13, aliases: [] },
+  { name: "베이컨", category: "가공육", emoji: "🥓", kcal: 400, protein: 14, aliases: [] },
+  { name: "어묵", category: "가공수산", emoji: "🍢", kcal: 150, protein: 10, aliases: [] },
+  { name: "맛살", category: "가공수산", emoji: "🦀", kcal: 100, protein: 8, aliases: [] },
+  { name: "부침가루", category: "기타", emoji: "🌾", kcal: 350, protein: 10, aliases: ["밀가루", "튀김가루"] },
+  { name: "오리", category: "단백질", emoji: "🦆", kcal: 250, protein: 15, aliases: ["오리고기", "생오리", "오리슬라이스"] },
+  ...massiveIngredientMasters,
 ];
 
 const recipes = [

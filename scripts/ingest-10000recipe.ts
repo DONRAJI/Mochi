@@ -50,6 +50,7 @@ interface MgrRow {
   minutes: number | null;
   servings: number;
   ingredients: string[];
+  raw_mtrl: string;
 }
 
 function loadMerged(dir: string): Map<string, MgrRow> {
@@ -97,6 +98,7 @@ function loadMerged(dir: string): Map<string, MgrRow> {
         minutes: parseMgrMinutes(row[I.time] ?? ""),
         servings: parseMgrServings(row[I.inbun] ?? ""),
         ingredients: parseMgrIngredients(row[I.mtrl] ?? ""),
+        raw_mtrl: row[I.mtrl] ?? "",
       });
       n++;
     }
@@ -135,13 +137,122 @@ async function main(): Promise<void> {
   const picked = [...byDish.values()].sort((a, b) => b.inq - a.inq).slice(0, TOP);
   console.log(`요리명 dedup ${byDish.size}개 → top${TOP} 적재 (컷 조회수 ${picked[picked.length - 1]?.inq ?? "-"})`);
 
+  console.log(`재료 마스터 칼로리 데이터 로드 중...`);
+  const masters = await db.ingredientMaster.findMany({ select: { name: true, aliases: true, kcal: true, category: true } });
+  const kcalMap = new Map<string, { kcal: number, isSpoon: boolean }>();
+  for (const m of masters) {
+    if (m.kcal != null) {
+      const isSpoon = m.category === "양념" || m.category === "당류" || m.category === "오일";
+      kcalMap.set(m.name, { kcal: m.kcal, isSpoon });
+      for (const alias of m.aliases) kcalMap.set(alias, { kcal: m.kcal, isSpoon });
+    }
+  }
+
+  const ZERO_KCAL = new Set(["소금", "후추", "후춧가루", "고춧가루", "고추가루", "물", "통깨", "참깨", "깨소금", "식초", "다시마"]);
+
   let count = 0;
   for (const r of picked) {
+    let totalKcal = 0;
+    
+    // r.raw_mtrl looks like: "[재료] 당면 1줌반| 당근 50g [양념] 간장 2큰술"
+    const rawMatch = r.raw_mtrl; 
+    const tokens = rawMatch.replace(/\[[^\]]*\]/g, "|").split("|");
+    
+    for (let t of tokens) {
+      t = t.trim();
+      if (!t) continue;
+      
+      const cleanName = t.replace(/\([^)]*\)/g, "").replace(/[0-9½⅓¼⅔¾][^|]*$/, "").replace(/\s*(약간|적당량|적당히|조금|취향껏|기호에\s*따라|한\s*줌|반\s*줌)$/, "").replace(/[·.,~!?*♡+\-]+$/, "").trim().replace(/\s{2,}/g, " ");
+      
+      if (cleanName === "") continue;
+      if (ZERO_KCAL.has(cleanName) || ZERO_KCAL.has(cleanName.replace(/\s+/g, ""))) continue;
+
+      const master = kcalMap.get(cleanName) ?? kcalMap.get(cleanName.replace(/\s+/g, ""));
+      if (!master) continue;
+
+      let amountGrams = 0;
+
+      // Match g or ml
+      const gMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:g|그램|gram|ml)/i);
+      if (gMatch) amountGrams = parseFloat(gMatch[1]);
+      else {
+        // Match spoon
+        const spoonMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:스푼|T|큰술|수저)/i);
+        if (spoonMatch) {
+           let s = parseFloat(spoonMatch[1]);
+           if (/볼록|수북|듬뿍/.test(t)) amountGrams = s * 13.5;
+           else amountGrams = s * 8.5;
+        } else if (/볼록하게\s*1스푼|듬뿍\s*1스푼/.test(t)) {
+           amountGrams = 13.5;
+        }
+      }
+
+      if (amountGrams === 0) {
+        const mCount = t.match(/(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?/); 
+        let countVal = 1;
+        if (mCount) {
+          if (mCount[2]) countVal = parseFloat(mCount[1]) / parseFloat(mCount[2]);
+          else countVal = parseFloat(mCount[1]);
+        }
+
+        if (/(포기)/.test(t)) {
+           amountGrams = countVal * 1500; // 배추 1포기 약 1.5kg
+        } else if (/(모)/.test(t)) {
+           amountGrams = countVal * 300; // 두부 1모 약 300g
+        } else if (/(공기|그릇)/.test(t)) {
+           amountGrams = countVal * 200; // 밥 1공기 약 200g
+        } else if (/마리/.test(t)) {
+           amountGrams = countVal * 800; // 1마리 보통 800g
+        } else if (/(줌|주먹)/.test(t)) {
+           amountGrams = countVal * 50; // 1줌 약 50g
+        } else if (/(토막|톨)/.test(t)) {
+           let baseGrams = 85; // 생선 등 평균 1토막 약 85g 
+           if (/마늘|생강/.test(cleanName)) baseGrams = 5; // 1톨 = 5g
+           else if (/무/.test(cleanName)) baseGrams = 150; // 1토막 = 150g
+           else if (/고기|돼지|소|육|스테이크/.test(cleanName)) baseGrams = 100;
+           amountGrams = countVal * baseGrams;
+        } else if (/(개|뿌리|장|조각|대|덩어리|송이)/.test(t)) {
+           let baseGrams = 100; 
+           if (/양파/.test(cleanName)) baseGrams = 170; // 중간사이즈 170g
+           else if (/당근/.test(cleanName)) baseGrams = 150; // 중간사이즈 150g
+           else if (/대파/.test(cleanName) && /대/.test(t)) baseGrams = 140; // 1대 140g (1/2대 70g)
+           else if (/마늘|쪽파|청양고추|고추/.test(cleanName)) baseGrams = 5;
+           else if (/방울토마토|새우|메추리알|호두|아몬드|바지락|조개|홍합|굴|멸치/.test(cleanName)) baseGrams = 15;
+           else if (/표고버섯|양송이|버섯/.test(cleanName)) baseGrams = 20; // 1송이/1개 = 약 20g
+           else if (/계란|달걀|노른자|흰자/.test(cleanName)) baseGrams = 50;
+           else if (/무|배추|수박|늙은호박|단호박/.test(cleanName)) baseGrams = 800;
+           
+           amountGrams = countVal * baseGrams; 
+        } else if (/(적당량|약간|조금)/.test(t) && master.isSpoon) {
+           if (/(기름|오일|유|식용유)$/.test(cleanName)) {
+             amountGrams = 20; 
+           } else {
+             amountGrams = 8.5; 
+           }
+        } else if (master.isSpoon) {
+           amountGrams = 8.5; 
+        } else {
+           amountGrams = 50; // 완전 생략 시 기본량 50g
+        }
+      }
+      
+      if (master.isSpoon) {
+         // DB stored per 10g basis for spoons.
+         totalKcal += master.kcal * (amountGrams / 10);
+      } else {
+         // DB stored per 100g basis.
+         totalKcal += master.kcal * (amountGrams / 100);
+      }
+    }
+
+    const estimatedKcal = Math.round(totalKcal / r.servings);
+
     const data = {
       name: r.nm,
       emoji: emojiForKind(r.knd),
       minutes: r.minutes ?? MAX_MINUTES,
       servings: r.servings,
+      kcal: estimatedKcal,
       ingredients: r.ingredients,
       steps: [] as string[], // 덤프에 조리 단계 없음 — 상세는 원문 링크(mgrSourceUrl)로
     };
