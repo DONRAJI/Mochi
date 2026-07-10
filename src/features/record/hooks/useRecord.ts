@@ -13,6 +13,7 @@ import {
   deleteMeal,
   addWeight,
   recordPhoto,
+  fetchMealHistory,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
 import type { MarkMealRequest, ProfileRequest } from "../types";
@@ -25,6 +26,19 @@ export function useStreak() {
 /** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */
 export function useTodayMeals() {
   return useQuery({ queryKey: ["record", "today"], queryFn: fetchTodayMeals, retry: false });
+}
+
+/**
+ * 식사·체중 회고 — 월(month) 안에서 page 단위. month null이면 서버가 최근 달을 고른다.
+ * 먹었어요·체중 기록 시 ["record"] 무효화로 갱신. 월/페이지 전환 시 이전 데이터 유지(깜빡임↓).
+ */
+export function useMealHistory(month: string | null, page: number, size = 10) {
+  return useQuery({
+    queryKey: ["record", "history", month, page, size],
+    queryFn: () => fetchMealHistory({ month: month ?? undefined, page, size }),
+    placeholderData: (prev) => prev,
+    retry: false,
+  });
 }
 
 /** 오늘의 kcal 예산(TDEE, detail 모드) — 프로필·모드·먹었어요 변경 시 ["record"] 무효화로 갱신. */
@@ -68,7 +82,8 @@ export function useAddWeight() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (weight: number) => addWeight(weight),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["record", "weight"] }),
+    // 체중 그래프 + 회고 타임라인(그날 체중) 함께 갱신되게 record 전체 무효화.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["record"] }),
   });
 }
 

@@ -6,6 +6,12 @@ import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
+import {
+  buildMealHistory,
+  availableMonths,
+  kstDayKey as kstDayKeyOf,
+  type HistoryMeal,
+} from "@/features/record/history";
 import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
 import {
   computeBMR,
@@ -25,6 +31,7 @@ import type {
   TodayMealResponse,
   WeightLogResponse,
   DailyBudgetResponse,
+  MealHistoryResponse,
 } from "@/features/record/types";
 import type { MochiState } from "@/types/mochi";
 import type { Prisma } from "@prisma/client";
@@ -175,6 +182,98 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
       photoUrl: r.photoUrl ? await signMealPhoto(r.photoUrl) : null,
     })),
   );
+}
+
+/** refId(mode별 카탈로그 id) → 먹은 요리/메뉴 이름 맵. 회고 타임라인에서 "저녁 · 제육볶음"으로 보이게. */
+async function resolveMealTitles(
+  rows: { mode: string; refId: string | null }[],
+): Promise<Map<string, string>> {
+  const ids = { cook: new Set<string>(), eatout: new Set<string>(), convenience: new Set<string>() };
+  for (const r of rows) {
+    if (r.refId && (r.mode === "cook" || r.mode === "eatout" || r.mode === "convenience")) {
+      ids[r.mode].add(r.refId);
+    }
+  }
+  const [recipes, menus, convs] = await Promise.all([
+    ids.cook.size
+      ? db.recipe.findMany({ where: { id: { in: [...ids.cook] } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    ids.eatout.size
+      ? db.menu.findMany({ where: { id: { in: [...ids.eatout] } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    ids.convenience.size
+      ? db.convenienceItem.findMany({
+          where: { id: { in: [...ids.convenience] } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const map = new Map<string, string>();
+  for (const c of [...recipes, ...menus, ...convs]) map.set(c.id, c.name);
+  return map;
+}
+
+/**
+ * 식사·체중 회고 타임라인 (마이 '기록 되돌아보기', PRD 6장 회고 흐름).
+ * 월(month)을 골라 그 달을 page 단위로 돌려준다. detail이면 kcal 포함(#4).
+ * delta는 전체 기록 기준으로 계산한 뒤 월/페이지로 잘라, 달 경계를 넘는 "다음날 체중"도 정확.
+ * 사진은 반환하는 페이지분만 서명(비공개 버킷) — 페이지 밖은 서명 호출 안 함.
+ */
+export async function listMealHistory(
+  userId: string,
+  opts: { month?: string; page: number; size: number },
+): Promise<MealHistoryResponse> {
+  const [mealRows, weightRows, user] = await Promise.all([
+    db.mealRecord.findMany({
+      where: { userId },
+      orderBy: { eatenAt: "desc" },
+      select: { id: true, slot: true, mode: true, refId: true, kcal: true, photoUrl: true, eatenAt: true },
+    }),
+    db.weightLog.findMany({
+      where: { userId },
+      orderBy: { loggedAt: "desc" },
+      select: { weight: true, loggedAt: true },
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+  ]);
+  const detail = user?.displayMode === "detail";
+  const titles = await resolveMealTitles(mealRows);
+
+  // 사진 경로는 아직 서명 전(raw) — 월/페이지로 슬라이스 후 반환분만 서명한다.
+  const meals: HistoryMeal[] = mealRows.map((r) => ({
+    id: r.id,
+    slot: r.slot,
+    mode: r.mode,
+    title: r.refId ? (titles.get(r.refId) ?? null) : null,
+    kcal: detail ? r.kcal : null,
+    photoUrl: r.photoUrl, // raw 경로
+    eatenAt: r.eatenAt.toISOString(),
+  }));
+  const weights = weightRows.map((w) => ({ weight: Number(w.weight), loggedAt: w.loggedAt.toISOString() }));
+
+  const allDays = buildMealHistory(meals, weights); // 전체(delta 계산 위해)
+  const months = availableMonths(allDays);
+  // 요청 달이 유효하면 그 달, 아니면 가장 최근 기록 달, 기록이 없으면 이번 달(KST).
+  const month =
+    opts.month && months.includes(opts.month)
+      ? opts.month
+      : (months[0] ?? kstDayKeyOf(new Date().toISOString()).slice(0, 7));
+
+  const monthDays = allDays.filter((d) => d.date.startsWith(month));
+  const totalPages = Math.max(1, Math.ceil(monthDays.length / opts.size));
+  const page = Math.min(Math.max(0, opts.page), totalPages - 1);
+  const days = monthDays.slice(page * opts.size, page * opts.size + opts.size);
+
+  // 반환 페이지분의 사진만 서명 URL로 (대부분 사진 없어 서명 호출 최소)
+  await Promise.all(
+    days.flatMap((day) =>
+      day.meals.map(async (m) => {
+        if (m.photoUrl) m.photoUrl = await signMealPhoto(m.photoUrl);
+      }),
+    ),
+  );
+
+  return { months, month, page, totalPages, days };
 }
 
 /** 오늘 기록 삭제(#2) — 실수 정정용. 소유자 검증. 스트릭·도감은 되돌리지 않음(죄책감 제로·단순). */

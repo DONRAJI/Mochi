@@ -9,10 +9,24 @@ import type {
   TodayMealResponse,
   WeightLogResponse,
   DailyBudgetResponse,
+  MealHistoryResponse,
 } from "../types";
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
+}
+
+/** 회고 타임라인 — 월(month) 안에서 page 단위 (마이 '기록 되돌아보기'). month 없으면 최근 달. */
+export function fetchMealHistory(params: {
+  month?: string;
+  page: number;
+  size: number;
+}): Promise<MealHistoryResponse> {
+  const q = new URLSearchParams();
+  if (params.month) q.set("month", params.month);
+  q.set("page", String(params.page));
+  q.set("size", String(params.size));
+  return fetcher<MealHistoryResponse>(`/api/records/history?${q.toString()}`);
 }
 
 export function deleteMeal(id: string): Promise<{ done: true }> {

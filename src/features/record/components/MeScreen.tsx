@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { WeightSection } from "./WeightSection";
-import { WeightHistorySection } from "./WeightHistorySection";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
@@ -45,6 +43,30 @@ export function MeScreen() {
 
       <TodayMealsStrip />
 
+      {/* 체중 기록 — 설정과 분리한 first-class 진입 (전용 화면 /me/weight, 불변 #2 유지) */}
+      <button
+        type="button"
+        onClick={() => router.push("/me/weight")}
+        className="flex items-center justify-between rounded-mochi bg-lavender-soft px-4 py-3 shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+      >
+        <span className="flex items-center gap-2 text-cocoa">
+          <span className="text-lg">⚖️</span> 체중 기록
+        </span>
+        <span className="text-sm text-cocoa-faint">주간·월별·연간 흐름 ›</span>
+      </button>
+
+      {/* 기록 되돌아보기 — 날짜별 식사+체중 회고 (전용 화면 /me/history) */}
+      <button
+        type="button"
+        onClick={() => router.push("/me/history")}
+        className="flex items-center justify-between rounded-mochi bg-mint-soft px-4 py-3 shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
+      >
+        <span className="flex items-center gap-2 text-cocoa">
+          <span className="text-lg">⏳</span> 기록 되돌아보기
+        </span>
+        <span className="text-sm text-cocoa-faint">먹은 것 · 체중 흐름 ›</span>
+      </button>
+
       <PreferencesSection />
 
       <button
@@ -52,16 +74,10 @@ export function MeScreen() {
         onClick={() => setShowStats((s) => !s)}
         className="flex items-center justify-between rounded-mochi bg-cream-50 px-4 py-3 shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
       >
-        <span className="text-cocoa">맞춤·체중 더보기</span>
+        <span className="text-cocoa">맞춤 설정 더보기</span>
         <span className="text-sm text-cocoa-faint">{showStats ? "접기" : "펼치기"}</span>
       </button>
-      {showStats && (
-        <>
-          <ProfileSection />
-          <WeightSection />
-          <WeightHistorySection />
-        </>
-      )}
+      {showStats && <ProfileSection />}
 
       <MeMenuList />
 

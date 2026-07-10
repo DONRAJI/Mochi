@@ -6,8 +6,11 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useWeightLogs } from "../hooks/useRecord";
 import {
   availableYears,
+  availableGranularities,
   groupByMonth,
   groupByWeek,
+  groupByYear,
+  type Granularity,
   type PeriodStat,
   type Trend,
 } from "../weightStats";
@@ -27,23 +30,36 @@ function cellTone(avg: number, lo: number, hi: number): string {
   return "bg-cream-100";
 }
 
+const GRANULARITY_LABEL: Record<Granularity, string> = {
+  week: "주간",
+  month: "월별",
+  year: "연간",
+};
+
 /**
- * 체중 정리 — 주간/월별 그래프 + 표 (PRD 6장·6.3, 첨부 엑셀 구조: 월별 표 + 연도 토글).
- * 마이>더보기에서만 숫자 노출(불변 #2). WeightSection(입력·최근 흐름) 아래에 붙는 정리 뷰.
+ * 체중 정리 — 주간/월별/연간 그래프 + 표 (PRD 6장·6.3).
+ * 기록이 쌓일수록 단계가 열린다: 처음엔 주간만 → 다른 달이 생기면 월별 → 여러 해가 쌓이면 연간.
+ * 기본은 열려 있는 가장 넓은 시야(coarsest) — "최대로는 연간까지" 자연스레 확장.
+ * 마이 전용 체중 화면에서만 숫자 노출(불변 #2). WeightSection(입력·최근 흐름) 아래에 붙는다.
  */
 export function WeightHistorySection() {
   const { data } = useWeightLogs();
   const points = useMemo(() => data ?? [], [data]);
-  const [view, setView] = useState<"week" | "month">("month");
+
+  const levels = useMemo(() => availableGranularities(points), [points]);
+  // 사용자가 고른 단계가 아직 유효하면 유지, 아니면 열린 것 중 가장 넓은 시야로 기본.
+  const [picked, setPicked] = useState<Granularity | null>(null);
+  const view: Granularity = picked && levels.includes(picked) ? picked : levels[levels.length - 1];
 
   const years = useMemo(() => availableYears(points), [points]);
   const [year, setYear] = useState<number | null>(null);
   const activeYear = year ?? years[0] ?? new Date().getFullYear();
 
-  const stats: PeriodStat[] = useMemo(
-    () => (view === "month" ? groupByMonth(points, activeYear) : groupByWeek(points, 12)),
-    [points, view, activeYear],
-  );
+  const stats: PeriodStat[] = useMemo(() => {
+    if (view === "year") return groupByYear(points);
+    if (view === "month") return groupByMonth(points, activeYear);
+    return groupByWeek(points, 12);
+  }, [points, view, activeYear]);
 
   if (points.length < 2) return null; // 입력 섹션이 이미 빈 상태 안내를 한다
 
@@ -51,15 +67,14 @@ export function WeightHistorySection() {
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="font-display text-cocoa">체중 정리</p>
-        <SegmentedControl
-          className="w-36"
-          options={[
-            { value: "week", label: "주간" },
-            { value: "month", label: "월별" },
-          ]}
-          value={view}
-          onChange={(v) => setView(v as "week" | "month")}
-        />
+        {levels.length > 1 && (
+          <SegmentedControl
+            className="w-44"
+            options={levels.map((g) => ({ value: g, label: GRANULARITY_LABEL[g] }))}
+            value={view}
+            onChange={(v) => setPicked(v as Granularity)}
+          />
+        )}
       </div>
 
       {view === "month" && years.length > 1 && (
