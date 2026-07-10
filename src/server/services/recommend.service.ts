@@ -4,6 +4,7 @@ import { computeMatchRate, missingIngredients } from "@/features/recommend/ranki
 import { deriveBadge } from "@/features/recommend/nutrition";
 import { swapFor } from "@/features/recommend/substitution";
 import { isPractical, isSkippableRare } from "@/features/recommend/practicality";
+import { MGR_ID_PREFIX } from "@/features/recommend/mgrParse";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
 import {
   soloFriendlyScore,
@@ -84,11 +85,13 @@ export async function getRecommendations(
         r.hiddenCombo.every((i) => ownedSet.has(canonicalize(i, canon))),
     );
 
-    // 실용성 하드 컷 — 초희귀 재료·재료 과다 '정식 요리'는 추천에서 제외(1153→약 509).
-    // 빈도는 전체 코퍼스로 집계(ingFreq), 내 요리(ownerId)는 항상 노출.
+    // 실용성 하드 컷 — 초희귀 재료·재료 과다 '정식 요리'는 추천에서 제외(식약처 코퍼스 대상).
+    // 빈도는 전체 코퍼스로 집계(ingFreq). 예외: 내 요리(ownerId) + 만개의레시피(mgr-)는
+    // 조회수 10만+ 대중 검증분이라 항상 노출(파싱 노이즈로 국민 레시피가 컷되는 오판 방지).
     const practicalRecipes = visibleRecipes.filter(
       (r) =>
         r.ownerId != null ||
+        r.id.startsWith(MGR_ID_PREFIX) ||
         isPractical([...new Set(r.ingredients.map((i) => canonicalize(i, canon)))], ingFreq),
     );
 
