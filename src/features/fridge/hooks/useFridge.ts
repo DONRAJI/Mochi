@@ -5,8 +5,9 @@ import * as fridgeApi from "../api/fridge.api";
 import type { CreateIngredientRequest, IngredientResponse } from "../types";
 
 export const fridgeKey = ["fridge", "ingredients"] as const;
-// 냉장고 add/remove 공통 mutation 키 — '진행 중인 냉장고 작업 수'를 셀 때 쓴다(아래 settleIfLast).
-const fridgeMutationKey = ["fridge", "mutation"] as const;
+// 냉장고를 바꾸는 작업 공통 mutation 키 — '진행 중인 냉장고 작업 수'를 센다(아래 settleFridgeIfLast).
+// add/remove뿐 아니라 장보기→냉장고 이동(useMoveCheckedToFridge)도 이 키를 공유해 같은 가드를 받는다.
+export const fridgeMutationKey = ["fridge", "mutation"] as const;
 
 export function useIngredients() {
   return useQuery({ queryKey: fridgeKey, queryFn: fridgeApi.fetchIngredients, retry: false });
@@ -22,12 +23,13 @@ function patchFridge(qc: QueryClient, fn: (list: IngredientResponse[]) => Ingred
   qc.setQueryData<IngredientResponse[]>(fridgeKey, (old) => (old ? fn(old) : old));
 }
 /**
- * 이 냉장고 작업이 '마지막으로 진행 중'일 때만 무효화(refetch)한다.
- * 진행 중 작업이 여럿이면(연속 추가·추가 중 삭제) 중간 refetch가 다른 낙관적 변경을 덮어써
- * "다음 작업이 무시"되는 레이스가 생김 → 마지막 하나가 끝날 때 한 번만 서버와 정합(TanStack 권장).
+ * 이 냉장고 작업이 '마지막으로 진행 중'일 때만 냉장고·추천을 무효화(refetch)한다.
+ * 진행 중 작업이 여럿이면(연속 추가·삭제, 장보기 이동 중 추가 등) 중간 refetch가 다른 낙관적
+ * 변경을 덮어써 "다음 작업이 무시"되는 레이스가 생김 → 마지막 하나가 끝날 때 한 번만 서버와 정합.
  * onSettled 시점엔 자기 자신도 아직 mutating으로 세므로 === 1 이면 '내가 마지막'.
+ * fridgeMutationKey를 공유하는 작업(add/remove/이동)끼리 이 카운트로 조율된다.
  */
-function settleIfLast(qc: QueryClient) {
+export function settleFridgeIfLast(qc: QueryClient) {
   if (qc.isMutating({ mutationKey: fridgeMutationKey }) > 1) return;
   qc.invalidateQueries({ queryKey: fridgeKey }); // 실제 id·희귀도로 교체
   qc.invalidateQueries({ queryKey: ["recommend"] }); // 요리 매칭률 점등
@@ -59,7 +61,7 @@ export function useAddIngredient() {
     onError: (_e, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(fridgeKey, ctx.prev);
     },
-    onSettled: () => settleIfLast(qc),
+    onSettled: () => settleFridgeIfLast(qc),
   });
 }
 
@@ -76,6 +78,6 @@ export function useRemoveIngredient() {
     onError: (_e, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(fridgeKey, ctx.prev);
     },
-    onSettled: () => settleIfLast(qc),
+    onSettled: () => settleFridgeIfLast(qc),
   });
 }

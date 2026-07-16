@@ -42,15 +42,26 @@ function rollbackPlan(qc: QueryClient, prev: PlanSnapshot | undefined) {
   prev?.forEach(([key, data]) => qc.setQueryData(key, data));
 }
 
+// 냉장고와 같은 가드 — 진행 중 계획 작업이 여럿이면(연속 담기·이동 중 담기 등) 중간 refetch가
+// 다른 낙관적 변경을 덮어써 무시되는 레이스가 생김 → 마지막 하나가 끝날 때만 무효화.
+// 모든 계획 변경(add/remove/move/eat/autofill)이 이 키를 공유해 조율된다.
+const planMutationKey = ["plan", "mutation"] as const;
+function settlePlanIfLast(qc: QueryClient) {
+  if (qc.isMutating({ mutationKey: planMutationKey }) > 1) return;
+  qc.invalidateQueries({ queryKey: ["plan"] });
+}
+
 export function useAddPlan() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: planMutationKey,
     mutationFn: (input: AddPlanRequest) => planApi.addPlan(input),
     onMutate: async (input) => {
       const prev = await snapshotPlan(qc);
       // 서버 id가 오기 전 임시 항목으로 즉시 표시(재조회 시 실제 항목으로 교체됨).
+      const tempId = `temp-${Date.now()}`;
       const optimistic: PlannedMealResponse = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         date: input.date,
         slot: input.slot ?? null,
         mode: input.mode,
@@ -60,10 +71,14 @@ export function useAddPlan() {
         eaten: false,
       };
       patchPlan(qc, (list) => [...list, optimistic]);
-      return { prev };
+      return { prev, tempId };
+    },
+    // 임시 id를 서버 실제 항목으로 교체 — 바로 이어서 이동/먹었어요/삭제해도 실제 id로 동작.
+    onSuccess: (created, _input, ctx) => {
+      patchPlan(qc, (list) => list.map((m) => (m.id === ctx?.tempId ? created : m)));
     },
     onError: (_e, _vars, ctx) => rollbackPlan(qc, ctx?.prev),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSettled: () => settlePlanIfLast(qc),
   });
 }
 
@@ -71,14 +86,16 @@ export function useAddPlan() {
 export function useAutoFillWeek() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: planMutationKey, // 다른 계획 작업과 같은 그룹 — 진행 중이면 그쪽 마지막 settle이 refetch
     mutationFn: (dates: string[]) => planApi.autoFillWeek(dates),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSettled: () => settlePlanIfLast(qc),
   });
 }
 
 export function useRemovePlan() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: planMutationKey,
     mutationFn: (id: string) => planApi.removePlan(id),
     onMutate: async (id) => {
       const prev = await snapshotPlan(qc);
@@ -86,7 +103,7 @@ export function useRemovePlan() {
       return { prev };
     },
     onError: (_e, _id, ctx) => rollbackPlan(qc, ctx?.prev),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSettled: () => settlePlanIfLast(qc),
   });
 }
 
@@ -94,6 +111,7 @@ export function useRemovePlan() {
 export function useMovePlan() {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: planMutationKey,
     mutationFn: ({ id, ...input }: { id: string } & MovePlanRequest) => planApi.movePlan(id, input),
     onMutate: async ({ id, date, slot }) => {
       const prev = await snapshotPlan(qc);
@@ -103,7 +121,7 @@ export function useMovePlan() {
       return { prev };
     },
     onError: (_e, _vars, ctx) => rollbackPlan(qc, ctx?.prev),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSettled: () => settlePlanIfLast(qc),
   });
 }
 
@@ -112,6 +130,7 @@ export function useEatPlan() {
   const qc = useQueryClient();
   const setMochi = useMochiStore((s) => s.setState);
   return useMutation({
+    mutationKey: planMutationKey,
     mutationFn: (id: string) => planApi.eatPlan(id),
     // 캘린더에서 바로 '먹음 ✓'으로 보이게(취소선). 도감·모찌 등 다른 도메인은 성공 후 동기화.
     onMutate: async (id) => {
@@ -126,6 +145,6 @@ export function useEatPlan() {
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] });
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+    onSettled: () => settlePlanIfLast(qc), // 계획(plan)은 가드로 — 다른 도메인은 위 onSuccess에서
   });
 }
