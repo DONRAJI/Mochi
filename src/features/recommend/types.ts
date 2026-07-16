@@ -42,6 +42,7 @@ export interface RecommendationResponse {
   name: string;
   emoji: string | null;
   imageUrl: string | null; // 완성 요리 사진(cook). 없으면 emoji로 폴백
+  myPhotoUrl: string | null; // 내가 이 레시피로 찍어 올린 사진(개인 기록·나만 봄). 있으면 우선 표시
   kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4). cozy면 null
   badge: string | null;
   minutes: number | null; // cook

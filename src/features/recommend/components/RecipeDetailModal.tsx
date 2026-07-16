@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
-import { useMarkMealEaten } from "@/features/record/hooks/useRecord";
+import { useMarkMealEaten, useMarkMealWithPhoto } from "@/features/record/hooks/useRecord";
+import { resizeImage } from "@/features/record/photo";
 import { estimateSlot, SLOT_LABEL } from "@/features/record/slot";
 import { useAddPlan } from "../hooks/usePlan";
 import { useAddShopping } from "@/features/fridge/hooks/useShopping";
@@ -29,23 +30,51 @@ export function RecipeDetailModal({
 }) {
   const router = useRouter();
   const mark = useMarkMealEaten();
+  const markPhoto = useMarkMealWithPhoto(); // 사진 첨부 기록(B안)
   const addPlan = useAddPlan();
   const addShopping = useAddShopping();
-  const result = mark.data;
+  const result = mark.data ?? markPhoto.data;
+  const marking = mark.isPending || markPhoto.isPending;
+  const markError = mark.isError || markPhoto.isError;
   const [plannedDay, setPlannedDay] = useState<string | null>(null);
   const [shopped, setShopped] = useState(false);
   const [slot, setSlot] = useState<MealSlot>(estimateSlot(new Date())); // 먹었어요: 시간대 자동추정
   const [planSlot, setPlanSlot] = useState<MealSlot>("dinner"); // 담기: '저녁 뭐 먹지'가 기본
   const week = weekDates(new Date());
+  // 사진 첨부(선택) — 내가 만든 모습을 이 레시피에 남긴다(나만 봄)
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 다시 고를 수 있게
+    if (!file) return;
+    const blob = await resizeImage(file); // 업로드 전 클라 리사이즈(대용량 차단)
+    setPhotoBlob(blob);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blob);
+    });
+  }
+
+  function removePhoto() {
+    setPhotoBlob(null);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
 
   function eat() {
     if (!item) return;
-    mark.mutate({
-      mode,
-      slot, // 자동추정값 또는 사용자가 고른 끼니 (PRD 11.2)
-      refId: item.id,
-      rarity: item.rarity as MarkMealRequest["rarity"],
-    });
+    const rarity = item.rarity as MarkMealRequest["rarity"];
+    if (photoBlob) {
+      // 사진과 함께 기록 → 내 사진이 이 레시피 카드에 표시됨
+      markPhoto.mutate({ blob: photoBlob, mode, slot, refId: item.id, rarity });
+    } else {
+      mark.mutate({ mode, slot, refId: item.id, rarity }); // 시간대 자동추정 또는 고른 끼니(PRD 11.2)
+    }
   }
 
   function planTo(date: string, label: string) {
@@ -58,8 +87,10 @@ export function RecipeDetailModal({
 
   function close() {
     mark.reset();
+    markPhoto.reset();
     setPlannedDay(null);
     setShopped(false);
+    removePhoto();
     onClose();
   }
 
@@ -98,9 +129,20 @@ export function RecipeDetailModal({
           </div>
         ) : (
           <>
-            {item.imageUrl && (
+            {(item.myPhotoUrl ?? item.imageUrl) && (
               <div className="relative mb-3 h-40 w-full overflow-hidden rounded-mochi">
-                <Image src={item.imageUrl} alt={item.name} fill sizes="100vw" className="object-cover" />
+                <Image
+                  src={(item.myPhotoUrl ?? item.imageUrl)!}
+                  alt={item.name}
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                />
+                {item.myPhotoUrl && (
+                  <span className="absolute bottom-2 left-2 rounded-mochi-sm bg-cream-50/90 px-2 py-0.5 text-xs text-cocoa">
+                    📷 내가 만든 사진
+                  </span>
+                )}
               </div>
             )}
             <div className="flex items-center gap-3">
@@ -161,10 +203,52 @@ export function RecipeDetailModal({
               ))}
             </div>
 
+            {/* 사진 첨부(선택) — 내가 만든 모습을 이 레시피에 남긴다(나만 봄, B안) */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onPickPhoto}
+              className="hidden"
+            />
+            {photoPreview ? (
+              <div className="mt-3 flex items-center gap-2 rounded-mochi bg-cream-50 p-2">
+                {/* 로컬 미리보기(object URL)라 next/image 대신 img */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoPreview}
+                  alt="첨부한 사진"
+                  className="h-12 w-12 rounded-mochi-sm object-cover"
+                />
+                <span className="text-sm text-cocoa-soft">사진과 함께 기록해요</span>
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  aria-label="사진 제거"
+                  className="ml-auto px-1 text-cocoa-faint transition-transform ease-jelly active:scale-90"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="mt-3 w-full rounded-mochi border border-dashed border-lavender bg-cream-50 px-4 py-2.5 text-sm text-cocoa-soft transition-transform ease-jelly active:scale-[0.98]"
+              >
+                📷 사진 첨부 (선택)
+              </button>
+            )}
+
             <Button className="mt-2 w-full" onClick={eat}>
-              {mark.isPending ? "기록하는 중…" : "잘 먹었어요! 🌱 씨앗 받기"}
+              {marking
+                ? "기록하는 중…"
+                : photoBlob
+                  ? "잘 먹었어요! 📷 사진과 함께"
+                  : "잘 먹었어요! 🌱 씨앗 받기"}
             </Button>
-            {mark.isError && (
+            {markError && (
               <p className="mt-2 text-center text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
             )}
 

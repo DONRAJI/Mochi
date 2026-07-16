@@ -34,14 +34,22 @@ export function RecipeCard({
       >
         <Card>
         <div className="flex items-center gap-3">
-          {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt={item.name}
-              width={56}
-              height={56}
-              className="h-14 w-14 shrink-0 rounded-mochi-sm object-cover"
-            />
+          {(item.myPhotoUrl ?? item.imageUrl) ? (
+            <div className="relative h-14 w-14 shrink-0">
+              <Image
+                src={(item.myPhotoUrl ?? item.imageUrl)!}
+                alt={item.name}
+                width={56}
+                height={56}
+                className="h-14 w-14 rounded-mochi-sm object-cover"
+              />
+              {/* 내가 찍어 올린 사진이면 살짝 표시 (나만 보는 개인 기록) */}
+              {item.myPhotoUrl && (
+                <span className="absolute -bottom-1 -right-1 rounded-mochi-sm bg-cream-50/90 px-1 text-[10px]">
+                  📷
+                </span>
+              )}
+            </div>
           ) : (
             <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
           )}

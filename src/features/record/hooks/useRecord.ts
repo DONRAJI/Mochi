@@ -16,7 +16,7 @@ import {
   fetchMealHistory,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
-import type { MarkMealRequest, ProfileRequest } from "../types";
+import type { MarkMealRequest, MealSlot, ProfileRequest } from "../types";
 
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
 export function useStreak() {
@@ -113,6 +113,31 @@ export function useMarkMealEaten() {
       qc.invalidateQueries({ queryKey: ["collection"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] }); // 스트릭 갱신
+    },
+  });
+}
+
+/**
+ * '먹었어요' + 사진 첨부(B안) — 특정 레시피에 내 사진을 붙여 기록.
+ * 성공 시 cheer + 도감·모찌·기록 갱신 + 추천 갱신(내 사진이 그 레시피 카드에 반영되게).
+ */
+export function useMarkMealWithPhoto() {
+  const qc = useQueryClient();
+  const setMochi = useMochiStore((s) => s.setState);
+  return useMutation({
+    mutationFn: (v: {
+      blob: Blob;
+      mode: "cook" | "eatout" | "convenience";
+      slot?: MealSlot;
+      refId?: string;
+      rarity?: string;
+    }) => recordPhoto(v.blob, { mode: v.mode, slot: v.slot, refId: v.refId, rarity: v.rarity }),
+    onSuccess: () => {
+      setMochi("cheer");
+      qc.invalidateQueries({ queryKey: ["collection"] });
+      qc.invalidateQueries({ queryKey: ["mochi"] });
+      qc.invalidateQueries({ queryKey: ["record"] });
+      qc.invalidateQueries({ queryKey: ["recommend"] }); // 내 사진 반영
     },
   });
 }
