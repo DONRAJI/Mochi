@@ -14,15 +14,32 @@ describe("모찌 뽑기 경제", () => {
     expect(DRAW_COST).toBe(5);
   });
 
-  it("씨앗: 기록 +1", () => {
-    expect(mealSeeds({ firstDiscovery: false, streakAdvanced: false, streakCount: 3 })).toBe(1);
+  it("씨앗: 슬롯 처음 기록 base +1", () => {
+    expect(
+      mealSeeds({ firstMealForSlot: true, firstDiscovery: false, streakAdvanced: false, streakCount: 3 }),
+    ).toBe(1);
+  });
+  it("씨앗: 슬롯 재등록(처음 아님)이면 base 0 — farming 차단", () => {
+    expect(
+      mealSeeds({ firstMealForSlot: false, firstDiscovery: false, streakAdvanced: false, streakCount: 3 }),
+    ).toBe(0);
+    // 재등록이어도 첫 발견 보너스는 별개(본래 1회성) — 실제론 재등록 시 firstDiscovery도 false
+    expect(
+      mealSeeds({ firstMealForSlot: false, firstDiscovery: true, streakAdvanced: false, streakCount: 3 }),
+    ).toBe(1);
   });
   it("씨앗: 첫 발견 +1", () => {
-    expect(mealSeeds({ firstDiscovery: true, streakAdvanced: false, streakCount: 3 })).toBe(2);
+    expect(
+      mealSeeds({ firstMealForSlot: true, firstDiscovery: true, streakAdvanced: false, streakCount: 3 }),
+    ).toBe(2);
   });
   it("씨앗: 스트릭 이어감 +1, 7일 마일스톤 +3", () => {
-    expect(mealSeeds({ firstDiscovery: false, streakAdvanced: true, streakCount: 3 })).toBe(2);
-    expect(mealSeeds({ firstDiscovery: true, streakAdvanced: true, streakCount: 7 })).toBe(1 + 1 + 1 + 3);
+    expect(
+      mealSeeds({ firstMealForSlot: true, firstDiscovery: false, streakAdvanced: true, streakCount: 3 }),
+    ).toBe(2);
+    expect(
+      mealSeeds({ firstMealForSlot: true, firstDiscovery: true, streakAdvanced: true, streakCount: 7 }),
+    ).toBe(1 + 1 + 1 + 3);
   });
 
   it("일일 상한 — 등록/취소 farming 방지", () => {

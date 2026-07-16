@@ -107,21 +107,34 @@ export async function markMealEaten(
 
     // 뽑기 재화(씨앗) 적립 (PRD 12.2) — 건강 행동으로만. 첫 발견·스트릭 이어감 보너스.
     const streakAdvanced = s.count > (streak?.count ?? 0);
-    const want = mealSeeds({ firstDiscovery: cardAcquired, streakAdvanced, streakCount: s.count });
-    // 일일 상한 — 등록/취소 반복 farming 방지. seedsToday는 삭제해도 안 줄어드는 그날 누적치.
     const today = kstDayKey(now.getTime());
     const acct = await tx.user.findUnique({
       where: { id: userId },
-      select: { seedDay: true, seedsToday: true },
+      select: { seedDay: true, seedsToday: true, seedSlots: true },
     });
-    const usedToday = acct?.seedDay === today ? acct.seedsToday : 0;
+    const sameDay = acct?.seedDay === today;
+    // 오늘 base 씨앗을 이미 준 슬롯들 — 삭제해도 안 지워지니 재등록엔 base가 안 나온다(farming 차단).
+    const grantedSlots = new Set(
+      sameDay && acct?.seedSlots ? acct.seedSlots.split(",").filter(Boolean) : [],
+    );
+    const firstMealForSlot = !grantedSlots.has(slot);
+    const want = mealSeeds({
+      firstMealForSlot,
+      firstDiscovery: cardAcquired,
+      streakAdvanced,
+      streakCount: s.count,
+    });
+    // 일일 상한도 backstop으로 유지. seedsToday는 삭제해도 안 줄어드는 그날 누적치.
+    const usedToday = sameDay ? (acct?.seedsToday ?? 0) : 0;
     const seedsEarned = cappedSeedGrant(want, usedToday);
+    grantedSlots.add(slot); // 이 슬롯은 오늘 사용됨 → 이후 같은 슬롯 재등록은 base 0
     const updated = await tx.user.update({
       where: { id: userId },
       data: {
         mochiSeeds: { increment: seedsEarned },
         seedDay: today,
         seedsToday: usedToday + seedsEarned,
+        seedSlots: [...grantedSlots].join(","),
       },
       select: { mochiSeeds: true },
     });

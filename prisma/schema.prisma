@@ -101,6 +101,7 @@ model User {
   drawPity     Int      @default(0) @map("draw_pity") // 직전 epic↑ 이후 허탕 횟수 (10회 보장, PRD 12.3)
   seedDay      String?  @map("seed_day") // 씨앗 일일 상한 추적 KST일(YYYY-MM-DD) — 등록/취소 farming 방지
   seedsToday   Int      @default(0) @map("seeds_today") // 그날 이미 획득한 씨앗(삭제해도 안 줄어듦)
+  seedSlots    String?  @map("seed_slots") // 그날 base 씨앗 지급한 끼니 슬롯(쉼표구분) — 슬롯 '처음'만 지급, 재등록 farming 차단
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions    Session[]
