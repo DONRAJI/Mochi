@@ -1,5 +1,6 @@
 import "server-only";
 import { AppError } from "@/lib/api-response";
+import { detectImageType } from "./imageType";
 
 /**
  * Supabase Storage — 식사 사진 업로드/서명 (REST API, 새 의존성 없음).
@@ -21,7 +22,6 @@ const EXT: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "image/heic": "heic",
-  "image/heif": "heif",
 };
 
 function config() {
@@ -43,26 +43,25 @@ function encodePath(bucket: string, path: string): string {
  * 업로드 — 타입·크기를 서버에서 검증하고 **파일명을 서버가 재생성**(경로 조작 방지, security.md §6).
  * 반환 = 버킷 상대 경로(경로만 DB에 저장, 공개 URL 저장 안 함).
  */
-export async function uploadMealPhoto(
-  userId: string,
-  bytes: ArrayBuffer,
-  contentType: string,
-): Promise<string> {
-  if (!ALLOWED.has(contentType)) {
-    throw new AppError("VALIDATION", "이미지 파일만 올릴 수 있어요.", 400);
-  }
+export async function uploadMealPhoto(userId: string, bytes: ArrayBuffer): Promise<string> {
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_BYTES) {
     throw new AppError("VALIDATION", "사진이 조금 커요. 다시 골라볼까요?", 400);
   }
+  // 클라 헤더는 위조 가능 → 실제 바이트로 형식 재검증(security.md §6). 헤더와 무관하게 sniff가 진실.
+  const detected = detectImageType(bytes);
+  if (!detected || !ALLOWED.has(detected)) {
+    throw new AppError("VALIDATION", "이미지 파일만 올릴 수 있어요.", 400);
+  }
   const { base, key, bucket } = config();
-  const name = `${crypto.randomUUID()}.${EXT[contentType] ?? "jpg"}`;
+  const uploadType = detected; // 저장·헤더는 sniff된 실제 타입으로
+  const name = `${crypto.randomUUID()}.${EXT[uploadType]}`;
   const path = `${userId}/${name}`; // 사용자별 폴더
   const res = await fetch(`${base}/object/${encodePath(bucket, path)}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       apikey: key,
-      "Content-Type": contentType,
+      "Content-Type": uploadType,
       "x-upsert": "false",
     },
     body: bytes,
