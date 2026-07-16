@@ -2,12 +2,12 @@ import { loginSchema } from "@/features/auth/types";
 import { login } from "@/server/services/auth.service";
 import { ok, fail, toErrorResponse } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
-import { rateLimit, clientIp } from "@/server/auth/rate-limit";
+import { checkRateLimit, clientIp } from "@/server/auth/rate-limit";
 
 /** POST /api/auth/login */
 export async function POST(request: Request) {
   try {
-    if (!rateLimit(`login:${clientIp(request)}`, 10, 60_000)) {
+    if (!(await checkRateLimit(`login:${clientIp(request)}`, 10, 60_000))) {
       return fail("RATE_LIMITED", messages.error.RATE_LIMITED, 429);
     }
 

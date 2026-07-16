@@ -2,12 +2,12 @@ import { signupSchema } from "@/features/auth/types";
 import { signup } from "@/server/services/auth.service";
 import { created, fail, toErrorResponse } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
-import { rateLimit, clientIp } from "@/server/auth/rate-limit";
+import { checkRateLimit, clientIp } from "@/server/auth/rate-limit";
 
 /** POST /api/auth/signup — Route Handler는 얇게: Zod 검증 → 서비스 → ApiResponse. */
 export async function POST(request: Request) {
   try {
-    if (!rateLimit(`signup:${clientIp(request)}`, 5, 60_000)) {
+    if (!(await checkRateLimit(`signup:${clientIp(request)}`, 5, 60_000))) {
       return fail("RATE_LIMITED", messages.error.RATE_LIMITED, 429);
     }
 
