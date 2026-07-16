@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { availableYears, groupByMonth, groupByWeek } from "./weightStats";
+import {
+  availableYears,
+  availableGranularities,
+  groupByMonth,
+  groupByWeek,
+  groupByYear,
+} from "./weightStats";
 import type { WeightLogResponse } from "./types";
 
 /** 로컬 자정 기준 ISO — 테스트를 시간대에 안정적으로. */
@@ -51,5 +57,35 @@ describe("체중 집계", () => {
     for (let w = 0; w < 20; w++) many.push(pt(`2024-01-${String(1 + w * 7).padStart(2, "0")}`, 60));
     // 1월은 최대 ~5주라 20개는 못 채우지만 limit 동작만 확인
     expect(groupByWeek(many, 3).length).toBeLessThanOrEqual(3);
+  });
+
+  it("연간 집계 — 해마다 평균 1점, 추세는 직전 해 대비", () => {
+    const years = groupByYear(sample);
+    expect(years.map((y) => y.label)).toEqual(["2024년", "2025년"]);
+    expect(years[0].avg).toBe(57.9); // (59+58+57.5+57)/4 = 57.875 → 57.9
+    expect(years[1].avg).toBe(56);
+    expect(years[0].trend).toBe("flat"); // 첫 해
+    expect(years[1].trend).toBe("down"); // 57.9 → 56
+  });
+});
+
+describe("자동 뷰 단계 (availableGranularities)", () => {
+  const p = (dateStr: string): WeightLogResponse => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return { id: dateStr, weight: 60, loggedAt: new Date(y, m - 1, d, 12).toISOString() };
+  };
+
+  it("한 달 안 기록이면 주간만 열린다", () => {
+    expect(availableGranularities([p("2024-07-01"), p("2024-07-20")])).toEqual(["week"]);
+  });
+  it("서로 다른 달이 2개 이상이면 월별이 열린다", () => {
+    expect(availableGranularities([p("2024-07-01"), p("2024-08-01")])).toEqual(["week", "month"]);
+  });
+  it("서로 다른 해가 2개 이상이면 연간까지 열린다", () => {
+    expect(availableGranularities([p("2024-12-01"), p("2025-02-01")])).toEqual([
+      "week",
+      "month",
+      "year",
+    ]);
   });
 });

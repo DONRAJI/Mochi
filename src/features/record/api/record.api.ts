@@ -9,10 +9,24 @@ import type {
   TodayMealResponse,
   WeightLogResponse,
   DailyBudgetResponse,
+  MealHistoryResponse,
 } from "../types";
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");
+}
+
+/** 회고 타임라인 — 월(month) 안에서 page 단위 (마이 '기록 되돌아보기'). month 없으면 최근 달. */
+export function fetchMealHistory(params: {
+  month?: string;
+  page: number;
+  size: number;
+}): Promise<MealHistoryResponse> {
+  const q = new URLSearchParams();
+  if (params.month) q.set("month", params.month);
+  q.set("page", String(params.page));
+  q.set("size", String(params.size));
+  return fetcher<MealHistoryResponse>(`/api/records/history?${q.toString()}`);
 }
 
 export function deleteMeal(id: string): Promise<{ done: true }> {
@@ -45,11 +59,20 @@ export function markMealEaten(input: MarkMealRequest): Promise<MealRecordRespons
   });
 }
 
-/** 사진 한 장 기록(PRD 8-3) — multipart라 fetcher(JSON) 대신 직접 fetch. Content-Type은 브라우저가 설정. */
-export async function recordPhoto(file: Blob, mode = "eatout"): Promise<MealRecordResponse> {
+/**
+ * 사진 한 장 기록(PRD 8-3) — multipart라 fetcher(JSON) 대신 직접 fetch. Content-Type은 브라우저가 설정.
+ * opts.refId를 주면 특정 레시피에 사진을 붙인 기록(내 사진이 그 레시피 카드에 표시, B안).
+ */
+export async function recordPhoto(
+  file: Blob,
+  opts?: { mode?: string; slot?: string; refId?: string; rarity?: string },
+): Promise<MealRecordResponse> {
   const form = new FormData();
   form.append("photo", file, "meal.jpg");
-  form.append("mode", mode);
+  form.append("mode", opts?.mode ?? "eatout");
+  if (opts?.slot) form.append("slot", opts.slot);
+  if (opts?.refId) form.append("refId", opts.refId);
+  if (opts?.rarity) form.append("rarity", opts.rarity);
   const res = await fetch("/api/records/photo", { method: "POST", body: form });
   const body = await res.json().catch(() => null);
   if (!body?.success) {

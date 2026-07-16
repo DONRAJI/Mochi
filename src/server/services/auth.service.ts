@@ -3,7 +3,12 @@ import { db } from "@/server/db";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
-import { createSession, destroySession, getSessionUserId } from "@/server/auth/session";
+import {
+  createSession,
+  destroySession,
+  getSessionUserId,
+  pruneExpiredSessions,
+} from "@/server/auth/session";
 import type {
   SignupRequest,
   LoginRequest,
@@ -65,6 +70,9 @@ export async function login(input: LoginRequest): Promise<AuthUserResponse> {
   if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
     throw new AppError("INVALID_CREDENTIALS", messages.auth.invalidCredentials, 401);
   }
+  // 옛 세션 정리: 이 브라우저의 기존 세션 폐기 + 이 유저의 만료 세션 청소(row 누적 방지).
+  await destroySession();
+  await pruneExpiredSessions(user.id);
   await createSession(user.id);
   return toAuthUser(user);
 }

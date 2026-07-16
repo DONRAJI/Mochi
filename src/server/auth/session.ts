@@ -43,8 +43,20 @@ export async function getSessionUserId(): Promise<string | null> {
   const session = await db.session.findUnique({
     where: { refreshToken: hashToken(token) },
   });
-  if (!session || session.expiresAt < new Date()) return null;
+  if (!session) return null;
+  if (session.expiresAt < new Date()) {
+    // 만료 세션은 조회 시점에 청소(DB 누적 방지). 실패해도 인증은 거절.
+    await db.session.deleteMany({ where: { refreshToken: session.refreshToken } }).catch(() => {});
+    return null;
+  }
   return session.userId;
+}
+
+/** 이 유저의 만료된 세션 청소 (로그인 시 호출 — row 누적 방지). */
+export async function pruneExpiredSessions(userId: string): Promise<void> {
+  await db.session
+    .deleteMany({ where: { userId, expiresAt: { lt: new Date() } } })
+    .catch(() => {});
 }
 
 export async function destroySession(): Promise<void> {

@@ -40,6 +40,45 @@ export interface StreakResponse {
   shieldCount: number;
 }
 
+/** 회고 타임라인 한 끼 (마이 전용 '기록 되돌아보기'). title=refId 해석 이름. */
+export interface MealHistoryItemResponse {
+  id: string;
+  slot: MealSlot;
+  mode: "cook" | "eatout" | "convenience";
+  title: string | null; // 먹은 요리/메뉴 이름 (사진만 있는 기록 등은 null)
+  kcal: number | null; // detail 모드에서만 (#4)
+  photoUrl: string | null; // 서명 URL(비공개 버킷)
+}
+
+/** 회고 타임라인 하루 — 먹은 것들 + 그날 체중 + 직전 기록일 대비 변화. */
+export interface MealHistoryDayResponse {
+  date: string; // "YYYY-MM-DD" (KST)
+  label: string; // "7월 9일 (수)"
+  weight: number | null; // 그날 마지막 체중 (마이 트리라 노출, 불변 #2)
+  weightDelta: number | null; // 직전 기록일 대비 (부호만 — 색으로 벌하지 않음, 불변 #1)
+  totalKcal: number | null; // detail일 때 그날 합계
+  meals: MealHistoryItemResponse[];
+}
+
+/** 회고 응답 — 월 선택(months) + 그 달 안에서 페이지(days). (페이지네이션, security.md §5) */
+export interface MealHistoryResponse {
+  months: string[]; // 기록 있는 달 "YYYY-MM" (최근 먼저) — 월 선택 칩
+  month: string; // 지금 보고 있는 달 "YYYY-MM"
+  page: number; // 0-based
+  totalPages: number; // 이 달의 총 페이지 수
+  days: MealHistoryDayResponse[];
+}
+
+/** 회고 조회 쿼리 — month(YYYY-MM, 없으면 최근 달) + page + size(한 페이지 날짜 수). */
+export const historyQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/, "달을 한 번만 더 봐줄래요?")
+    .optional(),
+  page: z.coerce.number().int().min(0).default(0),
+  size: z.coerce.number().int().min(1).max(31).default(10),
+});
+
 /** 오늘의 kcal 예산 (#4 detail 모드). null이면 미표시(cozy거나 프로필 미완비). */
 export interface DailyBudgetResponse {
   budget: number | null;

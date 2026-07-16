@@ -7,6 +7,7 @@ const base: RecommendationResponse = {
   name: "테스트",
   emoji: null,
   imageUrl: null,
+  myPhotoUrl: null,
   kcal: null,
   badge: "💪 단백질",
   minutes: 10,

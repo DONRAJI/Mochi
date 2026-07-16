@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { WeightTrendChart } from "./WeightTrendChart";
 import { useWeightLogs, useAddWeight } from "../hooks/useRecord";
 
-/** 체중 기록 입력 + 흐름 그래프 (마이>더보기). 숫자는 여기에만 (불변 #2). */
+/** 체중 기록 입력 + 흐름 그래프 (마이 > 체중 전용 화면). 숫자는 마이 트리에만 (불변 #2). */
 export function WeightSection() {
   const { data } = useWeightLogs();
   const add = useAddWeight();

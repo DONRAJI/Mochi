@@ -20,6 +20,7 @@ import {
 } from "@/features/recommend/preferences";
 import { buildCanonicalMap, canonicalize } from "@/features/fridge/canonical";
 import { isExpiringSoon, expiryBonus } from "@/features/fridge/expiry";
+import { signMealPhoto } from "@/server/storage/photo-storage";
 import type {
   CreateRecipeRequest,
   MealMode,
@@ -104,6 +105,7 @@ export async function getRecommendations(
           name: r.name,
           emoji: r.emoji,
           imageUrl: r.imageUrl,
+          myPhotoUrl: null as string | null, // 아래에서 반환분에만 내 사진 서명 URL 주입
           kcal: detail ? r.kcal : null,
           badge: deriveBadge(r.kcal, r.protein),
           minutes: r.minutes,
@@ -142,7 +144,7 @@ export async function getRecommendations(
       // 알러지 재료가 든 요리는 제외(안전). 정렬은 매칭률 + 취향 + 임박 보정.
       .filter((c) => !hasAllergen(ingredientMatcher(c.ingredients.map((i) => i.name)), allergiesC));
 
-    return cards
+    const ranked = cards
       .map((c) => ({
         c,
         key:
@@ -164,6 +166,27 @@ export async function getRecommendations(
       .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
       .slice(skip, skip + size)
       .map((s) => s.c);
+
+    // 내가 이 레시피로 찍어 올린 사진(개인 기록·나만 봄) — 반환하는 카드에만 최신 1장 서명해 붙인다.
+    if (userId) {
+      const ids = ranked.map((c) => c.id);
+      const photoRows = await db.mealRecord.findMany({
+        where: { userId, mode: "cook", refId: { in: ids }, photoUrl: { not: null } },
+        orderBy: { eatenAt: "desc" },
+        select: { refId: true, photoUrl: true },
+      });
+      const latest = new Map<string, string>();
+      for (const row of photoRows) {
+        if (row.refId && row.photoUrl && !latest.has(row.refId)) latest.set(row.refId, row.photoUrl);
+      }
+      await Promise.all(
+        ranked.map(async (c) => {
+          const path = latest.get(c.id);
+          if (path) c.myPhotoUrl = await signMealPhoto(path);
+        }),
+      );
+    }
+    return ranked;
   }
 
   if (mode === "eatout") {
@@ -176,6 +199,7 @@ export async function getRecommendations(
         name: m.name,
         emoji: m.emoji,
         imageUrl: null,
+        myPhotoUrl: null,
         kcal: detail ? m.kcal : null,
         badge: deriveBadge(m.kcal, m.protein),
         minutes: null,
@@ -207,6 +231,7 @@ export async function getRecommendations(
       name: c.name,
       emoji: c.emoji,
       imageUrl: null,
+      myPhotoUrl: null,
       kcal: detail ? c.kcal : null,
       badge: deriveBadge(c.kcal, c.protein),
       minutes: null,
