@@ -10,6 +10,7 @@ import {
 import * as planApi from "../api/plan.api";
 import { weekDates } from "../week";
 import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "../plan";
+import { makeTempCanceller } from "@/lib/optimistic-temp";
 import { useMochiStore } from "@/store/mochi";
 
 /** 이번 주(월~일) 계획. queryKey에 from/to를 넣어 주가 바뀌면 자동 갱신. */
@@ -50,6 +51,8 @@ function settlePlanIfLast(qc: QueryClient) {
   if (qc.isMutating({ mutationKey: planMutationKey }) > 1) return;
   qc.invalidateQueries({ queryKey: ["plan"] });
 }
+// 서버 id 오기 전 임시 계획을 지운 경우 추적(재생성 방지).
+const planTemp = makeTempCanceller();
 
 export function useAddPlan() {
   const qc = useQueryClient();
@@ -73,8 +76,13 @@ export function useAddPlan() {
       patchPlan(qc, (list) => [...list, optimistic]);
       return { prev, tempId };
     },
-    // 임시 id를 서버 실제 항목으로 교체 — 바로 이어서 이동/먹었어요/삭제해도 실제 id로 동작.
+    // 임시 id를 서버 실제 항목으로 교체. 임시 상태에서 이미 지운 계획은 실제 항목도 서버에서 삭제.
     onSuccess: (created, _input, ctx) => {
+      if (ctx?.tempId && planTemp.consume(ctx.tempId)) {
+        planApi.removePlan(created.id).catch(() => {}); // 취소된 것 → 실제도 삭제
+        patchPlan(qc, (list) => list.filter((m) => m.id !== ctx.tempId && m.id !== created.id));
+        return;
+      }
       patchPlan(qc, (list) => list.map((m) => (m.id === ctx?.tempId ? created : m)));
     },
     onError: (_e, _vars, ctx) => rollbackPlan(qc, ctx?.prev),
@@ -96,7 +104,14 @@ export function useRemovePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: planMutationKey,
-    mutationFn: (id: string) => planApi.removePlan(id),
+    // 임시 계획은 서버에 없으니 삭제 호출 대신 '취소' 기록 → 담기 완료 시 실제 항목을 정리(재생성 방지).
+    mutationFn: (id: string) => {
+      if (planTemp.isTemp(id)) {
+        planTemp.cancel(id);
+        return Promise.resolve({ done: true } as const);
+      }
+      return planApi.removePlan(id);
+    },
     onMutate: async (id) => {
       const prev = await snapshotPlan(qc);
       patchPlan(qc, (list) => list.filter((m) => m.id !== id));

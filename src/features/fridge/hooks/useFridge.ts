@@ -2,12 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as fridgeApi from "../api/fridge.api";
+import { makeTempCanceller } from "@/lib/optimistic-temp";
 import type { CreateIngredientRequest, IngredientResponse } from "../types";
 
 export const fridgeKey = ["fridge", "ingredients"] as const;
 // 냉장고를 바꾸는 작업 공통 mutation 키 — '진행 중인 냉장고 작업 수'를 센다(아래 settleFridgeIfLast).
 // add/remove뿐 아니라 장보기→냉장고 이동(useMoveCheckedToFridge)도 이 키를 공유해 같은 가드를 받는다.
 export const fridgeMutationKey = ["fridge", "mutation"] as const;
+// 서버 id 오기 전 임시 재료를 지운 경우 추적(재생성 방지).
+const fridgeTemp = makeTempCanceller();
 
 export function useIngredients() {
   return useQuery({ queryKey: fridgeKey, queryFn: fridgeApi.fetchIngredients, retry: false });
@@ -54,8 +57,13 @@ export function useAddIngredient() {
       patchFridge(qc, (list) => [...list, optimistic]);
       return { prev, tempId };
     },
-    // 임시 id를 서버 실제 항목으로 교체 — 바로 이어서 삭제해도 실제 id로 동작(플리커·무시 감소).
+    // 임시 id를 서버 실제 항목으로 교체. 임시 상태에서 이미 지운 항목은 실제 항목도 서버에서 삭제.
     onSuccess: (created, _input, ctx) => {
+      if (ctx?.tempId && fridgeTemp.consume(ctx.tempId)) {
+        fridgeApi.deleteIngredient(created.id).catch(() => {}); // 취소된 것 → 실제도 삭제
+        patchFridge(qc, (list) => list.filter((i) => i.id !== ctx.tempId && i.id !== created.id));
+        return;
+      }
       patchFridge(qc, (list) => list.map((i) => (i.id === ctx?.tempId ? created : i)));
     },
     onError: (_e, _vars, ctx) => {
@@ -69,7 +77,14 @@ export function useRemoveIngredient() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: fridgeMutationKey,
-    mutationFn: (id: string) => fridgeApi.deleteIngredient(id),
+    // 임시 재료는 서버에 없으니 삭제 호출 대신 '취소' 기록 → 담기 완료 시 실제 항목을 정리(재생성 방지).
+    mutationFn: (id: string) => {
+      if (fridgeTemp.isTemp(id)) {
+        fridgeTemp.cancel(id);
+        return Promise.resolve({ done: true } as const);
+      }
+      return fridgeApi.deleteIngredient(id);
+    },
     onMutate: async (id) => {
       const prev = await snapshotFridge(qc);
       patchFridge(qc, (list) => list.filter((i) => i.id !== id));

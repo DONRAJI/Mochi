@@ -3,11 +3,14 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as shoppingApi from "../api/shopping.api";
 import type { ShoppingItemResponse } from "../shopping";
+import { makeTempCanceller } from "@/lib/optimistic-temp";
 import { fridgeMutationKey, settleFridgeIfLast } from "./useFridge";
 
 const KEY = ["shopping"] as const;
 // 장보기 변경 공통 mutation 키 — 진행 중 장보기 작업 수를 세어 마지막에만 refetch(레이스 방지).
 const shoppingMutationKey = ["shopping", "mutation"] as const;
+// 서버 id 오기 전 임시 항목을 지운 경우 추적(재생성 방지).
+const shoppingTemp = makeTempCanceller();
 
 export function useShopping() {
   return useQuery({ queryKey: KEY, queryFn: shoppingApi.fetchShopping, retry: false });
@@ -38,15 +41,36 @@ export function useAddShopping() {
     mutationFn: (names: string[]) => shoppingApi.addShopping(names),
     onMutate: async (names) => {
       const prev = await snapshotShopping(qc);
+      const tempIds = names.map((_, i) => `temp-${Date.now()}-${i}`);
       const temps: ShoppingItemResponse[] = names.map((name, i) => ({
-        id: `temp-${Date.now()}-${i}`,
+        id: tempIds[i],
         name,
         checked: false,
       }));
       patchShopping(qc, (list) => [...list, ...temps]);
-      return { prev };
+      return { prev, tempIds };
+    },
+    // 임시 id → 서버 실제 항목으로 정합. 임시 상태에서 이미 지운 항목은 실제 항목도 서버에서 삭제.
+    onSuccess: (serverList, _names, ctx) => {
+      const prevIds = new Set((ctx?.prev ?? []).map((i) => i.id));
+      const created = serverList.filter((i) => !prevIds.has(i.id)); // 이번에 서버가 만든 항목들
+      const removeIds = new Set<string>();
+      ctx?.tempIds?.forEach((tempId, idx) => {
+        if (shoppingTemp.consume(tempId) && created[idx]) {
+          removeIds.add(created[idx].id);
+          shoppingApi.removeShopping(created[idx].id).catch(() => {}); // 취소된 것 → 실제도 삭제
+        }
+      });
+      // 실제 id로 교체(동시 다른 장보기 작업 없을 때만 — 있으면 그쪽 settle이 정합).
+      if (qc.isMutating({ mutationKey: shoppingMutationKey }) <= 1) {
+        qc.setQueryData(
+          KEY,
+          serverList.filter((i) => !removeIds.has(i.id)),
+        );
+      }
     },
     onError: (_e, _vars, ctx) => {
+      ctx?.tempIds?.forEach((id) => shoppingTemp.consume(id)); // 실패 시 취소 표시 정리
       if (ctx?.prev) qc.setQueryData(KEY, ctx.prev);
     },
     onSettled: () => settleShoppingIfLast(qc),
@@ -57,7 +81,11 @@ export function useToggleShopping() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: shoppingMutationKey,
-    mutationFn: (id: string) => shoppingApi.toggleShopping(id),
+    // 아직 서버에 없는 임시 항목은 토글 호출을 보내지 않는다(403 방지) — 담기 완료 후 실제 상태로 정합.
+    mutationFn: (id: string) =>
+      shoppingTemp.isTemp(id)
+        ? Promise.resolve({ done: true } as const)
+        : shoppingApi.toggleShopping(id),
     // 체크가 서버 왕복 없이 즉시 반영되게(낙관적).
     onMutate: async (id) => {
       const prev = await snapshotShopping(qc);
@@ -77,7 +105,14 @@ export function useRemoveShopping() {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: shoppingMutationKey,
-    mutationFn: (id: string) => shoppingApi.removeShopping(id),
+    // 임시 항목은 서버에 없으니 삭제 호출 대신 '취소'로 기록 → 담기 완료 시 실제 항목을 정리(재생성 방지).
+    mutationFn: (id: string) => {
+      if (shoppingTemp.isTemp(id)) {
+        shoppingTemp.cancel(id);
+        return Promise.resolve({ done: true } as const);
+      }
+      return shoppingApi.removeShopping(id);
+    },
     onMutate: async (id) => {
       const prev = await snapshotShopping(qc);
       patchShopping(qc, (list) => list.filter((i) => i.id !== id));
