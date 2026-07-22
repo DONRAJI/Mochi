@@ -5,6 +5,12 @@ import { deriveBadge } from "@/features/recommend/nutrition";
 import { swapFor } from "@/features/recommend/substitution";
 import { isPractical, isSkippableRare } from "@/features/recommend/practicality";
 import { MGR_ID_PREFIX } from "@/features/recommend/mgrParse";
+import {
+  recipeSearchTokens,
+  normalizeQueryIngredient,
+  nameMatches,
+  ingredientsMatch,
+} from "@/features/recommend/ingredientSearch";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
 import {
   soloFriendlyScore,
@@ -37,6 +43,7 @@ export async function getRecommendations(
   userId: string | null,
   page: number,
   size: number,
+  search?: { q?: string; ingredients?: string[] }, // cook 검색(이름 부분일치 / 재료 상세검색)
 ): Promise<RecommendationResponse[]> {
   const skip = page * size;
 
@@ -79,18 +86,35 @@ export async function getRecommendations(
     const likesC = canonLabels(prefs.likes);
     const dislikesC = canonLabels(prefs.dislikes);
 
+    // 검색(이름 부분일치 / 재료 상세검색) — 활성 시 레시피를 먼저 좁히고 실용성 컷은 건너뛴다
+    // (사용자가 직접 찾는 것이므로 전 카탈로그 대상). 재료·검색어를 같은 방식으로 정규화해 매칭.
+    const searchQ = search?.q?.trim();
+    const searchIngs = (search?.ingredients ?? [])
+      .map((x) => normalizeQueryIngredient(x, canon))
+      .filter(Boolean);
+    const searching = !!searchQ || searchIngs.length > 0;
+    const candidateRecipes = searching
+      ? recipes.filter((r) => {
+          if (searchQ && !nameMatches(r.name, searchQ)) return false;
+          if (searchIngs.length && !ingredientsMatch(recipeSearchTokens(r.ingredients, canon), searchIngs))
+            return false;
+          return true;
+        })
+      : recipes;
+
     // 히든 콤보(PRD 7.3#3): 조합을 다 가진 것만 노출, 나머지 히든은 숨김.
-    const visibleRecipes = recipes.filter(
+    const visibleRecipes = candidateRecipes.filter(
       (r) =>
         r.hiddenCombo.length === 0 ||
         r.hiddenCombo.every((i) => ownedSet.has(canonicalize(i, canon))),
     );
 
     // 실용성 하드 컷 — 초희귀 재료·재료 과다 '정식 요리'는 추천에서 제외(식약처 코퍼스 대상).
-    // 빈도는 전체 코퍼스로 집계(ingFreq). 예외: 내 요리(ownerId) + 만개의레시피(mgr-)는
-    // 조회수 10만+ 대중 검증분이라 항상 노출(파싱 노이즈로 국민 레시피가 컷되는 오판 방지).
+    // 빈도는 전체 코퍼스로 집계(ingFreq). 예외: 검색 중 · 내 요리(ownerId) · 만개의레시피(mgr-)는
+    // 항상 노출(검색은 전 카탈로그 대상, mgr은 조회수 10만+ 대중 검증분).
     const practicalRecipes = visibleRecipes.filter(
       (r) =>
+        searching ||
         r.ownerId != null ||
         r.id.startsWith(MGR_ID_PREFIX) ||
         isPractical([...new Set(r.ingredients.map((i) => canonicalize(i, canon)))], ingFreq),
