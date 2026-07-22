@@ -17,6 +17,14 @@ export function fetchRecommendations(mode: MealMode): Promise<RecommendationResp
   return fetcher<RecommendationResponse[]>(`/api/recommend/meals?mode=${mode}&size=50`);
 }
 
+/** 레시피 검색(cook) — 요리 이름 부분일치(q) / 재료 상세검색(ingredients 쉼표구분). */
+export function searchRecipes(q: string, ingredients: string[]): Promise<RecommendationResponse[]> {
+  const params = new URLSearchParams({ mode: "cook", size: "50" });
+  if (q.trim()) params.set("q", q.trim());
+  if (ingredients.length) params.set("ingredients", ingredients.join(","));
+  return fetcher<RecommendationResponse[]>(`/api/recommend/meals?${params.toString()}`);
+}
+
 /** 내 요리 등록 (PRD 11.3). */
 export function createRecipe(input: CreateRecipeRequest): Promise<CreateRecipeResponse> {
   return fetcher<CreateRecipeResponse>("/api/recommend/recipes", {

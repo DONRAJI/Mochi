@@ -15,13 +15,26 @@ export async function GET(request: Request) {
       mode: params.get("mode"),
       page: params.get("page") ?? undefined,
       size: params.get("size") ?? undefined,
+      q: params.get("q") ?? undefined,
+      ingredients: params.get("ingredients") ?? undefined,
     });
     if (!parsed.success) {
       return fail("VALIDATION", parsed.error.issues[0]?.message ?? messages.error.VALIDATION, 400);
     }
 
     const userId = await getSessionUserId();
-    const data = await getRecommendations(parsed.data.mode, userId, parsed.data.page, parsed.data.size);
+    const ingredients = parsed.data.ingredients
+      ? parsed.data.ingredients.split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
+    const search =
+      parsed.data.q || ingredients?.length ? { q: parsed.data.q, ingredients } : undefined;
+    const data = await getRecommendations(
+      parsed.data.mode,
+      userId,
+      parsed.data.page,
+      parsed.data.size,
+      search,
+    );
     return ok(data);
   } catch (error) {
     return toErrorResponse(error);

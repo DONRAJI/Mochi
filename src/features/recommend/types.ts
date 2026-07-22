@@ -7,6 +7,8 @@ export const recommendQuerySchema = z.object({
   mode: z.enum(["cook", "eatout", "convenience"]),
   page: z.coerce.number().int().min(0).default(0),
   size: z.coerce.number().int().min(1).max(50).default(20),
+  q: z.string().trim().max(40).optional(), // 요리 이름 검색(부분일치, cook)
+  ingredients: z.string().max(200).optional(), // 재료 검색(쉼표구분, cook 상세검색)
 });
 
 /** 내 요리 등록 (PRD 11.3 — 냉장고 재료로 만드는 자기만의 요리). */

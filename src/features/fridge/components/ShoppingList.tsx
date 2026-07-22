@@ -29,7 +29,8 @@ export function ShoppingList() {
     e.preventDefault();
     const t = name.trim();
     if (!t) return;
-    add.mutate([t], { onSuccess: () => setName("") });
+    add.mutate([t]);
+    setName(""); // 낙관적 추가라 서버 응답을 기다리지 않고 즉시 입력칸을 비운다
   }
 
   return (

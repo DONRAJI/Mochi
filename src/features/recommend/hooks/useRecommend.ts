@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchRecommendations,
+  searchRecipes,
   createRecipe,
   fetchFavorites,
   toggleFavorite,
@@ -14,6 +15,20 @@ export function useRecommendations(mode: MealMode) {
   return useQuery({
     queryKey: ["recommend", mode],
     queryFn: () => fetchRecommendations(mode),
+  });
+}
+
+/**
+ * 레시피 검색(cook) — 이름 부분일치(q) / 재료 상세검색(ingredients).
+ * q·ingredients가 비면 비활성(enabled:false). 입력 변화는 컴포넌트에서 디바운스해 전달.
+ */
+export function useRecipeSearch(q: string, ingredients: string[]) {
+  const active = q.trim().length > 0 || ingredients.length > 0;
+  return useQuery({
+    queryKey: ["recommend", "search", q.trim(), ingredients],
+    queryFn: () => searchRecipes(q, ingredients),
+    enabled: active,
+    placeholderData: (prev) => prev, // 타이핑 중 깜빡임 줄이기
   });
 }
 
