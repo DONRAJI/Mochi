@@ -42,6 +42,15 @@ describe("mgrParse — 재료", () => {
     const raw = "[재료] | 계란 2개| 이건 재료가 아니라 아주 긴 설명 문장이라서 버려야 함 1개";
     expect(parseMgrIngredients(raw)).toEqual(["계란"]);
   });
+  it("복합 재료(?·&·/)를 분리하고 재료명 안 공백을 붙인다", () => {
+    expect(parseMgrIngredients("[재료] ?멸치&다시마육수| 순 두부| 청양고추 & 풋고추")).toEqual([
+      "멸치",
+      "다시마육수",
+      "순두부",
+      "청양고추",
+      "풋고추",
+    ]);
+  });
 });
 
 describe("mgrParse — 메타", () => {

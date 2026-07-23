@@ -47,6 +47,7 @@ const AMOUNT_WORDS = /\s*(약간|적당량|적당히|조금|취향껏|기호에\
  * "[재료] 당면 1줌반| 소고기(국거리용)| (집)국간장 4T [양념] 간장 10큰술" → [당면, 소고기, 국간장, 간장]
  * 섹션 라벨([재료]·[양념]·[고기밑간]…)은 구분자로 치환(내용물은 전부 재료로 유지),
  * 괄호 주석·첫 숫자부터의 수량 접미·수량 단어를 제거. 중복 제거.
+ * 복합 재료(?·&·/)는 분리("?멸치&다시마육수"→멸치·다시마육수), 재료명 안 공백은 붙인다(순 두부→순두부).
  */
 export function parseMgrIngredients(raw: string): string[] {
   const seen = new Set<string>();
@@ -55,18 +56,21 @@ export function parseMgrIngredients(raw: string): string[] {
     .replace(/\[[^\]]*\]/g, "|") // 섹션 라벨 → 구분자
     .split("|");
   for (const t of tokens) {
-    const name = t
+    const base = t
       .replace(/\([^)]*\)/g, " ") // 괄호 주석 제거 — 소고기(국거리용)→소고기
       .replace(/[0-9½⅓¼⅔¾][^|]*$/, "") // 첫 숫자(분수 포함)부터 끝까지 = 수량
       .trim() // AMOUNT_WORDS의 $ 앵커가 후행 공백에 막히지 않게 먼저 정리
       .replace(AMOUNT_WORDS, "")
-      .replace(/[·.,~!?*♡+\-]+$/, "")
-      .trim()
-      .replace(/\s{2,}/g, " ");
-    if (name.length < 1 || name.length > 20) continue;
-    if (seen.has(name)) continue;
-    seen.add(name);
-    out.push(name);
+      .replace(/[·.,~!*♡+\-]+$/, "")
+      .trim();
+    // 복합 재료 분리(?·&·/) → 각 조각의 공백 제거 → 여러 재료명
+    for (const part of base.replace(/^\?+/, "").split(/[?&/]/)) {
+      const name = part.replace(/\s+/g, "");
+      if (name.length < 1 || name.length > 20) continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      out.push(name);
+    }
   }
   return out;
 }

@@ -19,8 +19,12 @@ export function parseIngredientNames(raw: string, dishName?: string): string[] {
     if (tok === dishName || HEADERS.has(tok) || tok.includes(":")) continue;
     let name = tok.split(/\s*\d/)[0].trim(); // 첫 숫자 이전
     name = name.replace(TRAILING_UNITS, "").replace(/[()]/g, "").trim();
-    if (!name || name.length > 12) continue; // 너무 길면 문장 — 스킵
-    if (!names.includes(name)) names.push(name);
+    // 복합 재료 분리(?·&·/) → 각 조각의 공백 제거(순 두부→순두부). 너무 길면 문장 — 스킵.
+    for (const part of name.replace(/^\?+/, "").split(/[?&/]/)) {
+      const clean = part.replace(/\s+/g, "");
+      if (!clean || clean.length > 12) continue;
+      if (!names.includes(clean)) names.push(clean);
+    }
   }
   return names;
 }

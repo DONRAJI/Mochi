@@ -20,6 +20,11 @@ describe("recipeParse", () => {
     expect(r.some((n) => n.includes("주재료") || n.includes("●") || n.includes(":"))).toBe(false);
   });
 
+  it("복합 재료(?·&·/)를 분리하고 재료명 안 공백을 붙인다", () => {
+    const r = parseIngredientNames("순 두부 75g\n멸치&다시마 10g\n닭 가슴살 100g");
+    expect(r).toEqual(expect.arrayContaining(["순두부", "멸치", "다시마", "닭가슴살"]));
+  });
+
   it("조리단계의 번호·끝 잉여문자를 제거한다", () => {
     expect(cleanSteps(["1. 새우를 데친다.a", "", "2. 섞는다.b"])).toEqual([
       "새우를 데친다.",

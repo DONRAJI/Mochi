@@ -19,6 +19,7 @@ const config = [
       "next-env.d.ts",
       "prisma/migrations/**",
       "Mochi Design System/**",
+      "public/sw.js", // 서비스 워커 — 브라우저 전역(self·caches) 사용, 앱 TS 규칙 밖(불변 #5 승인 예외)
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
