@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Jua, Gowun_Dodum } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ServiceWorkerRegistrar } from "./ServiceWorkerRegistrar";
 
 // 둥근 폰트 (Mochi Design System): Jua=제목·마스코트 보이스, Gowun Dodum=본문·UI
 const jua = Jua({
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className={`${jua.variable} ${gowunDodum.variable}`}>
       <body>
         <Providers>{children}</Providers>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
