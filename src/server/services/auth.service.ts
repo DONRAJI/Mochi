@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
+import { deleteUserPhotos } from "@/server/storage/photo-storage";
 import {
   createSession,
   destroySession,
@@ -79,6 +80,18 @@ export async function login(input: LoginRequest): Promise<AuthUserResponse> {
 
 export async function logout(): Promise<void> {
   await destroySession();
+}
+
+/**
+ * 계정 탈퇴 (Google Play 정책 필수 — 계정 생성 앱은 삭제 수단 제공). 되돌릴 수 없음.
+ * 순서: ① Supabase 사진 정리(베스트에포트) ② 내 요리(Recipe.ownerId=평문, cascade 안 됨) 삭제
+ *       ③ User 삭제 → 나머지 관계 전부 cascade(세션·기록·냉장고·도감·체중·계획…) ④ 세션 쿠키 폐기.
+ */
+export async function deleteAccount(userId: string): Promise<void> {
+  await deleteUserPhotos(userId).catch(() => {}); // 스토리지 미구성/실패해도 삭제는 진행
+  await db.recipe.deleteMany({ where: { ownerId: userId } }); // 내가 등록한 요리(FK 없음 → 수동)
+  await db.user.delete({ where: { id: userId } }); // cascade로 나머지 전부 정리
+  await destroySession(); // 쿠키 폐기(세션 row는 이미 cascade됨)
 }
 
 export async function getMe(): Promise<AuthUserResponse> {

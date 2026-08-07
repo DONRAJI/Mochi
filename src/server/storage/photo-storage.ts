@@ -73,6 +73,31 @@ export async function uploadMealPhoto(userId: string, bytes: ArrayBuffer): Promi
   return path;
 }
 
+/**
+ * 사용자의 모든 식사 사진 삭제 (계정 탈퇴 시 — Play 정책·개인정보). 폴더 `{userId}/` 통째 정리.
+ * 베스트에포트: 스토리지 실패해도 계정 삭제 자체는 진행되도록 예외를 던지지 않는다.
+ */
+export async function deleteUserPhotos(userId: string): Promise<void> {
+  const { base, key, bucket } = config();
+  const bucketPath = encodeURIComponent(bucket);
+  const auth = { Authorization: `Bearer ${key}`, apikey: key, "Content-Type": "application/json" };
+
+  const listRes = await fetch(`${base}/object/list/${bucketPath}`, {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({ prefix: `${userId}/`, limit: 1000 }),
+  });
+  if (!listRes.ok) return;
+  const files = (await listRes.json().catch(() => [])) as { name: string }[];
+  if (!Array.isArray(files) || files.length === 0) return;
+
+  await fetch(`${base}/object/${bucketPath}`, {
+    method: "DELETE",
+    headers: auth,
+    body: JSON.stringify({ prefixes: files.map((f) => `${userId}/${f.name}`) }),
+  });
+}
+
 /** 서명 URL 발급(기본 1시간) — 비공개 버킷 읽기용. 실패해도 기록은 유지되게 null 반환. */
 export async function signMealPhoto(path: string, expiresIn = 3600): Promise<string | null> {
   const { base, key, bucket } = config();
