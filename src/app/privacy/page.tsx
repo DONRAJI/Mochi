@@ -9,7 +9,7 @@ export const metadata = {
   title: "개인정보처리방침 — 모찌",
 };
 
-const CONTACT_EMAIL = "[문의 이메일 주소를 넣어주세요]"; // TODO(사용자): 실제 이메일로 교체
+const CONTACT_EMAIL = "05likesea@gmail.com"; // 개인정보 문의·삭제 요청 연락처
 
 const EFFECTIVE_DATE = "2026년 7월 23일";
 
