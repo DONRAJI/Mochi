@@ -16,7 +16,11 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export async function createSession(userId: string): Promise<void> {
+/**
+ * 세션 생성. remember=true(기본)면 7일 지속 쿠키(껐다 켜도 유지), false면 세션 쿠키
+ * (maxAge 없음 → 앱/브라우저 종료 시 만료). DB 세션 수명은 둘 다 최대 7일(서버측 상한).
+ */
+export async function createSession(userId: string, remember = true): Promise<void> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + MAX_AGE_SEC * 1000);
 
@@ -30,7 +34,7 @@ export async function createSession(userId: string): Promise<void> {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: MAX_AGE_SEC,
+    ...(remember ? { maxAge: MAX_AGE_SEC } : {}), // 로그인 유지 아니면 세션 쿠키
   });
 }
 

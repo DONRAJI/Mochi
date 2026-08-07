@@ -18,6 +18,8 @@ export const signupSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  // 로그인 유지: true면 7일 지속 쿠키, false면 세션 쿠키(앱/브라우저 종료 시 만료).
+  remember: z.boolean().default(true),
 });
 
 export type SignupRequest = z.infer<typeof signupSchema>;

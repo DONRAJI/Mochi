@@ -9,7 +9,14 @@ export function Providers({ children }: { children: ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+          queries: {
+            // 탭 재방문 시 즉시 캐시 표시(변경은 mutation이 무효화로 갱신하므로 길게 잡아도 안전).
+            staleTime: 60_000, // 1분간 fresh — 재방문 refetch·깜빡임 없음
+            gcTime: 10 * 60_000, // 10분간 캐시 유지 — 탭 왕복해도 데이터 살아있음
+            retry: 1,
+            refetchOnWindowFocus: false, // 모바일 포커스 복귀마다 refetch 안 함
+            refetchOnReconnect: false,
+          },
         },
       }),
   );
