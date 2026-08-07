@@ -42,6 +42,15 @@ export function useLogout() {
   });
 }
 
+/** 계정 탈퇴 (되돌릴 수 없음, Play 정책). 성공 시 모든 캐시 비우고 로그인 화면으로. */
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => authApi.deleteAccount(),
+    onSuccess: () => qc.clear(), // 남은 개인 데이터 캐시 전부 제거
+  });
+}
+
 /** 숫자 표시 모드 변경 (#4) — 성공 시 me 갱신 + 식단·기록 무효화(숫자 노출 반영). */
 export function useSetDisplayMode() {
   const qc = useQueryClient();

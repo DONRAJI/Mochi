@@ -30,6 +30,11 @@ export function logout(): Promise<{ done: true }> {
   });
 }
 
+/** 계정 탈퇴 (되돌릴 수 없음) — 기록·사진·도감 전부 삭제. */
+export function deleteAccount(): Promise<{ done: true }> {
+  return fetcher<{ done: true }>("/api/auth/account", { method: "DELETE" });
+}
+
 export function fetchMe(): Promise<AuthUserResponse> {
   return fetcher<AuthUserResponse>("/api/auth/me");
 }

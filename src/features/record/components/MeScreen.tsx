@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
 import { PreferencesSection } from "@/features/auth/components/PreferencesSection";
 import { DisplayModeToggle } from "@/features/auth/components/DisplayModeToggle";
-import { useMe, useLogout } from "@/features/auth/hooks/useAuth";
+import { useMe, useLogout, useDeleteAccount } from "@/features/auth/hooks/useAuth";
 import { useStreak } from "../hooks/useRecord";
 import { useMochiState } from "@/features/mochi/hooks/useMochi";
 
@@ -17,8 +20,10 @@ import { useMochiState } from "@/features/mochi/hooks/useMochi";
  */
 export function MeScreen() {
   const [showStats, setShowStats] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const router = useRouter();
   const logout = useLogout();
+  const deleteAccount = useDeleteAccount();
   const { data: me } = useMe();
   const { data: streak } = useStreak();
   const { data: mochi } = useMochiState();
@@ -88,6 +93,46 @@ export function MeScreen() {
       >
         {logout.isPending ? "나가는 중…" : "로그아웃"}
       </button>
+
+      {/* 하단: 개인정보처리방침 + 계정 탈퇴 (Google Play 정책 — 삭제 수단 제공) */}
+      <div className="mt-2 flex flex-col items-center gap-2 pb-2">
+        <Link href="/privacy" className="text-xs text-cocoa-faint underline">
+          개인정보처리방침
+        </Link>
+        <button
+          type="button"
+          onClick={() => setDeleteOpen(true)}
+          className="text-xs text-cocoa-faint transition-transform ease-jelly active:scale-95"
+        >
+          계정 탈퇴
+        </button>
+      </div>
+
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="text-4xl">🥺</span>
+          <p className="font-display text-lg text-cocoa">정말 떠나실 건가요?</p>
+          <p className="text-sm text-cocoa-soft">
+            탈퇴하면 모은 모찌·기록·사진이 모두 사라지고, 되돌릴 수 없어요.
+          </p>
+          <div className="mt-1 flex w-full gap-2">
+            <Button variant="soft" className="flex-1" onClick={() => setDeleteOpen(false)}>
+              더 있을래요
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() =>
+                deleteAccount.mutate(undefined, { onSuccess: () => router.push("/signup") })
+              }
+            >
+              {deleteAccount.isPending ? "정리하는 중…" : "탈퇴하기"}
+            </Button>
+          </div>
+          {deleteAccount.isError && (
+            <p className="text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
