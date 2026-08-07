@@ -6,8 +6,9 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "모찌 — 죄책감 없는 다이어트 컴패니언",
-    short_name: "모찌",
+    name: "모찌 다이어트 컴패니언",
+    short_name: "모찌 다이어트", // 안드로이드 런처 이름은 3~30자 — "모찌"(2자)는 불가
+
     description: "오늘 뭐 먹지, 모찌가 대신 골라줄게요. 제안 → 기록 → 수집.",
     start_url: "/",
     scope: "/",
