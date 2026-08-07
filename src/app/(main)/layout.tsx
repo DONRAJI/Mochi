@@ -1,5 +1,6 @@
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { PrefetchTabs } from "./PrefetchTabs";
+import { IdleGuard } from "./IdleGuard";
 
 /** 인증 후 메인 셸 — 하단 탭 레이아웃 (PRD 3장 IA). */
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +9,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {children}
       <BottomTabBar />
       <PrefetchTabs />
+      <IdleGuard />
     </div>
   );
 }
