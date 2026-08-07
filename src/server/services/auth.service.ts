@@ -74,7 +74,7 @@ export async function login(input: LoginRequest): Promise<AuthUserResponse> {
   // 옛 세션 정리: 이 브라우저의 기존 세션 폐기 + 이 유저의 만료 세션 청소(row 누적 방지).
   await destroySession();
   await pruneExpiredSessions(user.id);
-  await createSession(user.id);
+  await createSession(user.id, input.remember); // '로그인 유지'면 지속 쿠키, 아니면 세션 쿠키
   return toAuthUser(user);
 }
 
