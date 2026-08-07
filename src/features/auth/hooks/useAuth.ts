@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "../api/auth.api";
+import { setIdleSession, clearIdleSession } from "../idleSession";
 import type {
   SignupRequest,
   LoginRequest,
@@ -22,7 +23,10 @@ export function useSignup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SignupRequest) => authApi.signup(input),
-    onSuccess: (user) => qc.setQueryData(meKey, user),
+    onSuccess: (user) => {
+      qc.setQueryData(meKey, user);
+      clearIdleSession(); // 가입은 로그인 유지 — 유휴 로그아웃 대상 아님
+    },
   });
 }
 
@@ -30,7 +34,10 @@ export function useLogin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: LoginRequest) => authApi.login(input),
-    onSuccess: (user) => qc.setQueryData(meKey, user),
+    onSuccess: (user, variables) => {
+      qc.setQueryData(meKey, user);
+      setIdleSession(variables.remember); // 유지 안 하면 유휴 자동 로그아웃 활성
+    },
   });
 }
 
@@ -38,7 +45,10 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => authApi.logout(),
-    onSuccess: () => qc.setQueryData(meKey, null),
+    onSuccess: () => {
+      qc.setQueryData(meKey, null);
+      clearIdleSession();
+    },
   });
 }
 
@@ -47,7 +57,10 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => authApi.deleteAccount(),
-    onSuccess: () => qc.clear(), // 남은 개인 데이터 캐시 전부 제거
+    onSuccess: () => {
+      clearIdleSession();
+      qc.clear(); // 남은 개인 데이터 캐시 전부 제거
+    },
   });
 }
 
