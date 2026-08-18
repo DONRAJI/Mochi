@@ -77,6 +77,51 @@ export function useSetDisplayMode() {
   });
 }
 
+/** 닉네임 변경 (설정) — 성공 시 me 갱신(마이 인사말이 바로 바뀐다). */
+export function useSetNickname() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (nickname: string) => authApi.setNickname(nickname),
+    onSuccess: (user) => qc.setQueryData(meKey, user),
+  });
+}
+
+/** 비밀번호 찾기 메일 요청 (비로그인). 계정 유무와 무관하게 성공한다. */
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (email: string) => authApi.forgotPassword(email) });
+}
+
+/** 메일 링크로 새 비밀번호 설정 (비로그인). 성공 시 서버가 모든 세션을 폐기한다. */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (v: { token: string; password: string }) =>
+      authApi.resetPassword(v.token, v.password),
+  });
+}
+
+/** 로그인 상태에서 비밀번호 변경 (설정). 서버가 다른 기기 세션을 끊고 이 브라우저만 이어준다. */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (v: { currentPassword: string; newPassword: string }) =>
+      authApi.changePassword(v.currentPassword, v.newPassword),
+  });
+}
+
+/** 메일 링크의 토큰으로 이메일 인증 (비로그인 가능 — 다른 기기에서 열 수 있으므로). */
+export function useVerifyEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => authApi.verifyEmail(token),
+    // 로그인 상태로 열었다면 설정 화면의 인증 배지가 바로 반영되게.
+    onSuccess: () => qc.invalidateQueries({ queryKey: meKey }),
+  });
+}
+
+/** 인증 메일 다시 보내기 (설정). */
+export function useResendVerification() {
+  return useMutation({ mutationFn: () => authApi.resendVerification() });
+}
+
 /** 내 취향(선호·비선호·알러지). 추천에 반영됨. */
 export function usePreferences() {
   return useQuery({ queryKey: preferencesKey, queryFn: authApi.fetchPreferences, retry: false });

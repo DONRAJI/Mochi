@@ -139,13 +139,10 @@ export async function markMealEaten(
       select: { mochiSeeds: true },
     });
 
-    // 모찌 cheer 반응
+    // 모찌 cheer 반응 — 응답으로만 전한다.
+    // MochiProfile 테이블에 쓰던 upsert는 제거했다: 읽는 곳이 한 군데도 없었고(getMochiState는
+    // 시간대·오늘 기록·카드 수로 매번 파생 계산), 트랜잭션에 쓰기만 하나 더 붙던 죽은 코드였다.
     const mochiState: MochiState = "cheer";
-    await tx.mochiProfile.upsert({
-      where: { userId },
-      create: { userId, state: mochiState },
-      update: { state: mochiState },
-    });
 
     return {
       recordId: record.id,

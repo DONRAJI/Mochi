@@ -12,6 +12,13 @@ describe("세션 복구 예외 경로 (되돌이 이동 방지)", () => {
     expect(isPublicPath("/account-deletion")).toBe(true);
   });
 
+  it("메일 링크로 들어오는 곳은 로그인 없이 열려야 한다", () => {
+    // 비밀번호를 잊은 사람은 로그인할 수 없다 — 여기서 /login으로 튕기면 복구가 영영 불가능.
+    expect(isPublicPath("/forgot-password")).toBe(true);
+    expect(isPublicPath("/reset-password")).toBe(true);
+    expect(isPublicPath("/verify-email")).toBe(true);
+  });
+
   it("보호 화면은 예외가 아니다 — 세션이 끝나면 로그인으로 안내한다", () => {
     for (const p of ["/", "/fridge", "/meals", "/collection", "/me", "/me/weight"]) {
       expect(isPublicPath(p)).toBe(false);
