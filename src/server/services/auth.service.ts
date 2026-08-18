@@ -109,6 +109,12 @@ export async function setDisplayMode(userId: string, mode: DisplayMode): Promise
   return toAuthUser(user);
 }
 
+/** 닉네임 변경 (설정). 마이 인사말·모찌가 부르는 이름에 쓰인다. */
+export async function setNickname(userId: string, nickname: string): Promise<AuthUserResponse> {
+  const user = await db.user.update({ where: { id: userId }, data: { nickname } });
+  return toAuthUser(user);
+}
+
 /** 내 취향 태그(선호·비선호·알러지) 조회. 추천 반영에 쓰임. */
 export async function getPreferences(userId: string): Promise<PreferencesResponse> {
   const tags = await db.preferenceTag.findMany({

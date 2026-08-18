@@ -48,6 +48,13 @@ export const displayModeSchema = z.object({
   displayMode: z.enum(["cozy", "detail"]),
 });
 
+/** 닉네임 변경 (설정) — 가입 때와 같은 규칙. 공백만 넣는 것도 막는다. */
+export const nicknameSchema = z.object({
+  nickname: z.string().trim().min(1, "닉네임을 알려줄래요?").max(20),
+});
+
+export type NicknameRequest = z.infer<typeof nicknameSchema>;
+
 /** 클라에 노출하는 안전한 유저 형태 (passwordHash 등 제외). */
 export interface AuthUserResponse {
   id: string;

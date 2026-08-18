@@ -354,6 +354,10 @@ model CollectionEntry {
 }
 
 // ── mochi ──────────────────────────────────────────────────
+// ⚠️ 미사용 테이블. 모찌 상태·성장은 저장하지 않고 getMochiState가 매번 파생 계산한다
+// (시간대 + 오늘 먹은 기록 + 모은 모찌 카드 수). 쓰기만 하던 코드는 제거했다.
+// 테이블은 남겨둔다 — 공용 DB(로컬=프로덕션)라 삭제형 마이그레이션은 배포된 옛 코드를 깨뜨린다.
+// `outfit`은 모찌 꾸미기용 예약 컬럼(옷 아트가 생기면 그때 사용).
 model MochiProfile {
   id          String     @id @default(cuid())
   userId      String     @unique @map("user_id")

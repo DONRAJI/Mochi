@@ -77,6 +77,15 @@ export function useSetDisplayMode() {
   });
 }
 
+/** 닉네임 변경 (설정) — 성공 시 me 갱신(마이 인사말이 바로 바뀐다). */
+export function useSetNickname() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (nickname: string) => authApi.setNickname(nickname),
+    onSuccess: (user) => qc.setQueryData(meKey, user),
+  });
+}
+
 /** 내 취향(선호·비선호·알러지). 추천에 반영됨. */
 export function usePreferences() {
   return useQuery({ queryKey: preferencesKey, queryFn: authApi.fetchPreferences, retry: false });

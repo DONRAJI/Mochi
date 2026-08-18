@@ -46,6 +46,13 @@ export function setDisplayMode(displayMode: DisplayMode): Promise<AuthUserRespon
   });
 }
 
+export function setNickname(nickname: string): Promise<AuthUserResponse> {
+  return fetcher<AuthUserResponse>("/api/auth/nickname", {
+    method: "PUT",
+    body: JSON.stringify({ nickname }),
+  });
+}
+
 export function fetchPreferences(): Promise<PreferencesResponse> {
   return fetcher<PreferencesResponse>("/api/auth/preferences");
 }
