@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useMochiStore } from "@/store/mochi";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { MochiSpeechBubble } from "@/components/ui/MochiSpeechBubble";
 import { RetryNotice } from "@/components/ui/RetryNotice";
@@ -22,6 +24,9 @@ const bubbleFor: Record<string, string> = {
   cheer: "잘 먹었네요! 씨앗이 쑥 자랐어요 🌱",
 };
 
+/** 환호 유지 시간 — 기록 직후 홈에 오면 이만큼 cheer 표정으로 반겨준다. */
+const CHEER_MS = 4000;
+
 /** 🏠 홈 (모찌의 방) — 모찌 상태·스트릭이 실데이터로 반응. 숫자(체중/칼로리)는 없음(불변 #2). */
 export function MochiRoom() {
   const mochiQuery = useMochiState();
@@ -30,7 +35,25 @@ export function MochiRoom() {
 
   const mochi = mochiQuery.data;
   const streak = streakQuery.data;
-  const state = mochi?.state ?? "idle";
+
+  // 환호 오버레이 — '먹었어요'/뽑기 직후 몇 초간 cheer 표정을 덧그린 뒤 서버 상태로 복귀.
+  // 서버는 cheer를 반환하지 않는다(순간 반응은 저장할 상태가 아님 — store/mochi.ts).
+  const cheerAt = useMochiStore((s) => s.cheerAt);
+  const settle = useMochiStore((s) => s.settle);
+  useEffect(() => {
+    if (cheerAt === null) return;
+    // 다른 탭에서 환호하고 한참 뒤에 홈에 온 경우 — 남은 시간만 유지(0 이하면 즉시 복귀).
+    const remaining = CHEER_MS - (Date.now() - cheerAt);
+    if (remaining <= 0) {
+      settle();
+      return;
+    }
+    const t = setTimeout(settle, remaining);
+    return () => clearTimeout(t);
+  }, [cheerAt, settle]);
+
+  const cheering = cheerAt !== null;
+  const state = cheering ? "cheer" : (mochi?.state ?? "idle");
 
   // 모찌 자신은 기다리지 않고 바로 띄운다 — 앱이 즉시 살아 있게. 표정이 idle→happy로 바뀌는 건
   // 부드러운 전환이지만, '연속 기록' 같은 숫자는 오면 튄다 → 올 때까지 자리만 지킨다.
@@ -43,9 +66,11 @@ export function MochiRoom() {
   // 뭘 해야 할지 모르던 문제(핵심 루프가 안 보임)를 말풍선부터 이어준다.
   const isNewcomer = !mochiQuery.isPending && !!mochi && !isOnboardingComplete(mochi.collectedCount);
 
-  // 며칠 든든했으면 모찌가 오늘 가벼운 쪽을 제안(경고 아님, PRD 11.5). 그 외엔 상태 인사.
-  const bubble =
-    nudge?.kind === "light"
+  // 말풍선 우선순위: 방금 잘 먹은 환호가 최우선(신규 안내보다 축하가 먼저), 다음 밸런싱
+  // 넛지(가벼운 제안, 경고 아님 — PRD 11.5), 신규 인사, 그 외 상태 인사.
+  const bubble = cheering
+    ? bubbleFor.cheer
+    : nudge?.kind === "light"
       ? nudge.message
       : isNewcomer
         ? messages.mochi.welcome

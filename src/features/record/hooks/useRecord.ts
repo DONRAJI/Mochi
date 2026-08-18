@@ -90,11 +90,11 @@ export function useAddWeight() {
 /** 사진 한 장 기록(PRD 8-3) — 성공 시 모찌 cheer + 오늘 기록·모찌·도감 갱신. */
 export function useRecordPhoto() {
   const qc = useQueryClient();
-  const setMochi = useMochiStore((s) => s.setState);
+  const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
     mutationFn: (file: Blob) => recordPhoto(file),
     onSuccess: () => {
-      setMochi("cheer");
+      cheer();
       qc.invalidateQueries({ queryKey: ["record"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["collection"] });
@@ -105,11 +105,11 @@ export function useRecordPhoto() {
 /** '먹었어요' — 성공 시 모찌가 즉시 cheer, 도감·모찌·스트릭 갱신. */
 export function useMarkMealEaten() {
   const qc = useQueryClient();
-  const setMochi = useMochiStore((s) => s.setState);
+  const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
     mutationFn: (input: MarkMealRequest) => markMealEaten(input),
     onSuccess: () => {
-      setMochi("cheer");
+      cheer();
       qc.invalidateQueries({ queryKey: ["collection"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] }); // 스트릭 갱신
@@ -123,7 +123,7 @@ export function useMarkMealEaten() {
  */
 export function useMarkMealWithPhoto() {
   const qc = useQueryClient();
-  const setMochi = useMochiStore((s) => s.setState);
+  const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
     mutationFn: (v: {
       blob: Blob;
@@ -133,7 +133,7 @@ export function useMarkMealWithPhoto() {
       rarity?: string;
     }) => recordPhoto(v.blob, { mode: v.mode, slot: v.slot, refId: v.refId, rarity: v.rarity }),
     onSuccess: () => {
-      setMochi("cheer");
+      cheer();
       qc.invalidateQueries({ queryKey: ["collection"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] });

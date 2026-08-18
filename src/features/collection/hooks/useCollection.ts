@@ -15,11 +15,11 @@ export function useMochiCollection() {
 
 export function useDrawCard() {
   const qc = useQueryClient();
-  const setMochi = useMochiStore((s) => s.setState);
+  const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
     mutationFn: () => drawMochiCard(),
     onSuccess: () => {
-      setMochi("cheer");
+      cheer();
       qc.invalidateQueries({ queryKey: ["collection", "mochi"] });
       // 뽑기는 모은 카드 수(=모찌 성장 단계)와 씨앗을 바꾼다 → 홈도 갱신.
       // 이게 없으면 첫 뽑기 후에도 홈의 첫 안내가 남고 성장 단계가 옛 값으로 보인다.

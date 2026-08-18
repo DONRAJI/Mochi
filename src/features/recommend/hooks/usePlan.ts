@@ -143,7 +143,7 @@ export function useMovePlan() {
 /** 계획한 끼니 '먹었어요' — 기록 루프(스트릭·도감·모찌)로 이어진다. */
 export function useEatPlan() {
   const qc = useQueryClient();
-  const setMochi = useMochiStore((s) => s.setState);
+  const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
     mutationKey: planMutationKey,
     mutationFn: (id: string) => planApi.eatPlan(id),
@@ -155,7 +155,7 @@ export function useEatPlan() {
     },
     onError: (_e, _id, ctx) => rollbackPlan(qc, ctx?.prev),
     onSuccess: () => {
-      setMochi("cheer");
+      cheer();
       qc.invalidateQueries({ queryKey: ["collection"] });
       qc.invalidateQueries({ queryKey: ["mochi"] });
       qc.invalidateQueries({ queryKey: ["record"] });
