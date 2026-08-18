@@ -55,6 +55,31 @@ export const nicknameSchema = z.object({
 
 export type NicknameRequest = z.infer<typeof nicknameSchema>;
 
+/** 비밀번호 찾기 요청 — 계정 유무와 무관하게 라우트는 항상 같은 응답을 준다(사용자 열거 방지). */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("이메일 형태만 한 번 확인해 주세요."),
+});
+
+/** 메일 링크로 새 비밀번호 정하기. 규칙은 가입 때와 같게. */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8, "비밀번호는 8자 이상이면 좋아요.").max(72),
+});
+
+/** 로그인 상태에서 비밀번호 변경 — 현재 비밀번호 확인 필요. */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "지금 쓰는 비밀번호를 알려줄래요?"),
+  newPassword: z.string().min(8, "비밀번호는 8자 이상이면 좋아요.").max(72),
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordRequest = z.infer<typeof changePasswordSchema>;
+
 /** 클라에 노출하는 안전한 유저 형태 (passwordHash 등 제외). */
 export interface AuthUserResponse {
   id: string;
@@ -62,4 +87,6 @@ export interface AuthUserResponse {
   nickname: string;
   cooksOften: boolean;
   displayMode: DisplayMode;
+  /** 이메일 인증 여부. 미인증도 앱은 쓸 수 있고, 설정에서 재발송만 권한다(저마찰 온보딩). */
+  emailVerified: boolean;
 }

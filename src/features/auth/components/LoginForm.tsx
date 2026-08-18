@@ -62,6 +62,11 @@ export function LoginForm() {
         </Button>
       </form>
       <p className="mt-3 text-center text-sm text-cocoa-faint">
+        <Link href="/forgot-password" className="text-cocoa-soft underline">
+          비밀번호를 잊었어요
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-sm text-cocoa-faint">
         처음이세요?{" "}
         <Link href="/signup" className="text-cocoa underline">
           가입하기

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useMe, useSetNickname } from "../hooks/useAuth";
+import { useMe, useSetNickname, useChangePassword, useResendVerification } from "../hooks/useAuth";
 
 /**
  * ⚙️ 설정 — 계정 정보와 표시 방식. (마이 > 설정)
@@ -30,8 +30,104 @@ export function SettingsScreen() {
         ) : (
           <NicknameCard currentNickname={me?.nickname ?? ""} email={me?.email ?? ""} />
         )}
+        {!isPending && me && !me.emailVerified && <VerifyEmailCard />}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <p className="px-1 text-sm text-cocoa-faint">비밀번호</p>
+        <ChangePasswordCard />
       </section>
     </div>
+  );
+}
+
+/**
+ * 미인증일 때만 뜨는 권유 — 막지 않는다(저마찰 온보딩 PRD 4.1).
+ * 인증을 해두면 비밀번호를 잊었을 때 복구가 가능해지므로, 그 이유를 그대로 말해준다.
+ */
+function VerifyEmailCard() {
+  const resend = useResendVerification();
+  return (
+    <Card className="flex flex-col gap-2 bg-butter-soft">
+      <p className="text-sm text-cocoa">이메일을 아직 확인하지 않았어요</p>
+      <p className="text-xs text-cocoa-soft">
+        확인해두면 비밀번호를 잊었을 때 이 주소로 다시 찾을 수 있어요.
+      </p>
+      {resend.isSuccess ? (
+        <p className="text-sm text-cocoa-soft">메일을 보냈어요 💌 받은편지함을 봐주세요.</p>
+      ) : (
+        <Button variant="soft" onClick={() => resend.mutate()}>
+          {resend.isPending ? "보내는 중…" : "인증 메일 받기"}
+        </Button>
+      )}
+      {resend.isError && (
+        <p className="text-sm text-cocoa-soft">{(resend.error as Error).message}</p>
+      )}
+    </Card>
+  );
+}
+
+/** 비밀번호 변경 — 현재 비밀번호 확인 후. 성공하면 다른 기기 로그인은 끊긴다(서버에서 처리). */
+function ChangePasswordCard() {
+  const change = useChangePassword();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSubmit || change.isPending) return;
+    change.mutate(
+      { currentPassword: current, newPassword: next },
+      {
+        onSuccess: () => {
+          setCurrent("");
+          setNext("");
+          setConfirm("");
+        },
+      },
+    );
+  }
+
+  return (
+    <Card>
+      <form onSubmit={onSubmit} className="flex flex-col gap-2">
+        <Input
+          type="password"
+          placeholder="지금 비밀번호"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
+        <Input
+          type="password"
+          placeholder="새 비밀번호 (8자 이상)"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        <Input
+          type="password"
+          placeholder="새 비밀번호 한 번 더"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+        {mismatch && <p className="text-sm text-cocoa-soft">두 번째 입력이 조금 다른 것 같아요.</p>}
+        <Button type="submit" className={canSubmit ? undefined : "opacity-60"}>
+          {change.isPending ? "바꾸는 중…" : "비밀번호 바꾸기"}
+        </Button>
+        {change.isSuccess && !change.isPending && (
+          <p className="text-sm text-cocoa-soft">바꿨어요 🌿 다른 기기의 로그인은 정리했어요.</p>
+        )}
+        {change.isError && (
+          <p className="text-sm text-cocoa-soft">{(change.error as Error).message}</p>
+        )}
+      </form>
+    </Card>
   );
 }
 

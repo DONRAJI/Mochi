@@ -10,6 +10,9 @@ import {
   getSessionUserId,
   pruneExpiredSessions,
 } from "@/server/auth/session";
+import { issueAuthToken, consumeAuthToken } from "@/server/auth/auth-token";
+import { sendEmail, appUrl } from "@/server/email/send";
+import { verifyEmailTemplate, resetPasswordTemplate } from "@/server/email/templates";
 import type {
   SignupRequest,
   LoginRequest,
@@ -29,6 +32,7 @@ function toAuthUser(user: {
   nickname: string;
   cooksOften: boolean;
   displayMode: string;
+  emailVerifiedAt: Date | null;
 }): AuthUserResponse {
   return {
     id: user.id,
@@ -36,6 +40,7 @@ function toAuthUser(user: {
     nickname: user.nickname,
     cooksOften: user.cooksOften,
     displayMode: user.displayMode as AuthUserResponse["displayMode"],
+    emailVerified: user.emailVerifiedAt !== null,
   };
 }
 
@@ -63,7 +68,95 @@ export async function signup(input: SignupRequest): Promise<AuthUserResponse> {
   );
 
   await createSession(user.id);
+  // 인증 메일은 보내되 가입을 막지 않는다 — 미인증도 앱을 쓸 수 있다(저마찰 온보딩 PRD 4.1).
+  // 메일 장애로 가입이 실패하면 안 되므로 실패해도 넘어간다(sendEmail은 던지지 않음).
+  await sendVerificationEmail(user.id, user.email, user.nickname);
   return toAuthUser(user);
+}
+
+/** 인증 메일 발송 — 토큰 발급 + 링크 메일. 실패해도 던지지 않는다(호출부 흐름 보호). */
+async function sendVerificationEmail(
+  userId: string,
+  email: string,
+  nickname: string,
+): Promise<void> {
+  const token = await issueAuthToken(userId, "email_verify");
+  const link = `${appUrl()}/verify-email?token=${token}`;
+  const mail = verifyEmailTemplate(nickname, link);
+  await sendEmail({ to: email, subject: mail.subject, html: mail.html, devLink: link });
+}
+
+/**
+ * 인증 메일 다시 보내기 (설정에서). 이미 인증했으면 아무것도 하지 않는다.
+ * 재발급 시 이전 토큰은 폐기된다(auth-token.ts) → 옛 링크는 즉시 죽는다.
+ */
+export async function resendVerification(userId: string): Promise<void> {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user || user.emailVerifiedAt) return;
+  await sendVerificationEmail(user.id, user.email, user.nickname);
+}
+
+/** 이메일 인증 완료 — 토큰이 유효하면 표시. 이미 인증됐어도 성공으로 본다(멱등). */
+export async function verifyEmail(token: string): Promise<boolean> {
+  const userId = await consumeAuthToken(token, "email_verify");
+  if (!userId) return false;
+  await db.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
+  return true;
+}
+
+/**
+ * 비밀번호 재설정 요청 — **계정이 없어도 똑같이 아무 일 없이 끝난다.**
+ * 응답이 갈리면 "이 이메일이 가입돼 있는지" 알려주는 꼴이 된다(사용자 열거). 라우트는 항상 성공을 반환.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user) return;
+
+  const token = await issueAuthToken(user.id, "password_reset");
+  const link = `${appUrl()}/reset-password?token=${token}`;
+  const mail = resetPasswordTemplate(user.nickname, link);
+  await sendEmail({ to: user.email, subject: mail.subject, html: mail.html, devLink: link });
+}
+
+/**
+ * 비밀번호 재설정 실행. 성공하면 **이 유저의 모든 세션을 폐기**한다 —
+ * 계정을 빼앗겼다 되찾는 경우가 이 흐름의 핵심이라, 남의 로그인 상태를 그대로 두면 안 된다.
+ * 메일을 받았다는 것 자체가 주소 소유 증명이므로 인증 표시도 함께 남긴다.
+ */
+export async function resetPassword(token: string, password: string): Promise<boolean> {
+  const userId = await consumeAuthToken(token, "password_reset");
+  if (!userId) return false;
+
+  const passwordHash = await hashPassword(password);
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: { passwordHash, emailVerifiedAt: new Date() },
+    }),
+    db.session.deleteMany({ where: { userId } }),
+  ]);
+  return true;
+}
+
+/**
+ * 로그인 상태에서 비밀번호 변경. 현재 비밀번호를 확인하고, **다른 기기의 세션을 전부 끊은 뒤**
+ * 이 브라우저만 새 세션으로 이어준다(방금 바꾼 사람이 튕기지 않게).
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
+    throw new AppError("INVALID_CREDENTIALS", messages.auth.invalidCredentials, 401);
+  }
+  const passwordHash = await hashPassword(newPassword);
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { passwordHash } }),
+    db.session.deleteMany({ where: { userId } }), // 옛 세션 전부 폐기(현재 쿠키 포함)
+  ]);
+  await createSession(userId); // 이 브라우저는 바로 다시 로그인 상태로
 }
 
 export async function login(input: LoginRequest): Promise<AuthUserResponse> {
