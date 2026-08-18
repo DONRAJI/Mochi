@@ -61,3 +61,15 @@ export async function consumeAuthToken(
 
   return row.userId;
 }
+
+/**
+ * 이 유저의 소진·만료 토큰 청소 — 로그인 시 곁다리로 호출 (pruneExpiredSessions와 같은 패턴).
+ * 재발급은 같은 종류만 지우므로, 사용된(usedAt) 토큰이 영구 누적되는 걸 여기서 막는다.
+ */
+export async function pruneStaleAuthTokens(userId: string): Promise<void> {
+  await db.authToken
+    .deleteMany({
+      where: { userId, OR: [{ usedAt: { not: null } }, { expiresAt: { lt: new Date() } }] },
+    })
+    .catch(() => {}); // 청소 실패가 로그인을 막으면 안 된다
+}

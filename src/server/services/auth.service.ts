@@ -10,7 +10,7 @@ import {
   getSessionUserId,
   pruneExpiredSessions,
 } from "@/server/auth/session";
-import { issueAuthToken, consumeAuthToken } from "@/server/auth/auth-token";
+import { issueAuthToken, consumeAuthToken, pruneStaleAuthTokens } from "@/server/auth/auth-token";
 import { sendEmail, appUrl } from "@/server/email/send";
 import { verifyEmailTemplate, resetPasswordTemplate } from "@/server/email/templates";
 import type {
@@ -164,9 +164,10 @@ export async function login(input: LoginRequest): Promise<AuthUserResponse> {
   if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
     throw new AppError("INVALID_CREDENTIALS", messages.auth.invalidCredentials, 401);
   }
-  // 옛 세션 정리: 이 브라우저의 기존 세션 폐기 + 이 유저의 만료 세션 청소(row 누적 방지).
+  // 옛 세션 정리: 이 브라우저의 기존 세션 폐기 + 이 유저의 만료 세션·소진 메일토큰 청소(row 누적 방지).
   await destroySession();
   await pruneExpiredSessions(user.id);
+  await pruneStaleAuthTokens(user.id);
   await createSession(user.id, input.remember); // '로그인 유지'면 지속 쿠키, 아니면 세션 쿠키
   return toAuthUser(user);
 }
