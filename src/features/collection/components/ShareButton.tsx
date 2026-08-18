@@ -8,10 +8,9 @@ export function ShareButton({ tabLabel, acquired }: { tabLabel: string; acquired
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      (typeof window !== "undefined" ? window.location.origin : "");
-    const text = buildShareText(tabLabel, acquired, url);
+    // 지금 떠 있는 주소가 곧 정답 — env로 박아두면 프리뷰 배포·도메인 변경 때 틀린 링크가 나간다.
+    // (클릭 핸들러 안이라 window는 항상 있다. 메일 링크용 서버 기준 주소는 server/email/send.ts.)
+    const text = buildShareText(tabLabel, acquired, window.location.origin);
 
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
