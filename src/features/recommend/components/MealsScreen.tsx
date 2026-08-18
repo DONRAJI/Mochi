@@ -13,6 +13,8 @@ import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
 import { FavoritesList } from "./FavoritesList";
 import { BalanceBanner } from "@/features/record/components/BalanceBanner";
 import { Chip } from "@/components/ui/Chip";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { RetryNotice } from "@/components/ui/RetryNotice";
 import { useRecommendations, useRecipeSearch, useToggleFavorite } from "../hooks/useRecommend";
 import { matchesCookFilter } from "../cookFilter";
 import type { MealMode, RecommendationResponse } from "../types";
@@ -37,7 +39,7 @@ export function MealsScreen() {
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [showAll, setShowAll] = useState(false); // 기본은 몇 개만 — 주간 식단이 금방 보이게
-  const { data, isPending, isError } = useRecommendations(mode);
+  const { data, isPending, isError, refetch } = useRecommendations(mode);
   const toggleFav = useToggleFavorite();
 
   // 레시피 검색(cook) — 이름 부분일치 + 상세검색(재료). 입력은 디바운스해 서버 조회.
@@ -124,9 +126,7 @@ export function MealsScreen() {
           {searchActive ? (
             // 검색 결과 뷰 — 이름/재료로 찾은 요리 (칩·주간식단은 잠시 숨겨 집중)
             <>
-              {searchResult.isError && (
-                <p className="px-1 text-sm text-cocoa-soft">잠깐 못 불러왔어요. 다시 볼까요?</p>
-              )}
+              {searchResult.isError && <RetryNotice onRetry={() => searchResult.refetch()} />}
               {!searchResult.isError &&
                 !searchResult.isFetching &&
                 (searchResult.data?.length ?? 0) === 0 && (
@@ -170,10 +170,18 @@ export function MealsScreen() {
                 </button>
               )}
 
-              {isPending && <p className="px-1 text-sm text-cocoa-faint">{messages.empty.meals}</p>}
-              {isError && (
-                <p className="px-1 text-sm text-cocoa-soft">잠깐 못 불러왔어요. 다시 볼까요?</p>
+              {isPending && (
+                <>
+                  <p className="px-1 text-sm text-cocoa-faint">{messages.empty.meals}</p>
+                  {/* 카드가 나중에 끼어들며 주간 식단을 아래로 밀지 않게 자리를 잡아둔다. */}
+                  <div className="flex flex-col gap-3">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <Skeleton key={i} className="h-[104px] w-full rounded-mochi" />
+                    ))}
+                  </div>
+                </>
               )}
+              {isError && <RetryNotice onRetry={() => refetch()} />}
 
               <div className="flex flex-col gap-3">
                 {visible?.map((r) => (
