@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
@@ -24,9 +25,10 @@ export function MeScreen() {
   const router = useRouter();
   const logout = useLogout();
   const deleteAccount = useDeleteAccount();
-  const { data: me } = useMe();
-  const { data: streak } = useStreak();
-  const { data: mochi } = useMochiState();
+  const { data: me, isPending: mePending } = useMe();
+  const { data: streak, isPending: streakPending } = useStreak();
+  const { data: mochi, isPending: mochiPending } = useMochiState();
+  const profilePending = mePending || streakPending || mochiPending;
 
   return (
     <div className="flex flex-col gap-4">
@@ -36,12 +38,20 @@ export function MeScreen() {
         <span className="flex h-14 w-14 items-center justify-center rounded-mochi-lg bg-mint-soft text-2xl">
           •‿•
         </span>
-        <div>
-          <p className="font-display text-cocoa">{me?.nickname ?? "모찌 친구"}</p>
-          <p className="text-sm text-cocoa-faint">
-            스트릭 {streak?.count ?? 0}일째 · 모은 카드 {mochi?.collectedCount ?? 0}개
-          </p>
-        </div>
+        {/* 닉네임·스트릭·카드 수는 값이 오기 전 "모찌 친구 / 0일째 / 0개"로 그리면 튄다(불변 #1). */}
+        {profilePending ? (
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+        ) : (
+          <div>
+            <p className="font-display text-cocoa">{me?.nickname ?? "모찌 친구"}</p>
+            <p className="text-sm text-cocoa-faint">
+              스트릭 {streak?.count ?? 0}일째 · 모은 카드 {mochi?.collectedCount ?? 0}개
+            </p>
+          </div>
+        )}
       </Card>
 
       <DisplayModeToggle />

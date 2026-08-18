@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useDragControls } from "framer-motion";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { weekDates, ymd, WEEKDAY_LABEL } from "../week";
 import {
@@ -34,7 +35,7 @@ function clientXY(e: MouseEvent | TouchEvent | PointerEvent): { x: number; y: nu
 export function WeeklyPlanCalendar() {
   const week = weekDates(new Date());
   const today = ymd(new Date());
-  const { data: meals } = usePlanWeek();
+  const { data: meals, isPending } = usePlanWeek();
   const remove = useRemovePlan();
   const eat = useEatPlan();
   const autoFill = useAutoFillWeek();
@@ -59,7 +60,8 @@ export function WeeklyPlanCalendar() {
   }
   // 각 날짜의 끼니를 아침→점심→저녁 순으로 정렬.
   for (const arr of byDate.values()) arr.sort((a, b) => slotRank(a.slot) - slotRank(b.slot));
-  const hasEmpty = week.some((d) => !byDate.has(d));
+  // 불러오기 전엔 모든 날이 비어 보이므로, 그 상태로 '자동 채우기'를 띄웠다 감추면 깜빡인다.
+  const hasEmpty = !isPending && week.some((d) => !byDate.has(d));
   const hasMovable = (meals ?? []).some((m) => !m.eaten);
 
   return (
@@ -102,7 +104,13 @@ export function WeeklyPlanCalendar() {
               </div>
 
               {dayMeals.length === 0 ? (
-                <p className="text-xs text-cocoa-faint">비어 있어요</p>
+                // 아직 모르는 걸 "비어 있어요"라고 단정하지 않는다 — 계획이 있는데도 비었다고
+                // 보였다가 채워지면, 그 찰나가 "아무것도 안 했다"로 읽힌다(불변 #1).
+                isPending ? (
+                  <Skeleton className="h-4 w-24" />
+                ) : (
+                  <p className="text-xs text-cocoa-faint">비어 있어요</p>
+                )
               ) : (
                 <div className="flex flex-col gap-1">
                   {dayMeals.map((m) => (

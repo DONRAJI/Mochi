@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Gauge } from "@/components/ui/Gauge";
 import { Modal } from "@/components/ui/Modal";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { RetryNotice } from "@/components/ui/RetryNotice";
 import { CompleteGauge } from "./CompleteGauge";
 import { RarityBadge } from "./RarityBadge";
 import { DrawRevealModal } from "./DrawRevealModal";
@@ -18,7 +20,7 @@ import type { MochiCardResponse, DrawResultResponse } from "../types";
 
 /** 📖 모찌 도감 (PRD 12) — 건강 행동으로 모은 씨앗으로 모찌 카드를 뽑아 모은다(리텐션 엔진). */
 export function MochiCollectionScreen() {
-  const { data, isError } = useMochiCollection();
+  const { data, isPending, isError, refetch } = useMochiCollection();
   const draw = useDrawCard();
   const [selected, setSelected] = useState<MochiCardResponse | null>(null);
   const [reveal, setReveal] = useState<DrawResultResponse | null>(null);
@@ -40,11 +42,12 @@ export function MochiCollectionScreen() {
     <div className="flex flex-col gap-4">
       <h1 className="text-title text-cocoa">모찌 도감</h1>
 
-      {isError && (
-        <p className="px-1 text-sm text-cocoa-soft">로그인하면 모찌를 모을 수 있어요.</p>
-      )}
+      {/* 미인증(401)은 전역에서 로그인으로 안내하므로, 여기 남는 건 잠깐 못 불러온 경우다. */}
+      {isError && <RetryNotice onRetry={() => refetch()} />}
 
-      {!isError && (
+      {!isError && isPending && <CollectionSkeleton />}
+
+      {!isError && !isPending && (
         <>
           {/* 씨앗 + 뽑기 — 건강한 행동으로 모은 씨앗으로 (결제 없음) */}
           <Card className="flex flex-col gap-2">
@@ -117,6 +120,34 @@ export function MochiCollectionScreen() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/**
+ * 불러오는 동안의 도감 자리 — 씨앗 수·컬렉션 수는 값이 오기 전 0으로 그리면
+ * "씨앗 0 · 5개 더 모으면"이 떴다가 실제 값으로 튄다(불변 #1). 자리만 지킨다.
+ */
+function CollectionSkeleton() {
+  return (
+    <>
+      <Card className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <Skeleton className="h-2.5 w-full" />
+        <Skeleton className="h-11 w-full rounded-mochi" />
+      </Card>
+      <Skeleton className="h-[86px] w-full rounded-mochi" />
+      <div className="grid grid-cols-3 gap-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <Skeleton className="aspect-square w-full rounded-mochi" />
+            <Skeleton className="h-3 w-12" />
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

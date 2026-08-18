@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Chip } from "@/components/ui/Chip";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { RetryNotice } from "@/components/ui/RetryNotice";
 import { IngredientGrid } from "./IngredientGrid";
 import { ExpiryShelf } from "./ExpiryShelf";
 import { TagFilterChips } from "./TagFilterChips";
@@ -17,7 +19,7 @@ import { FRIDGE_CATEGORIES } from "../data";
 export function FridgeScreen() {
   const [category, setCategory] = useState<string>("전체");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { data, isPending, isError } = useIngredients();
+  const { data, isPending, isError, refetch } = useIngredients();
   const remove = useRemoveIngredient();
 
   const all = data ?? [];
@@ -40,14 +42,20 @@ export function FridgeScreen() {
         ))}
       </div>
 
-      {isError && (
-        <p className="px-1 text-sm text-cocoa-soft">로그인하면 냉장고를 채울 수 있어요.</p>
-      )}
+      {/* 미인증(401)은 전역에서 로그인으로 안내하므로, 여기 남는 건 잠깐 못 불러온 경우다. */}
+      {isError && <RetryNotice onRetry={() => refetch()} />}
       {!isError &&
-        (all.length > 0 ? (
+        (isPending ? (
+          // 담아둔 재료가 있는데도 '비었다'는 안내가 먼저 뜨는 걸 막는다(불변 #1).
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} className="aspect-square w-full rounded-mochi" />
+            ))}
+          </div>
+        ) : all.length > 0 ? (
           <IngredientGrid items={items} onRemove={(id) => remove.mutate(id)} />
         ) : (
-          !isPending && <EmptyFridgeState />
+          <EmptyFridgeState />
         ))}
 
       <ShoppingList />

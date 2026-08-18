@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useRecommendations } from "@/features/recommend/hooks/useRecommend";
 import type { RecommendationResponse } from "@/features/recommend/types";
 
@@ -16,8 +17,20 @@ function hintFor(r: RecommendationResponse): string {
 
 /** 오늘의 제안 — 실제 요리 추천 상위 3(냉장고·취향 반영). 탭하면 그 메뉴 상세가 바로 열린다 (PRD 4.2 30초 완결). */
 export function TodaySuggestionCard() {
-  const { data } = useRecommendations("cook");
+  const { data, isPending } = useRecommendations("cook");
   const top = (data ?? []).slice(0, 3);
+
+  // 불러오는 동안에도 자리를 잡아둔다 — 제안이 나중에 끼어들며 아래 내용을 밀어내지 않게.
+  if (isPending) {
+    return (
+      <section className="w-full">
+        <p className="mb-2 text-sm text-cocoa-faint">오늘의 제안</p>
+        <div className="flex gap-3 overflow-hidden pb-1">
+          <Skeleton className="h-[88px] min-w-[78%] rounded-mochi" />
+        </div>
+      </section>
+    );
+  }
 
   if (top.length === 0) return null;
 
