@@ -2,7 +2,8 @@ import type { MochiState } from "@/types/mochi";
 
 export interface MochiStateResponse {
   state: MochiState;
-  growthStage: number; // 수집 수에 따라 성장 (1~5)
+  growthStage: number; // 모은 모찌 카드 수에 따라 성장 (1~5)
+  /** 모은 **모찌 카드** 수. 음식 CollectionEntry(먹었어요 부산물)는 세지 않는다 — mochi.service 주석 참고. */
   collectedCount: number;
   /**
    * 첫 안내(StartHereCard)가 씨앗 진척을 보여주기 위한 값. 도감 전체(카드 20장)를 홈에서
