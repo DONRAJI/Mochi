@@ -113,6 +113,7 @@ model User {
 
   sessions    Session[]
   authTokens  AuthToken[]
+  pushSubscriptions PushSubscription[]
   preferences PreferenceTag[]
   ingredients Ingredient[]
   meals       MealRecord[]
@@ -226,6 +227,25 @@ model AuthToken {
 
   @@index([userId, kind])
   @@map("auth_tokens")
+}
+
+/**
+ * 웹푸시 구독 (리마인더 — 옵트인, 설정에서 켠 사람만). endpoint = 기기·브라우저당 고유.
+ * p256dh/auth는 페이로드 암호화용 — 현재는 페이로드 없는 푸시(내용은 기기 SW가 정함)라
+ * 미사용이지만, 향후 개인화 페이로드를 붙일 때 필요하므로 함께 저장한다.
+ */
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 model PreferenceTag {

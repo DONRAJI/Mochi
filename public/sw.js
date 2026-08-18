@@ -22,6 +22,43 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// ── 저녁 리마인더 (웹푸시) ──
+// 서버는 페이로드 없이 "깨워라"만 보낸다(webpush.ts — RFC 8291 암호화 회피).
+// 문구는 이 기기에서 그 시각에 맞게 정한다. 톤은 재촉이 아니라 제안(불변 #1).
+self.addEventListener("push", (event) => {
+  const hour = new Date().getHours();
+  const body =
+    hour >= 16
+      ? "오늘 저녁 뭐 먹을지, 모찌가 골라놨어요 🍽️"
+      : "오늘 뭐 먹을지, 모찌가 골라놨어요 🍽️";
+  event.waitUntil(
+    self.registration.showNotification("모찌", {
+      body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: "mochi-meal-reminder", // 같은 태그 = 쌓이지 않고 교체(알림 도배 방지)
+      data: { url: "/meals" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const win of wins) {
+        if ("focus" in win) {
+          if (win.navigate) win.navigate(url);
+          return win.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })(),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return; // 변경 요청은 절대 캐시하지 않음

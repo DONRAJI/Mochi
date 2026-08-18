@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { NotificationSection } from "@/features/notify/components/NotificationSection";
 import { useMe, useSetNickname, useChangePassword, useResendVerification } from "../hooks/useAuth";
 
 /**
@@ -37,6 +38,9 @@ export function SettingsScreen() {
         <p className="px-1 text-sm text-cocoa-faint">비밀번호</p>
         <ChangePasswordCard />
       </section>
+
+      {/* 저녁 리마인더 (옵트인) — 서버에 VAPID가 없거나 준비 중이면 스스로 숨는다. */}
+      <NotificationSection />
     </div>
   );
 }

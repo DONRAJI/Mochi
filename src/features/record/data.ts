@@ -7,5 +7,5 @@
  * 여기 다시 추가한다.
  */
 export const ME_MENU = [
-  { emoji: "⚙️", label: "설정", hint: "닉네임 · 계정", href: "/me/settings" },
+  { emoji: "⚙️", label: "설정", hint: "닉네임 · 알림 · 계정", href: "/me/settings" },
 ] as const;
