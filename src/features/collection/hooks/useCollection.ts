@@ -21,6 +21,9 @@ export function useDrawCard() {
     onSuccess: () => {
       setMochi("cheer");
       qc.invalidateQueries({ queryKey: ["collection", "mochi"] });
+      // 뽑기는 모은 카드 수(=모찌 성장 단계)와 씨앗을 바꾼다 → 홈도 갱신.
+      // 이게 없으면 첫 뽑기 후에도 홈의 첫 안내가 남고 성장 단계가 옛 값으로 보인다.
+      qc.invalidateQueries({ queryKey: ["mochi"] });
     },
   });
 }

@@ -28,6 +28,8 @@ export const messages = {
   },
   mochi: {
     greet: "왔어요? 오늘도 같이 잘 먹어봐요.",
+    /** 아직 첫 모찌를 못 뽑은 사용자 — 홈의 첫 안내 카드로 시선을 이어준다. */
+    welcome: "반가워요! 아래에서 하나씩 해볼까요?",
     rest: "쉬어가도 괜찮아요.",
     expirySoon: (name: string) => `${name} 곧 써볼까요?`,
   },

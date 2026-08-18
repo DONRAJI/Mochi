@@ -4,12 +4,14 @@ import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { MochiSpeechBubble } from "@/components/ui/MochiSpeechBubble";
 import { RetryNotice } from "@/components/ui/RetryNotice";
 import { TodaySuggestionCard } from "./TodaySuggestionCard";
+import { StartHereCard } from "./StartHereCard";
 import { StreakWidget } from "./StreakWidget";
 import { QuickActionBar } from "./QuickActionBar";
 import { WeeklyPlanCalendar } from "@/features/recommend/components/WeeklyPlanCalendar";
 import { PhotoRecordButton } from "@/features/record/components/PhotoRecordButton";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
+import { isOnboardingComplete } from "../onboarding";
 import { messages } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
@@ -40,9 +42,17 @@ export function MochiRoom() {
   // 세션 만료(401)는 전역에서 로그인으로 돌려보내므로, 여기 남는 건 네트워크·서버가 잠깐 쉬는 경우.
   const stalled = mochiQuery.isError || streakQuery.isError;
 
+  // 아직 첫 모찌를 못 뽑은 사용자에겐 아래 안내 카드를 가리키는 인사로 — 첫 화면에서
+  // 뭘 해야 할지 모르던 문제(핵심 루프가 안 보임)를 말풍선부터 이어준다.
+  const isNewcomer = !mochiQuery.isPending && !!mochi && !isOnboardingComplete(mochi.collectedCount);
+
   // 며칠 든든했으면 모찌가 오늘 가벼운 쪽을 제안(경고 아님, PRD 11.5). 그 외엔 상태 인사.
   const bubble =
-    nudge?.kind === "light" ? nudge.message : (bubbleFor[state] ?? messages.mochi.greet);
+    nudge?.kind === "light"
+      ? nudge.message
+      : isNewcomer
+        ? messages.mochi.welcome
+        : (bubbleFor[state] ?? messages.mochi.greet);
 
   return (
     <main className="flex flex-col items-center gap-5">
@@ -72,6 +82,9 @@ export function MochiRoom() {
           />
         ))}
       </div>
+      {/* 첫 안내 — 핵심 루프(재료→기록→뽑기). 첫 모찌를 뽑으면 스스로 사라진다. */}
+      <StartHereCard />
+
       <TodaySuggestionCard />
       {/* 이번 주 식단 — 홈에서 바로 보이게(식단탭에 숨지 않도록). 계획·먹었어요를 여기서. */}
       <div className="w-full">

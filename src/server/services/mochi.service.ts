@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
+import { DRAW_COST } from "@/features/collection/gacha";
 import type { MochiState } from "@/types/mochi";
 import type { MochiStateResponse } from "@/features/mochi/types";
 
@@ -19,12 +20,20 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
   const isNight = now.getHours() >= 23 || now.getHours() < 6;
 
   if (!userId) {
-    return { state: isNight ? "sleepy" : "idle", growthStage: 1, collectedCount: 0 };
+    return {
+      state: isNight ? "sleepy" : "idle",
+      growthStage: 1,
+      collectedCount: 0,
+      seeds: 0,
+      drawCost: DRAW_COST,
+    };
   }
 
-  const [collectedCount, ateToday] = await Promise.all([
+  // 씨앗은 첫 안내(StartHereCard)가 쓰는 값 — 홈에서 도감 전체를 또 부르지 않으려고 여기서 함께.
+  const [collectedCount, ateToday, user] = await Promise.all([
     db.collectionEntry.count({ where: { userId } }),
     db.mealRecord.count({ where: { userId, eatenAt: { gte: startOfDay(now) } } }),
+    db.user.findUnique({ where: { id: userId }, select: { mochiSeeds: true } }),
   ]);
 
   let state: MochiState;
@@ -33,5 +42,5 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
   else state = "idle";
 
   const growthStage = Math.min(5, 1 + Math.floor(collectedCount / 3));
-  return { state, growthStage, collectedCount };
+  return { state, growthStage, collectedCount, seeds: user?.mochiSeeds ?? 0, drawCost: DRAW_COST };
 }
