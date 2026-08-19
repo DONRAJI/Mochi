@@ -4,42 +4,80 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { fetchPushKey, subscribePush, unsubscribePush } from "../api/notify.api";
+import {
+  fetchPushKey,
+  subscribePush,
+  unsubscribePush,
+  registerDevice,
+  unregisterDevice,
+} from "../api/notify.api";
 import { urlBase64ToUint8Array } from "../push";
+import {
+  isNativeApp,
+  nativePlatform,
+  registerNativePush,
+  unregisterNativePush,
+  NATIVE_TOKEN_KEY,
+} from "../native";
 
 /**
  * 🔔 저녁 리마인더 설정 (마이 > 설정) — 옵트인.
  * 재촉이 아니라 제안: "저녁 뭐 먹을지 같이 볼까요" 톤이고, 이미 기록한 날엔 서버가 안 보낸다.
  *
- * 상태 갈래: 서버 미구성(VAPID 없음)→섹션 자체를 숨김(빈 약속 금지) ·
- * 브라우저 미지원/SW 없음(dev 포함)→부드러운 안내 · 권한 거부→시스템 설정 안내.
+ * **두 경로를 자동 분기**한다:
+ * - 네이티브(Capacitor 셸) → FCM. 알림이 모찌 명의로 뜨고 탭하면 앱이 열린다.
+ * - 브라우저 → 웹푸시(VAPID). 기본 브라우저가 Chrome이 아니면 브라우저 명의로 뜨는
+ *   한계가 있지만(TWA 구조), 앱 사용자는 위 경로라 영향받지 않는다.
+ *
+ * 상태 갈래: 미지원(dev·구형 브라우저)→부드러운 안내 · 권한 거부→시스템 설정 안내 ·
+ * 서버 미구성→섹션 자체를 숨김(빈 약속 UI 금지).
  */
-export function NotificationSection() {
-  const { data: keyData } = useQuery({ queryKey: ["push", "key"], queryFn: fetchPushKey });
-  const [phase, setPhase] = useState<
-    "checking" | "unsupported" | "off" | "on" | "denied"
-  >("checking");
+type Phase = "checking" | "unsupported" | "off" | "on" | "denied";
 
-  // 현재 구독 상태 파악 — SW가 없으면(개발 모드 등) 미지원으로.
+export function NotificationSection() {
+  const [native, setNative] = useState<boolean | null>(null);
+  const [phase, setPhase] = useState<Phase>("checking");
+
+  // VAPID 공개키는 웹 경로에서만 필요 — 네이티브에선 조회하지 않는다.
+  const { data: keyData } = useQuery({
+    queryKey: ["push", "key"],
+    queryFn: fetchPushKey,
+    enabled: native === false,
+  });
+
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (typeof window === "undefined") return;
+
+      // ── 네이티브 셸 ──
+      if (isNativeApp()) {
+        if (!alive) return;
+        setNative(true);
+        // 등록 여부는 기기에 남긴 토큰으로 판단(플러그인이 '등록됨'을 질의할 방법을 주지 않음).
+        setPhase(localStorage.getItem(NATIVE_TOKEN_KEY) ? "on" : "off");
+        return;
+      }
+
+      // ── 브라우저(웹푸시) ──
+      if (!alive) return;
+      setNative(false);
       if (
-        typeof window === "undefined" ||
         !("serviceWorker" in navigator) ||
         !("PushManager" in window) ||
         !("Notification" in window)
       ) {
-        if (alive) setPhase("unsupported");
+        setPhase("unsupported");
         return;
       }
       const reg = await navigator.serviceWorker.getRegistration();
+      if (!alive) return;
       if (!reg) {
-        if (alive) setPhase("unsupported"); // dev에선 SW 미등록 — 배포판에서만 켤 수 있다
+        setPhase("unsupported"); // dev에선 SW 미등록 — 배포판에서만 켤 수 있다
         return;
       }
       if (Notification.permission === "denied") {
-        if (alive) setPhase("denied");
+        setPhase("denied");
         return;
       }
       const sub = await reg.pushManager.getSubscription();
@@ -52,6 +90,13 @@ export function NotificationSection() {
 
   const enable = useMutation({
     mutationFn: async () => {
+      if (native) {
+        const token = await registerNativePush();
+        await registerDevice(token, nativePlatform());
+        localStorage.setItem(NATIVE_TOKEN_KEY, token);
+        return;
+      }
+
       const key = keyData?.key;
       if (!key) throw new Error("잠깐 준비가 안 됐어요. 다음에 다시 볼까요?");
       const permission = await Notification.requestPermission();
@@ -80,6 +125,13 @@ export function NotificationSection() {
 
   const disable = useMutation({
     mutationFn: async () => {
+      if (native) {
+        const token = localStorage.getItem(NATIVE_TOKEN_KEY);
+        if (token) await unregisterDevice(token);
+        await unregisterNativePush();
+        localStorage.removeItem(NATIVE_TOKEN_KEY);
+        return;
+      }
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
@@ -90,8 +142,8 @@ export function NotificationSection() {
     onSuccess: () => setPhase("off"),
   });
 
-  // 서버 미구성(VAPID 없음) — 켤 수 없는 걸 보여주지 않는다(빈 약속 금지).
-  if (keyData && keyData.key === null) return null;
+  // 웹 경로에서 서버 미구성(VAPID 없음) — 켤 수 없는 걸 보여주지 않는다.
+  if (native === false && keyData && keyData.key === null) return null;
   if (phase === "checking") return null;
 
   return (
