@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">모찌 다이어트</string>
+    <string name="title_activity_main">모찌 다이어트</string>
+    <string name="package_name">app.vercel.mochi_nu_ashen.twa</string>
+    <string name="custom_url_scheme">app.vercel.mochi_nu_ashen.twa</string>
+</resources>

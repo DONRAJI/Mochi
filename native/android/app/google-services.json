@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "423846836892",
+    "project_id": "mochi-28565",
+    "storage_bucket": "mochi-28565.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423846836892:android:f2801351aa7d4a0b2b0b59",
+        "android_client_info": {
+          "package_name": "app.vercel.mochi_nu_ashen.twa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAw-h7tm3t-8XDJVKKHukYfjTNyh9l_qsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

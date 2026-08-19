@@ -34,30 +34,27 @@ FCM 푸시·뒤로가기·외부링크 같은 네이티브 연결만 담당한�
 필요한 건 IDE가 아니라 **JDK 21 + Android SDK + Gradle** 셋이다. Gradle은 프로젝트에
 포함된 `gradlew`가 알아서 받으므로 실제로 설치할 건 둘뿐.
 
-```bash
-winget install Microsoft.OpenJDK.21
-```
+현재 이 개발 PC 상태(2026-08-19 확인): **JDK 21·JAVA_HOME·`ANDROID_HOME=F:\Sdk`·
+build-tools·platform-tools·라이선스 수락까지 이미 되어 있다.** 아래 둘만 채우면 된다.
 
-Android SDK는 [명령줄 도구](https://developer.android.com/studio#command-line-tools-only)만
-받아서(전체 IDE 아님) `C:\Android\cmdline-tools\latest\`에 압축을 푼다.
-(`latest` 폴더 안에 `bin`·`lib`이 바로 오게 — 한 겹 더 들어가면 sdkmanager가 못 찾는다.)
+JDK가 없는 새 PC라면: `winget install Microsoft.OpenJDK.21` (Temurin 21도 동일하게 OK).
 
-환경변수 — PowerShell에서 **한 번만**:
+**① cmdline-tools** — [명령줄 도구만](https://developer.android.com/studio#command-line-tools-only)
+받아 `%ANDROID_HOME%\cmdline-tools\latest\`에 푼다. `latest` 바로 밑에 `bin`·`lib`이 오게
+(한 겹 더 들어가면 sdkmanager가 SDK 루트를 못 찾는다). 그리고 PATH에 추가:
 
 ```powershell
-setx ANDROID_HOME "C:\Android"
-setx PATH "$env:PATH;C:\Android\cmdline-tools\latest\bin;C:\Android\platform-tools"
+setx PATH "$env:PATH;F:\Sdk\cmdline-tools\latest\bin"
 ```
 
-새 터미널을 열고 SDK 설치 + 라이선스 동의:
-
-```bash
-sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-```
+**② compileSdk 플랫폼** — Capacitor 7은 **android-35**를 쓴다. android-36이 깔려 있어도
+Gradle은 프로젝트가 지정한 정확한 버전을 찾으므로 따로 받아야 한다:
 
 ```bash
-sdkmanager --licenses
+sdkmanager "platforms;android-35"
 ```
+
+라이선스를 아직 수락한 적 없는 PC라면 `sdkmanager --licenses`도 한 번.
 
 ## 빌드 & 서명
 
