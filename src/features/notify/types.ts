@@ -17,6 +17,18 @@ export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url().max(1000),
 });
 
+/** 네이티브(FCM) 토큰 등록 — Capacitor 셸에서. 토큰은 FCM registration token(불투명 문자열). */
+export const deviceTokenSchema = z.object({
+  token: z.string().min(10).max(4096),
+  platform: z.enum(["android", "ios"]).default("android"),
+});
+
+export const deviceTokenDeleteSchema = z.object({
+  token: z.string().min(10).max(4096),
+});
+
+export type DeviceTokenRequest = z.infer<typeof deviceTokenSchema>;
+
 export type PushSubscribeRequest = z.infer<typeof pushSubscribeSchema>;
 
 export interface PushKeyResponse {
