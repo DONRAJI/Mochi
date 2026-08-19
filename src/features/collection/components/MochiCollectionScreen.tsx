@@ -14,6 +14,7 @@ import { DrawRevealModal } from "./DrawRevealModal";
 import { MochiRewardShelf } from "./MochiRewardShelf";
 import { ShareButton } from "./ShareButton";
 import { useMochiCollection, useDrawCard } from "../hooks/useCollection";
+import { useMochiState, useSetDisplayCard } from "@/features/mochi/hooks/useMochi";
 import { RARITY_TINT } from "../rarityTint";
 import { cn } from "@/lib/utils";
 import type { MochiCardResponse, DrawResultResponse } from "../types";
@@ -21,6 +22,8 @@ import type { MochiCardResponse, DrawResultResponse } from "../types";
 /** 📖 모찌 도감 (PRD 12) — 건강 행동으로 모은 씨앗으로 모찌 카드를 뽑아 모은다(리텐션 엔진). */
 export function MochiCollectionScreen() {
   const { data, isPending, isError, refetch } = useMochiCollection();
+  const { data: mochi } = useMochiState(); // 어느 카드가 방에 있는지 표시하려고
+  const setDisplay = useSetDisplayCard();
   const draw = useDrawCard();
   const [selected, setSelected] = useState<MochiCardResponse | null>(null);
   const [reveal, setReveal] = useState<DrawResultResponse | null>(null);
@@ -113,6 +116,25 @@ export function MochiCollectionScreen() {
             {selected.count > 1 && (
               <p className="text-sm text-cocoa-faint">×{selected.count} 만큼 친해요 🤍</p>
             )}
+
+            {/* 꾸미기 1단계 — 카드를 도감 그리드에서 꺼내 홈 '모찌의 방'으로 데려간다. */}
+            {(() => {
+              const isDisplayed = mochi?.displayCard?.id === selected.id;
+              return (
+                <Button
+                  variant="soft"
+                  className="w-full"
+                  onClick={() => setDisplay.mutate(isDisplayed ? null : selected.id)}
+                >
+                  {setDisplay.isPending
+                    ? "옮기는 중…"
+                    : isDisplayed
+                      ? "🏠 방에서 내리기"
+                      : "🏠 내 방에 데려가기"}
+                </Button>
+              );
+            })()}
+
             <Button className="w-full" onClick={() => setSelected(null)}>
               닫기
             </Button>
