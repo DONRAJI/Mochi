@@ -14,28 +14,80 @@ FCM 푸시·뒤로가기·외부링크 같은 네이티브 연결만 담당한�
 - **서명 keystore** — 최초 PWABuilder 패키지의 `signing.keystore`와 같은 키로 서명해야
   Play가 받는다. 잃어버리면 Play Console에서 업로드 키 재설정 요청이 필요하다.
 
-## 준비 (최초 1회)
+## Firebase — 별도 SDK 설치는 없다
 
-1. **Firebase**: 콘솔에서 프로젝트 생성 → Android 앱 추가(패키지명 위와 동일) →
-   `google-services.json` 다운로드 → `android/app/google-services.json`에 배치.
+`@capacitor/push-notifications`가 Gradle 의존성으로 `firebase-messaging`을 **알아서 가져온다.**
+우리가 할 일은 두 가지뿐:
+
+1. **`google-services.json` 배치**: Firebase 콘솔 → 프로젝트 생성 → Android 앱 추가
+   (패키지명 `app.vercel.mochi_nu_ashen.twa` 정확히) → 받은 파일을 `android/app/`에.
 2. **서버 키**: Firebase 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성 → JSON에서
    `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`를 `.env`와 Vercel에.
-3. **Android Studio** 설치(첫 빌드 환경 구성이 가장 오래 걸린다).
+   (PRIVATE_KEY는 `-----BEGIN...` 통째로, 개행 `\n` 유지)
 
-## 빌드
+`cap add android` 후 `android/app/build.gradle` 아래쪽에
+`apply plugin: 'com.google.gms.google-services'` 줄이 있는지만 확인한다(템플릿에 포함돼 있다).
+없으면 그 줄을 파일 맨 끝에 추가.
+
+## 빌드 환경 (Android Studio 없이)
+
+필요한 건 IDE가 아니라 **JDK 21 + Android SDK + Gradle** 셋이다. Gradle은 프로젝트에
+포함된 `gradlew`가 알아서 받으므로 실제로 설치할 건 둘뿐.
 
 ```bash
-cd native
-npm install
-npx cap add android        # 최초 1회 — android/ 생성
-npm run sync               # 설정·플러그인 반영 (설정 바꿀 때마다)
-npm run open               # Android Studio 열기
+winget install Microsoft.OpenJDK.21
 ```
 
-Android Studio에서:
-1. `android/app/build.gradle`의 `versionCode`를 **기존 Play 버전보다 크게** (재업로드 거부 방지)
-2. Build > Generate Signed Bundle / APK > **Android App Bundle**
-3. 위 keystore로 서명 → `.aab` 생성 → Play Console 내부 테스트에 업로드
+Android SDK는 [명령줄 도구](https://developer.android.com/studio#command-line-tools-only)만
+받아서(전체 IDE 아님) `C:\Android\cmdline-tools\latest\`에 압축을 푼다.
+(`latest` 폴더 안에 `bin`·`lib`이 바로 오게 — 한 겹 더 들어가면 sdkmanager가 못 찾는다.)
+
+환경변수 — PowerShell에서 **한 번만**:
+
+```powershell
+setx ANDROID_HOME "C:\Android"
+setx PATH "$env:PATH;C:\Android\cmdline-tools\latest\bin;C:\Android\platform-tools"
+```
+
+새 터미널을 열고 SDK 설치 + 라이선스 동의:
+
+```bash
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+```
+
+```bash
+sdkmanager --licenses
+```
+
+## 빌드 & 서명
+
+```bash
+cd native && npm install && npx cap add android && npm run sync
+```
+
+⚠️ **`android/app/build.gradle`의 `versionCode`를 기존 Play 버전보다 크게 올린다**
+(`cap add android`는 1로 생성한다 — 그대로 올리면 Play가 거부).
+
+```bash
+cd native/android && ./gradlew bundleRelease
+```
+
+결과: `native/android/app/build/outputs/bundle/release/app-release.aab` (**서명 안 됨**)
+
+Gradle에 서명 설정을 넣는 대신 **jarsigner로 사후 서명**한다 — 생성물인 build.gradle을
+건드리지 않아 `android/`를 지웠다 다시 만들어도 절차가 그대로다.
+
+```bash
+jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore <signing.keystore 경로> app-release.aab <키 별칭>
+```
+
+keystore와 별칭·비밀번호는 **최초 PWABuilder 패키지 zip 안의 `signing.keystore`와
+`signing-key-info.txt`**에 있다. 다른 키로 서명하면 Play가 업로드를 거부한다.
+
+서명된 `.aab`를 Play Console 내부 테스트에 업로드.
+
+> 빌드는 사실상 1회성이다 — 원격 URL 모드라 앱 업데이트는 웹 배포로 이뤄진다.
+> 다시 빌드할 때: 셸 설정 변경 · Capacitor 버전업 · 구글의 연간 target SDK 상향.
 
 ## 확인할 것
 
