@@ -34,36 +34,41 @@ FCM 푸시·뒤로가기·외부링크 같은 네이티브 연결만 담당한�
 필요한 건 IDE가 아니라 **JDK 21 + Android SDK + Gradle** 셋이다. Gradle은 프로젝트에
 포함된 `gradlew`가 알아서 받으므로 실제로 설치할 건 둘뿐.
 
-현재 이 개발 PC 상태(2026-08-19 확인): **JDK 21·JAVA_HOME·`ANDROID_HOME=F:\Sdk`·
-build-tools·platform-tools·라이선스 수락까지 이미 되어 있다.** 아래 둘만 채우면 된다.
+현재 이 개발 PC 상태(2026-08-19 확인): **JDK 21(Temurin)·JAVA_HOME·`ANDROID_HOME=F:\Sdk`·
+platforms;android-36·build-tools 36·platform-tools·라이선스 수락까지 전부 되어 있다.**
+Capacitor 8이 compileSdk 36을 쓰므로 **추가로 설치할 것이 없다**(cmdline-tools 불필요).
 
-JDK가 없는 새 PC라면: `winget install Microsoft.OpenJDK.21` (Temurin 21도 동일하게 OK).
+JDK가 없는 새 PC라면 `winget install Microsoft.OpenJDK.21`, SDK가 없으면
+[명령줄 도구](https://developer.android.com/studio#command-line-tools-only)를 받아
+`%ANDROID_HOME%\cmdline-tools\latest\`에 풀고 `sdkmanager "platforms;android-36"
+"build-tools;36.0.0" "platform-tools"` + `sdkmanager --licenses`.
 
-**① cmdline-tools** — [명령줄 도구만](https://developer.android.com/studio#command-line-tools-only)
-받아 `%ANDROID_HOME%\cmdline-tools\latest\`에 푼다. `latest` 바로 밑에 `bin`·`lib`이 오게
-(한 겹 더 들어가면 sdkmanager가 SDK 루트를 못 찾는다). 그리고 PATH에 추가:
+### 왜 Capacitor 8인가 (7 아님)
 
-```powershell
-setx PATH "$env:PATH;F:\Sdk\cmdline-tools\latest\bin"
-```
-
-**② compileSdk 플랫폼** — Capacitor 7은 **android-35**를 쓴다. android-36이 깔려 있어도
-Gradle은 프로젝트가 지정한 정확한 버전을 찾으므로 따로 받아야 한다:
-
-```bash
-sdkmanager "platforms;android-35"
-```
-
-라이선스를 아직 수락한 적 없는 PC라면 `sdkmanager --licenses`도 한 번.
+- **16KB 페이지 정렬**: 미준수 앱은 **2026-05-31 이후 Play가 신규·업데이트 제출을 거부**한다.
+  이미 지난 기한이라 Capacitor 7로 빌드하면 업로드가 막힐 수 있다. 8이 이를 처리한다.
+- compileSdk/targetSdk **36** — Play의 targetSdk 상향 정책에도 맞고, 이 PC에 이미 깔린
+  android-36을 그대로 쓴다.
+- 요건: Node 22+ (현재 24), JDK 21.
 
 ## 빌드 & 서명
 
+Capacitor 7로 이미 `android/`를 만들었다면, 메이저 업그레이드는 **재생성이 가장 깔끔하다**
+(variables.gradle의 SDK 버전은 `cap sync`가 안 고쳐준다):
+
 ```bash
-cd native && npm install && npx cap add android && npm run sync
+cd native && rm -rf android node_modules package-lock.json && npm install && npx cap add android
+```
+
+그다음 **`google-services.json`을 `android/app/`에 다시 복사**하고:
+
+```bash
+npm run sync
 ```
 
 ⚠️ **`android/app/build.gradle`의 `versionCode`를 기존 Play 버전보다 크게 올린다**
 (`cap add android`는 1로 생성한다 — 그대로 올리면 Play가 거부).
+현재 값은 Play Console > 내부 테스트에서 확인.
 
 ```bash
 cd native/android && ./gradlew bundleRelease
