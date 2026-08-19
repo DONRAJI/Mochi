@@ -114,6 +114,7 @@ model User {
   sessions    Session[]
   authTokens  AuthToken[]
   pushSubscriptions PushSubscription[]
+  deviceTokens      DeviceToken[]
   preferences PreferenceTag[]
   ingredients Ingredient[]
   meals       MealRecord[]
@@ -246,6 +247,24 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/**
+ * 네이티브 앱(FCM) 푸시 토큰 — Capacitor 셸용 (TWA→Capacitor 전환, workflow.md §7).
+ * 웹푸시(PushSubscription)와 병행: 브라우저 사용자는 웹푸시, 앱 사용자는 FCM.
+ * token이 기기·설치본당 고유 식별자(FCM registration token).
+ */
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  platform  String   @default("android")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
 }
 
 model PreferenceTag {

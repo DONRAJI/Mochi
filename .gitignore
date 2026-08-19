@@ -59,3 +59,18 @@ yarn-error.log*
 
 # 디자인 시스템 참조 패키지 (로컬 전용 — 에셋/토큰은 코드로 포팅)
 /Mochi Design System/
+
+# Capacitor 셸 (native/)
+#
+# ⚠️ .gitignore는 줄 끝 주석을 지원하지 않는다. 패턴 뒤에 "# 설명"을 붙이면 그 주석까지
+#    패턴의 일부가 돼 아무것도 매칭하지 않는다(실제로 이 실수로 native/android 전체가
+#    커밋된 적 있음). 주석은 반드시 자기 줄에.
+#
+# native/android/ 는 **의도적으로 추적한다** — Capacitor 공식 권장. versionCode·
+# google-services.json·네이티브 수정이 거기 살아서, 무시하면 다른 PC나 재생성 시 전부 잃는다.
+# 빌드 산출물(*.aab, build/, .gradle/)은 Capacitor가 만든 native/android/.gitignore가 거른다.
+/native/node_modules
+
+# 앱 서명 키 — 절대 커밋 금지. 유출되면 남이 이 앱을 사칭한 업데이트를 만들 수 있다.
+*.keystore
+*.jks
