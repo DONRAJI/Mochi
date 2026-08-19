@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useMochiState } from "../hooks/useMochi";
+import { useStreak } from "@/features/record/hooks/useRecord";
 import { MAX_GROWTH_STAGE, growthMessage, growthTitle } from "../growth";
 import { cn } from "@/lib/utils";
 
@@ -18,13 +19,15 @@ const STAGE_TONE = [
 ] as const;
 
 /**
- * 🌱 모찌 성장 — 잘 먹은 날이 쌓일수록 자란다 (growth.ts).
+ * 🌱 모찌 성장 + 연속 기록 — 홈의 '진행도' 한 칸.
  *
- * 예전엔 점 5개만 있고 다 채워도 아무 일이 없었다(도착지 없는 게이지). 이제 칭호·다음 단계
- * 안내·단계별 톤이 붙어 "왜 이어가야 하는지"가 보인다. 옷 아트가 생기면 여기에 꽂는다.
+ * 성장(누적, growth.ts)과 스트릭(연속)은 둘 다 "얼마나 해왔나"를 말하는데 홈에서 카드
+ * 두 개를 따로 차지하고 있었다. 홈이 블록 9개까지 불어난 원인 중 하나 → 한 카드로 합쳤다.
+ * 위: 칭호와 성장 점 · 아래: 연속 기록과 보호권.
  */
 export function GrowthCard() {
   const { data: mochi, isPending } = useMochiState();
+  const { data: streak, isPending: streakPending } = useStreak();
 
   if (isPending) {
     return (
@@ -41,6 +44,8 @@ export function GrowthCard() {
   const stage = mochi?.growthStage ?? 1;
   const mealCount = mochi?.mealCount ?? 0;
   const isMax = stage >= MAX_GROWTH_STAGE;
+  const days = streak?.count ?? 0;
+  const shields = streak?.shieldCount ?? 0;
 
   return (
     <div
@@ -58,15 +63,26 @@ export function GrowthCard() {
           {Array.from({ length: MAX_GROWTH_STAGE }, (_, i) => (
             <span
               key={i}
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                i < stage ? "bg-mint-deep" : "bg-cream-200",
-              )}
+              className={cn("h-1.5 w-1.5 rounded-full", i < stage ? "bg-mint-deep" : "bg-cream-200")}
             />
           ))}
         </div>
       </div>
       <p className="mt-1 text-xs text-cocoa-soft">{growthMessage(mealCount)}</p>
+
+      {/* 연속 기록 — "하루 빠져도 안 깨져요"(불변 #1 부드러운 톤) */}
+      <div className="mt-2.5 flex items-center justify-between border-t border-cream-200 pt-2.5">
+        {streakPending ? (
+          <Skeleton className="h-4 w-20" />
+        ) : (
+          <p className="text-sm text-cocoa">🍮 연속 {days}일째</p>
+        )}
+        {!streakPending && (
+          <p className="text-xs text-cocoa-faint">
+            {shields > 0 ? `🛡️ 보호권 ${shields} · 하루 빠져도 괜찮아요` : "연속 7일이면 보호권이 생겨요"}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

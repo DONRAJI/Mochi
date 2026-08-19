@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useDragControls } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
@@ -32,9 +33,22 @@ function clientXY(e: MouseEvent | TouchEvent | PointerEvent): { x: number; y: nu
  * 추천/상세에서 "이 날에 담기"로 채우고, 계획을 '먹었어요'하면 기록 루프로 이어진다.
  * 끼니 카드를 **끌어서 다른 날로 재배치**(PRD 5.3). 숫자(칼로리)는 없음(불변 #2).
  */
-export function WeeklyPlanCalendar() {
-  const week = weekDates(new Date());
+interface WeeklyPlanCalendarProps {
+  /**
+   * 홈에서 쓰는 축약 모드 — 오늘·내일만 보여주고 전체는 식단 탭으로 넘긴다.
+   * 홈은 "모찌의 방"인데 7일치 목록이 화면의 절반을 먹고 있었고, 같은 달력이 식단 탭에도
+   * 그대로 있어 중복이었다(PRD 3장 홈 명세는 원래 모찌·제안·스트릭·빠른액션 4개).
+   */
+  compact?: boolean;
+}
+
+export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps) {
+  const router = useRouter();
+  const fullWeek = weekDates(new Date());
   const today = ymd(new Date());
+  // 축약 모드는 오늘부터 2일. 주말이라 남은 날이 하루뿐이면 그 하루만.
+  const todayIndex = fullWeek.indexOf(today);
+  const week = compact && todayIndex >= 0 ? fullWeek.slice(todayIndex, todayIndex + 2) : fullWeek;
   const { data: meals, isPending } = usePlanWeek();
   const remove = useRemovePlan();
   const eat = useEatPlan();
@@ -68,21 +82,34 @@ export function WeeklyPlanCalendar() {
     <section>
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-sm text-cocoa-faint">이번 주 식단</p>
-          {hasMovable && <p className="text-[11px] text-cocoa-faint">⠿ 끌어서 다른 날로 옮겨요</p>}
+          <p className="text-sm text-cocoa-faint">{compact ? "다가오는 끼니" : "이번 주 식단"}</p>
+          {/* 드래그 안내와 자동 채우기는 '한 주'를 다루는 기능이라 축약 모드에선 감춘다. */}
+          {!compact && hasMovable && (
+            <p className="text-[11px] text-cocoa-faint">⠿ 끌어서 다른 날로 옮겨요</p>
+          )}
         </div>
-        {hasEmpty && (
+        {compact ? (
           <button
             type="button"
-            onClick={() => autoFill.mutate(week)}
-            className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+            onClick={() => router.push("/meals")}
+            className="rounded-mochi-sm bg-cream-100 px-2.5 py-1 text-xs text-cocoa-soft transition-transform ease-jelly active:scale-90"
           >
-            {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
+            이번 주 전체 ›
           </button>
+        ) : (
+          hasEmpty && (
+            <button
+              type="button"
+              onClick={() => autoFill.mutate(week)}
+              className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+            >
+              {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
+            </button>
+          )
         )}
       </div>
       <div className="flex flex-col gap-2">
-        {week.map((date, i) => {
+        {week.map((date) => {
           const dayMeals = byDate.get(date) ?? [];
           const isToday = date === today;
           return (
@@ -97,7 +124,11 @@ export function WeeklyPlanCalendar() {
               )}
             >
               <div className="mb-1 flex items-center gap-1.5">
-                <span className="font-display text-sm text-cocoa">{WEEKDAY_LABEL[i]}</span>
+                {/* 요일은 '이번 주 안에서의 위치'로 찾는다 — 축약 모드는 week가 잘려 있어
+                    map의 인덱스를 쓰면 항상 월·화로 표시된다. */}
+                <span className="font-display text-sm text-cocoa">
+                  {WEEKDAY_LABEL[fullWeek.indexOf(date)]}
+                </span>
                 <span className="text-xs text-cocoa-faint">
                   {Number(date.slice(8, 10))}일{isToday ? " · 오늘" : ""}
                 </span>
