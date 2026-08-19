@@ -59,3 +59,10 @@ yarn-error.log*
 
 # 디자인 시스템 참조 패키지 (로컬 전용 — 에셋/토큰은 코드로 포팅)
 /Mochi Design System/
+
+# Capacitor 셸 (native/) — 생성물·시크릿은 추적하지 않는다.
+# 설정(capacitor.config.json·package.json·www)은 추적: 다른 PC에서 재현 가능해야 함.
+/native/node_modules
+/native/android          # cap add android 생성물 — 로컬에서 재생성
+/native/**/google-services.json   # Firebase 앱 설정(프로젝트 식별자 포함)
+*.keystore               # 앱 서명 키 — 절대 커밋 금지

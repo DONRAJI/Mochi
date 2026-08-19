@@ -26,12 +26,39 @@ interface PushNotificationsPlugin {
     event: "registrationError",
     fn: (err: unknown) => void,
   ): Promise<{ remove: () => Promise<void> }>;
+  /** 알림을 탭했을 때 — data.url로 이동시킨다(서버 fcm.ts가 실어 보낸 값). */
+  addListener(
+    event: "pushNotificationActionPerformed",
+    fn: (e: { notification?: { data?: Record<string, string> } }) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+}
+
+/** 셸이 주입하는 나머지 플러그인 — 우리가 부르는 표면만 최소 선언. */
+interface AppPlugin {
+  addListener(
+    event: "backButton",
+    fn: (e: { canGoBack: boolean }) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+  exitApp(): Promise<void>;
+}
+
+interface BrowserPlugin {
+  open(options: { url: string }): Promise<void>;
+}
+
+interface SplashScreenPlugin {
+  hide(): Promise<void>;
 }
 
 interface CapacitorBridge {
   isNativePlatform?: () => boolean;
   getPlatform?: () => string;
-  Plugins?: { PushNotifications?: PushNotificationsPlugin };
+  Plugins?: {
+    PushNotifications?: PushNotificationsPlugin;
+    App?: AppPlugin;
+    Browser?: BrowserPlugin;
+    SplashScreen?: SplashScreenPlugin;
+  };
 }
 
 declare global {
@@ -58,6 +85,17 @@ export function nativePlatform(): "android" | "ios" {
 
 function plugin(): PushNotificationsPlugin | null {
   return window.Capacitor?.Plugins?.PushNotifications ?? null;
+}
+
+/** 셸 플러그인 접근자 — 브라우저에선 전부 undefined라 호출부가 옵셔널 체이닝으로 넘긴다. */
+export function nativePlugins() {
+  const p = typeof window === "undefined" ? undefined : window.Capacitor?.Plugins;
+  return {
+    push: p?.PushNotifications,
+    app: p?.App,
+    browser: p?.Browser,
+    splash: p?.SplashScreen,
+  };
 }
 
 /**

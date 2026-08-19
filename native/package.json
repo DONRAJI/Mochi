@@ -1,0 +1,22 @@
+{
+  "name": "mochi-shell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "모찌 안드로이드 셸 (Capacitor, 원격 URL 모드) — 웹 앱과 의존성 분리",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/push-notifications": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
