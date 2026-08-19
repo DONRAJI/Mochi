@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { useMochiStore } from "@/store/mochi";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { MochiSpeechBubble } from "@/components/ui/MochiSpeechBubble";
@@ -74,7 +75,23 @@ export function MochiRoom() {
 
   return (
     <main className="flex flex-col items-center gap-5">
-      <MochiAvatar state={state} priority />
+      {/*
+        모찌의 방 — 아바타 옆에 '데려온 모찌'가 함께 선다. 별도 블록을 늘리지 않고
+        아바타만 덩그러니 있던 영역을 채우는 방식(홈 정리의 연장). 안 골랐으면 그냥 아바타만.
+      */}
+      <div className="relative flex items-end justify-center">
+        <MochiAvatar state={state} priority />
+        {mochi?.displayCard && (
+          <Image
+            src={mochi.displayCard.imageUrl}
+            alt={mochi.displayCard.name}
+            width={88}
+            height={88}
+            draggable={false}
+            className="pointer-events-none absolute -right-2 bottom-0 h-[88px] w-[88px] select-none object-contain drop-shadow-sm"
+          />
+        )}
+      </div>
       <MochiSpeechBubble>{bubble}</MochiSpeechBubble>
 
       {stalled && (

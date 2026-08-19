@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { MochiState } from "@/types/mochi";
 
 export interface MochiStateResponse {
@@ -14,4 +15,21 @@ export interface MochiStateResponse {
    */
   seeds: number;
   drawCost: number;
+  /**
+   * 홈 '모찌의 방'에 데려다 둔 카드. 안 골랐거나 이제 안 가진 카드면 null.
+   * 도감 그리드에만 갇혀 있던 카드에 목적을 준다 — "이거 뽑아서 방에 놓고 싶다"(꾸미기 1단계).
+   */
+  displayCard: DisplayCardResponse | null;
 }
+
+/** 방에 둔 카드 — 홈이 그리는 데 필요한 최소 정보만. */
+export interface DisplayCardResponse {
+  id: string;
+  name: string;
+  imageUrl: string;
+}
+
+/** 방에 둘 카드 지정. null이면 내리기. */
+export const displayCardSchema = z.object({
+  cardId: z.string().min(1).max(64).nullable(),
+});
