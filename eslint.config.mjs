@@ -20,6 +20,10 @@ const config = [
       "prisma/migrations/**",
       "Mochi Design System/**",
       "public/sw.js", // 서비스 워커 — 브라우저 전역(self·caches) 사용, 앱 TS 규칙 밖(불변 #5 승인 예외)
+      // Capacitor 셸 — 우리가 쓴 코드가 아니다. android/는 Gradle 생성물(빌드 산출물에
+      // Capacitor의 native-bridge.js가 복사돼 들어온다), node_modules는 셸 전용 의존성.
+      "native/android/**",
+      "native/node_modules/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

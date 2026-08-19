@@ -13,24 +13,55 @@ interface PermissionStatus {
   receive: "prompt" | "prompt-with-rationale" | "granted" | "denied";
 }
 
+/**
+ * 리스너 해제 핸들. `remove()`가 Promise를 줄 수도, 아무것도 안 줄 수도 있다.
+ */
+export interface ListenerHandle {
+  remove: () => void | Promise<void>;
+}
+
+/**
+ * ⚠️ `addListener`의 반환 형태가 두 가지다.
+ * - **셸이 주입한 브릿지**(우리가 쓰는 방식): 핸들을 **동기로** 반환
+ * - npm 패키지(@capacitor/*) 계층: `Promise<핸들>`로 감싸서 반환
+ * 후자만 가정하고 `.then()`을 붙였다가 "addListener(...).then is not a function"으로
+ * 앱이 통째로 에러 화면에 빠졌었다. 아래 헬퍼로 양쪽을 모두 수용한다.
+ */
+type MaybePromise<T> = T | Promise<T>;
+
+function isThenable<T>(v: MaybePromise<T>): v is Promise<T> {
+  return typeof (v as Promise<T>)?.then === "function";
+}
+
+/** addListener 결과를 형태와 무관하게 핸들로 정규화. */
+async function toHandle(res: MaybePromise<ListenerHandle>): Promise<ListenerHandle> {
+  return isThenable(res) ? await res : res;
+}
+
+/** 해제 — remove()가 Promise든 아니든, 실패해도 조용히 넘어간다. */
+export function removeHandle(h: ListenerHandle): void {
+  try {
+    void Promise.resolve(h.remove()).catch(() => {});
+  } catch {
+    // 이미 해제됐거나 브릿지가 사라짐 — 무시
+  }
+}
+
 interface PushNotificationsPlugin {
-  checkPermissions(): Promise<PermissionStatus>;
-  requestPermissions(): Promise<PermissionStatus>;
-  register(): Promise<void>;
-  unregister(): Promise<void>;
+  checkPermissions(): MaybePromise<PermissionStatus>;
+  requestPermissions(): MaybePromise<PermissionStatus>;
+  register(): MaybePromise<void>;
+  unregister(): MaybePromise<void>;
   addListener(
     event: "registration",
     fn: (token: { value: string }) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
-  addListener(
-    event: "registrationError",
-    fn: (err: unknown) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
+  ): MaybePromise<ListenerHandle>;
+  addListener(event: "registrationError", fn: (err: unknown) => void): MaybePromise<ListenerHandle>;
   /** 알림을 탭했을 때 — data.url로 이동시킨다(서버 fcm.ts가 실어 보낸 값). */
   addListener(
     event: "pushNotificationActionPerformed",
     fn: (e: { notification?: { data?: Record<string, string> } }) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
+  ): MaybePromise<ListenerHandle>;
 }
 
 /** 셸이 주입하는 나머지 플러그인 — 우리가 부르는 표면만 최소 선언. */
@@ -38,16 +69,16 @@ interface AppPlugin {
   addListener(
     event: "backButton",
     fn: (e: { canGoBack: boolean }) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
-  exitApp(): Promise<void>;
+  ): MaybePromise<ListenerHandle>;
+  exitApp(): MaybePromise<void>;
 }
 
 interface BrowserPlugin {
-  open(options: { url: string }): Promise<void>;
+  open(options: { url: string }): MaybePromise<void>;
 }
 
 interface SplashScreenPlugin {
-  hide(): Promise<void>;
+  hide(): MaybePromise<void>;
 }
 
 interface CapacitorBridge {
@@ -87,6 +118,27 @@ function plugin(): PushNotificationsPlugin | null {
   return window.Capacitor?.Plugins?.PushNotifications ?? null;
 }
 
+/**
+ * 리스너 등록의 공통 안전 경로 — 플러그인이 없거나(브라우저) 등록이 실패해도 던지지 않고
+ * null을 돌려준다. 반환 형태(동기 핸들 vs Promise)도 여기서 흡수한다.
+ *
+ * 제네릭 대신 느슨한 시그니처를 쓰는 이유: 플러그인마다 이벤트 이름·콜백 타입이 달라
+ * 정확한 오버로드를 재현하려면 셸 SDK 타입을 통째로 들여와야 하는데, 그러면 이 파일의
+ * 존재 이유(웹 번들 의존성 0)가 사라진다. 호출부에서 타입이 맞춰지므로 여기선 위임만 한다.
+ */
+export async function listenNative<E extends string, A>(
+  target: { addListener: (event: E, fn: (arg: A) => void) => MaybePromise<ListenerHandle> } | undefined,
+  event: E,
+  fn: (arg: A) => void,
+): Promise<ListenerHandle | null> {
+  if (!target?.addListener) return null;
+  try {
+    return await toHandle(target.addListener(event, fn));
+  } catch {
+    return null; // 브릿지가 이 이벤트를 모르는 경우 등 — 기능만 조용히 빠진다
+  }
+}
+
 /** 셸 플러그인 접근자 — 브라우저에선 전부 undefined라 호출부가 옵셔널 체이닝으로 넘긴다. */
 export function nativePlugins() {
   const p = typeof window === "undefined" ? undefined : window.Capacitor?.Plugins;
@@ -116,8 +168,8 @@ export async function registerNativePush(timeoutMs = 15_000): Promise<string> {
 
   return new Promise<string>((resolve, reject) => {
     let settled = false;
-    const handles: { remove: () => Promise<void> }[] = [];
-    const cleanup = () => handles.forEach((h) => void h.remove().catch(() => {}));
+    const handles: ListenerHandle[] = [];
+    const cleanup = () => handles.forEach(removeHandle);
 
     const timer = setTimeout(() => {
       if (settled) return;
@@ -134,24 +186,31 @@ export async function registerNativePush(timeoutMs = 15_000): Promise<string> {
       fn();
     };
 
-    push
-      .addListener("registration", (t) => finish(() => resolve(t.value)))
-      .then((h) => handles.push(h))
-      .catch(() => {});
-    push
-      .addListener("registrationError", () =>
-        finish(() => reject(new Error("잠깐 안 됐어요. 다시 해볼까요?"))),
-      )
-      .then((h) => handles.push(h))
-      .catch(() => {});
-
-    push.register().catch(() => finish(() => reject(new Error("잠깐 안 됐어요. 다시 해볼까요?"))));
+    void (async () => {
+      try {
+        handles.push(
+          await toHandle(push.addListener("registration", (t) => finish(() => resolve(t.value)))),
+          await toHandle(
+            push.addListener("registrationError", () =>
+              finish(() => reject(new Error("잠깐 안 됐어요. 다시 해볼까요?"))),
+            ),
+          ),
+        );
+        await push.register();
+      } catch {
+        finish(() => reject(new Error("잠깐 안 됐어요. 다시 해볼까요?")));
+      }
+    })();
   });
 }
 
 /** 네이티브 푸시 해지 (기기 쪽). 서버 토큰 삭제는 호출부가 따로 한다. */
 export async function unregisterNativePush(): Promise<void> {
-  await plugin()?.unregister().catch(() => {});
+  try {
+    await plugin()?.unregister();
+  } catch {
+    // 이미 해지됐거나 브릿지 없음 — 무시
+  }
 }
 
 /**
