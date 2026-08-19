@@ -29,6 +29,21 @@ export default function Error({
       >
         다시 시도
       </button>
+
+      {/*
+        무슨 일이 있었는지 접어서 보여준다. 앱(WebView)에선 개발자 콘솔을 볼 수 없어
+        console.error만으로는 원인을 알 길이 없었다 — 사용자가 내용을 알려줄 수 있어야 한다.
+        기본은 접힘이라 평소 화면 인상은 그대로(불변 #1).
+      */}
+      <details className="mt-2 w-full max-w-sm text-left">
+        <summary className="cursor-pointer text-center text-xs text-cocoa-faint">
+          무슨 일이었는지 보기
+        </summary>
+        <p className="mt-2 select-all break-words rounded-mochi-sm bg-cream-200 p-3 text-xs text-cocoa-soft">
+          {error.message || "(메시지 없음)"}
+          {error.digest ? ` · ${error.digest}` : ""}
+        </p>
+      </details>
     </main>
   );
 }
