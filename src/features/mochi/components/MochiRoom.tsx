@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
-import { motion } from "framer-motion";
 import { useMochiStore } from "@/store/mochi";
 import { MochiAvatar } from "@/components/ui/MochiAvatar";
 import { MochiSpeechBubble } from "@/components/ui/MochiSpeechBubble";
@@ -76,34 +74,7 @@ export function MochiRoom() {
 
   return (
     <main className="flex flex-col items-center gap-5">
-      {/*
-        모찌의 방 — 아바타 옆에 '데려온 모찌'가 나란히 선다. 별도 블록을 늘리지 않고
-        아바타만 덩그러니 있던 영역을 채우는 방식(홈 정리의 연장). 안 골랐으면 그냥 아바타만.
-
-        절대 위치가 아니라 **flex 한 줄**로 둔다: absolute로 붙였더니 컨테이너가 아바타 폭
-        (160)으로 줄어 카드가 모찌 몸 위로 올라탔다. 나란히 놓고 살짝만 겹치는 게(-ml-4)
-        같은 바닥에 함께 선 것처럼 읽힌다. items-end라 두 모찌의 발끝이 맞는다.
-      */}
-      <div className="flex items-end justify-center">
-        <MochiAvatar state={state} priority />
-        {mochi?.displayCard && (
-          <motion.div
-            // 큰 모찌와 살짝 어긋난 박자로 흔들려 옆에서 같이 살아 있는 느낌(정지해 있으면 붙여둔 그림 같다).
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-            className="pointer-events-none relative -ml-4 h-24 w-24 select-none"
-          >
-            <Image
-              src={mochi.displayCard.imageUrl}
-              alt={mochi.displayCard.name}
-              fill
-              sizes="96px"
-              draggable={false}
-              className="object-contain"
-            />
-          </motion.div>
-        )}
-      </div>
+      <MochiAvatar state={state} priority />
       <MochiSpeechBubble>{bubble}</MochiSpeechBubble>
 
       {stalled && (

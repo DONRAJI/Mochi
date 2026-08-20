@@ -109,7 +109,10 @@ model User {
   seedsToday   Int      @default(0) @map("seeds_today") // 그날 이미 획득한 씨앗(삭제해도 안 줄어듦)
   seedSlots    String?  @map("seed_slots") // 그날 base 씨앗 지급한 끼니 슬롯(쉼표구분) — 슬롯 '처음'만 지급, 재등록 farming 차단
   emailVerifiedAt DateTime? @map("email_verified_at") // 이메일 인증 시각. null=미인증(사용은 가능 — 저마찰 온보딩 PRD 4.1)
-  displayCardId String? @map("display_card_id") // 홈 '모찌의 방'에 데려다 둔 카드(MochiCard.id). 꾸미기 1단계 — FK 없이 ID 참조(도메인 간 규칙)
+  // ⚠️ 미사용(예약). 뽑은 카드를 홈에 전시해봤으나 카드가 스티커 형식이라 마스코트 옆에
+  //    붙여둔 데칼처럼 보여 되돌렸다(2026-08-19). 공용 DB라 삭제형 마이그레이션은 금지 —
+  //    제대로 된 꾸미기 아트가 생기면 이 컬럼을 재사용한다.
+  displayCardId String? @map("display_card_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
   sessions    Session[]
