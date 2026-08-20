@@ -44,8 +44,13 @@ export function TodayMealsStrip() {
                 />
               )}
               <span className="text-base">{SLOT_EMOJI[m.slot as MealSlot]}</span>
-              <span className="text-cocoa">{SLOT_LABEL[m.slot as MealSlot]}</span>
-              <span className="text-cocoa-faint">· {MODE_LABEL[m.mode]}</span>
+              {/* 이름이 있으면 이름을 앞세운다 — 예전엔 "저녁 · 외식"뿐이라 뭘 먹었는지 안 보였다. */}
+              <span className="min-w-0 truncate text-cocoa">
+                {m.title ?? SLOT_LABEL[m.slot as MealSlot]}
+              </span>
+              <span className="shrink-0 text-cocoa-faint">
+                · {m.title ? SLOT_LABEL[m.slot as MealSlot] : MODE_LABEL[m.mode]}
+              </span>
               {m.kcal != null && <span className="ml-auto text-cocoa-faint">{m.kcal} kcal</span>}
               <button
                 type="button"

@@ -408,6 +408,9 @@ model MealRecord {
   mode     MealMode
   slot     MealSlot? // 끼니 슬롯 (아침/점심/저녁/간식) — 시간대 자동추정 (PRD 11.2)
   refId    String?   @map("ref_id") // 먹은 항목 id(recipe/menu/convenience) — 밸런싱 넛지 추세용
+  // 카탈로그에 없는 걸 직접 적어 기록할 때의 이름(예: "추러스", "감자탕").
+  // refId가 있으면 카탈로그에서 이름을 읽으므로 비어 있다 — 둘 중 하나는 반드시 있다.
+  title    String?
   kcal     Int? // 영양 스냅샷 (서버 전용, 화면 X 불변 #2) — 밸런싱 넛지용
   photoUrl String?   @map("photo_url") // 외부 스토리지 경로 (security.md §6)
   memo     String?

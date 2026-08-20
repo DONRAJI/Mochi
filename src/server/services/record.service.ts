@@ -67,9 +67,20 @@ export async function markMealEaten(
   const slot: MealSlot = input.slot ?? estimateSlot(now);
 
   return db.$transaction(async (tx) => {
-    const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : null;
+    // 카탈로그 항목은 서버가 kcal을 조회하고, 직접 입력은 사용자가 아는 값만 받는다(선택).
+    const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : (input.kcal ?? null);
     const record = await tx.mealRecord.create({
-      data: { userId, mode: input.mode, slot, refId: input.refId, kcal, memo: input.memo, photoUrl },
+      data: {
+        userId,
+        mode: input.mode,
+        slot,
+        refId: input.refId,
+        // 카탈로그 항목이면 이름은 카탈로그에서 읽으므로 저장하지 않는다(스냅샷 중복 방지).
+        title: input.refId ? null : (input.title ?? null),
+        kcal,
+        memo: input.memo,
+        photoUrl,
+      },
     });
 
     // 스트릭 + 보호권 (#9): 연속이면 +1, 빠지면 보호권이 막아주고, 없으면 오늘의 1부터 새 시작.
@@ -176,17 +187,23 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
     db.mealRecord.findMany({
       where: { userId, eatenAt: { gte: since } },
       orderBy: { eatenAt: "asc" },
-      select: { id: true, slot: true, mode: true, eatenAt: true, kcal: true, photoUrl: true },
+      select: {
+        id: true, slot: true, mode: true, eatenAt: true, kcal: true, photoUrl: true,
+        refId: true, title: true,
+      },
     }),
     db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
   ]);
   const detail = user?.displayMode === "detail";
+  // 이름: 카탈로그 항목은 조회해서, 직접 입력은 저장된 title로. 예전엔 이름이 아예 없었다.
+  const titles = await resolveMealTitles(rows);
   // 사진 있는 기록만 서명 URL 발급(비공개 버킷). 대부분 사진이 없어 서명 호출은 최소.
   return Promise.all(
     rows.map(async (r) => ({
       id: r.id,
       slot: (r.slot ?? "snack") as MealSlot,
       mode: r.mode,
+      title: (r.refId ? titles.get(r.refId) : r.title) ?? null,
       eatenAt: r.eatenAt.toISOString(),
       kcal: detail ? r.kcal : null,
       photoUrl: r.photoUrl ? await signMealPhoto(r.photoUrl) : null,
@@ -195,6 +212,10 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
 }
 
 /** refId(mode별 카탈로그 id) → 먹은 요리/메뉴 이름 맵. 회고 타임라인에서 "저녁 · 제육볶음"으로 보이게. */
+/**
+ * refId → 카탈로그 이름. 직접 입력 기록(refId 없음)은 record.title을 그대로 쓰므로
+ * 여기서 다루지 않는다 — 호출부가 `titles.get(refId) ?? row.title`로 폴백한다.
+ */
 async function resolveMealTitles(
   rows: { mode: string; refId: string | null }[],
 ): Promise<Map<string, string>> {
@@ -237,7 +258,10 @@ export async function listMealHistory(
     db.mealRecord.findMany({
       where: { userId },
       orderBy: { eatenAt: "desc" },
-      select: { id: true, slot: true, mode: true, refId: true, kcal: true, photoUrl: true, eatenAt: true },
+      select: {
+        id: true, slot: true, mode: true, refId: true, kcal: true, photoUrl: true, eatenAt: true,
+        title: true, // 직접 입력 기록의 이름(카탈로그 항목은 refId로 조회)
+      },
     }),
     db.weightLog.findMany({
       where: { userId },
@@ -254,7 +278,7 @@ export async function listMealHistory(
     id: r.id,
     slot: r.slot,
     mode: r.mode,
-    title: r.refId ? (titles.get(r.refId) ?? null) : null,
+    title: (r.refId ? titles.get(r.refId) : r.title) ?? null,
     kcal: detail ? r.kcal : null,
     photoUrl: r.photoUrl, // raw 경로
     eatenAt: r.eatenAt.toISOString(),

@@ -4,13 +4,26 @@ import { z } from "zod";
 export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
 
 /** '먹었어요' 입력 (Route Handler 경계 검증). refId = 먹은 항목(cook=recipe, convenience=item). */
-export const markMealSchema = z.object({
-  mode: z.enum(["cook", "eatout", "convenience"]),
-  slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(), // 없으면 서버가 시간대로 추정
-  refId: z.string().min(1).max(60).optional(),
-  rarity: z.enum(["common", "rare", "epic", "seasonal"]).default("common"),
-  memo: z.string().max(200).optional(),
-});
+export const markMealSchema = z
+  .object({
+    mode: z.enum(["cook", "eatout", "convenience"]),
+    slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(), // 없으면 서버가 시간대로 추정
+    refId: z.string().min(1).max(60).optional(),
+    /**
+     * 카탈로그에 없는 걸 직접 적어 기록할 때의 이름(예: "추러스", "외식 감자탕").
+     * refId가 있으면 카탈로그 이름을 쓰므로 보내지 않는다.
+     */
+    title: z.string().trim().min(1).max(40).optional(),
+    /** 직접 입력에 한해 사용자가 아는 값을 받는다(선택). 카탈로그 항목은 서버가 조회한다. */
+    kcal: z.number().int().min(0).max(5000).optional(),
+    rarity: z.enum(["common", "rare", "epic", "seasonal"]).default("common"),
+    memo: z.string().max(200).optional(),
+  })
+  // 무엇을 먹었는지 알 수 없는 기록은 만들지 않는다 — 나중에 '오늘의 기록'에 이름이 안 뜬다.
+  .refine((v) => !!v.refId || !!v.title, {
+    message: "무엇을 드셨는지 알려줄래요?",
+    path: ["title"],
+  });
 
 export type MarkMealRequest = z.infer<typeof markMealSchema>;
 
@@ -30,6 +43,8 @@ export interface TodayMealResponse {
   id: string;
   slot: MealSlot;
   mode: "cook" | "eatout" | "convenience";
+  /** 먹은 것의 이름 — 카탈로그 항목은 조회해서, 직접 입력은 저장된 값. 모르면 null. */
+  title: string | null;
   eatenAt: string; // ISO
   kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4)
   photoUrl: string | null; // 사진 한 장 기록의 서명 URL(비공개 버킷, 짧은 만료). 없으면 null.
