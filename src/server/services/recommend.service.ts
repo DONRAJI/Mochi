@@ -12,6 +12,7 @@ import {
   ingredientsMatch,
 } from "@/features/recommend/ingredientSearch";
 import { estimateMinutes } from "@/features/recommend/recipeParse";
+import { penaltyForLastEaten, RECENCY_WINDOW_DAYS } from "@/features/recommend/recency";
 import {
   soloFriendlyScore,
   commonIngredientRatio,
@@ -38,6 +39,30 @@ import type {
  * 요리 모드: 재료 마스터로 이름 정규화(별칭→표준명) 후 냉장고 매칭률 계산.
  * 뱃지는 영양(kcal/protein)에서 자동 산출(deriveBadge) — 영양 숫자는 응답에 안 넣는다(불변 #2).
  */
+/**
+ * 이 유저가 최근 기간 안에 먹은 항목의 **마지막 섭취 시각**(refId → epoch ms).
+ * 계획을 '먹었어요'한 것도 MealRecord로 남으므로 함께 잡힌다. 비로그인은 빈 맵.
+ */
+async function recentlyEatenMap(
+  userId: string | null,
+  mode: MealMode,
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!userId) return map;
+
+  const since = new Date(Date.now() - RECENCY_WINDOW_DAYS * 86_400_000);
+  const rows = await db.mealRecord.findMany({
+    where: { userId, mode, refId: { not: null }, eatenAt: { gte: since } },
+    select: { refId: true, eatenAt: true },
+    orderBy: { eatenAt: "desc" },
+  });
+  // 내림차순이라 처음 만난 것이 가장 최근 — 이후 같은 refId는 건너뛴다.
+  for (const r of rows) {
+    if (r.refId && !map.has(r.refId)) map.set(r.refId, r.eatenAt.getTime());
+  }
+  return map;
+}
+
 export async function getRecommendations(
   mode: MealMode,
   userId: string | null,
@@ -58,6 +83,14 @@ export async function getRecommendations(
   const prefs = groupPreferences(prefTags);
   const detail = user?.displayMode === "detail";
   const favoriteSet = new Set(favRows.map((f) => f.refId));
+
+  // 최근에 먹은 건 아래로(recency.ts) — 3모드 공통. 기간 밖은 애초에 안 가져온다.
+  const lastEaten = await recentlyEatenMap(userId, mode);
+
+  /** 외식·간편식 정렬 점수 — 취향에서 최근 섭취 감점을 뺀다(요리 모드는 매칭률까지 더한다). */
+  const menuScore = (m: { id: string; name: string }) =>
+    preferenceScore(nameMatcher(m.name), prefs.likes, prefs.dislikes) -
+    penaltyForLastEaten(lastEaten.get(m.id) ?? null);
 
   if (mode === "cook") {
     // 시드 카탈로그(ownerId=null) + 내 요리(ownerId=userId)만. 남의 요리는 노출 안 함.
@@ -185,7 +218,9 @@ export async function getRecommendations(
               ingFreq,
               recipes.length,
             ),
-          }),
+          }) -
+          // 최근에 먹은 건 아래로(제외 아님) — 어제 먹은 요리가 오늘도 1등이던 문제.
+          penaltyForLastEaten(lastEaten.get(c.id) ?? null),
       }))
       .sort((a, b) => b.key - a.key || a.c.minutes - b.c.minutes)
       .slice(skip, skip + size)
@@ -239,11 +274,7 @@ export async function getRecommendations(
         rarity: m.rarity,
         steps: [],
       }))
-      .sort(
-        (a, b) =>
-          preferenceScore(nameMatcher(b.name), prefs.likes, prefs.dislikes) -
-          preferenceScore(nameMatcher(a.name), prefs.likes, prefs.dislikes),
-      )
+      .sort((a, b) => menuScore(b) - menuScore(a))
       .slice(skip, skip + size);
   }
 
@@ -271,11 +302,7 @@ export async function getRecommendations(
       rarity: c.rarity,
       steps: [],
     }))
-    .sort(
-      (a, b) =>
-        preferenceScore(nameMatcher(b.name), prefs.likes, prefs.dislikes) -
-        preferenceScore(nameMatcher(a.name), prefs.likes, prefs.dislikes),
-    )
+    .sort((a, b) => menuScore(b) - menuScore(a))
     .slice(skip, skip + size);
 }
 
