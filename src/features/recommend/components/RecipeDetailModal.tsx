@@ -13,6 +13,7 @@ import { useAddPlan } from "../hooks/usePlan";
 import { useAddShopping } from "@/features/fridge/hooks/useShopping";
 import { weekDates, WEEKDAY_LABEL } from "../week";
 import { mgrSourceUrl } from "../mgrParse";
+import { messages } from "@/lib/messages";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
 
@@ -185,6 +186,14 @@ export function RecipeDetailModal({
               </a>
             ) : (
               <p className="mt-4 text-center text-sm text-cocoa-soft">재료만 있으면 금방이에요 😊</p>
+            )}
+
+            {/* 출처 표시 — CC BY 의무(만개)이자 공공데이터 예의(식약처). 지우지 말 것.
+                시드·내 요리는 외부 출처가 없어 표기하지 않는다. */}
+            {(mgrSourceUrl(item.id) || item.id.startsWith("cookrcp-")) && (
+              <p className="mt-3 text-center text-[11px] text-cocoa-faint">
+                {mgrSourceUrl(item.id) ? messages.attribution.mgr : messages.attribution.foodSafety}
+              </p>
             )}
 
             <div className="mt-4 flex items-center gap-1.5">

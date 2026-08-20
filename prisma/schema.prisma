@@ -128,6 +128,7 @@ model User {
   mochi       MochiProfile?
   profile     UserProfile?
   plannedMeals PlannedMeal[]
+  mealPresets  MealPreset[]
   favorites    Favorite[]
   shopping     ShoppingItem[]
 
@@ -183,6 +184,41 @@ model PlannedMeal {
 
   @@index([userId, date])
   @@map("planned_meals")
+}
+
+/**
+ * 주간 식단 프리셋 — 매주 비슷하게 먹는 사람이 한 주치 구성을 저장해 두고 반복 적용한다.
+ * 저장은 '이번 주 계획'에서 뜬다(빈 화면에서 만들게 하지 않는다). 적용은 **빈 자리만 채우며**
+ * 이미 먹은 끼니는 건드리지 않는다.
+ */
+model MealPreset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items MealPresetItem[]
+
+  @@index([userId])
+  @@map("meal_presets")
+}
+
+/** 프리셋의 한 칸. 날짜가 아니라 **요일**로 저장한다(week.ts와 같은 기준: 월=0 … 일=6). */
+model MealPresetItem {
+  id       String    @id @default(cuid())
+  presetId String    @map("preset_id")
+  weekday  Int
+  slot     MealSlot?
+  mode     MealMode
+  refId    String?   @map("ref_id")
+  title    String
+  emoji    String?
+
+  preset MealPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@index([presetId])
+  @@map("meal_preset_items")
 }
 
 // opt-in 개인 프로필 (PRD 11.4) — 마이 탭에서 원하는 사람만 입력. 전부 nullable.

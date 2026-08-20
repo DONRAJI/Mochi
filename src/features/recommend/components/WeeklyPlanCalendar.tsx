@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useDragControls } from "framer-motion";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { PresetSheet } from "./PresetSheet";
 import { cn } from "@/lib/utils";
 import { weekDates, ymd, WEEKDAY_LABEL } from "../week";
 import {
@@ -56,6 +57,8 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
   const move = useMovePlan();
 
   // 날짜별 컨테이너 ref — 드롭 시 포인터가 어느 날 위에 있는지 히트테스트.
+  // 프리셋은 '한 주 전체'를 다루는 기능이라 축약 모드(홈)에선 띄우지 않는다.
+  const [presetOpen, setPresetOpen] = useState(false);
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
   function resolveDate(x: number, y: number): string | null {
     for (const [date, el] of Object.entries(dayRefs.current)) {
@@ -97,15 +100,24 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
             이번 주 전체 ›
           </button>
         ) : (
-          hasEmpty && (
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
-              onClick={() => autoFill.mutate(week)}
-              className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+              onClick={() => setPresetOpen(true)}
+              className="rounded-mochi-sm bg-cream-100 px-2.5 py-1 text-xs text-cocoa-soft transition-transform ease-jelly active:scale-90"
             >
-              {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
+              🔖 프리셋
             </button>
-          )
+            {hasEmpty && (
+              <button
+                type="button"
+                onClick={() => autoFill.mutate(week)}
+                className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+              >
+                {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="flex flex-col gap-2">
@@ -160,6 +172,10 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
           );
         })}
       </div>
+
+      {!compact && (
+        <PresetSheet open={presetOpen} onClose={() => setPresetOpen(false)} week={fullWeek} />
+      )}
     </section>
   );
 }
