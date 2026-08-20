@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { messages } from "@/lib/messages";
 import { ProfileSection } from "./ProfileSection";
 import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
@@ -109,6 +110,10 @@ export function MeScreen() {
         <Link href="/privacy" className="text-xs text-cocoa-faint underline">
           개인정보처리방침
         </Link>
+        {/* 데이터 출처 — 라이선스 의무(CC BY). 문구는 messages.attribution에 중앙화. */}
+        <p className="px-2 text-center text-[11px] leading-relaxed text-cocoa-faint">
+          {messages.attribution.combined}
+        </p>
         <button
           type="button"
           onClick={() => setDeleteOpen(true)}
