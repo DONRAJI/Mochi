@@ -5,6 +5,15 @@ import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "@/features/recommend/plan";
+import {
+  weekdayOf,
+  slotKey,
+  planPresetApply,
+  type SavePresetRequest,
+  type ApplyPresetRequest,
+  type ApplyPresetResult,
+  type PresetResponse,
+} from "@/features/recommend/preset";
 import type { MealMode } from "@/features/recommend/types";
 import type { MealRecordResponse, MealSlot } from "@/features/record/types";
 
@@ -135,4 +144,136 @@ export async function eatPlan(userId: string, id: string): Promise<MealRecordRes
   });
   await db.plannedMeal.update({ where: { id }, data: { eaten: true } });
   return result;
+}
+
+// ── 주간 프리셋 (매주 비슷하게 먹는 사람이 한 주치를 저장해 반복 적용) ──────────────
+
+/** 내 프리셋 목록 — 적용 시트에서 고르게. 항목까지 함께 준다(개수 표시·미리보기용). */
+export async function listPresets(userId: string): Promise<PresetResponse[]> {
+  const rows = await db.mealPreset.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: { items: { orderBy: [{ weekday: "asc" }, { slot: "asc" }] } },
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    itemCount: p.items.length,
+    items: p.items.map((i) => ({
+      weekday: i.weekday,
+      slot: i.slot as MealSlot | null,
+      mode: i.mode as MealMode,
+      refId: i.refId,
+      title: i.title,
+      emoji: i.emoji,
+    })),
+  }));
+}
+
+/**
+ * 이번 주 계획을 프리셋으로 저장 — 빈 화면에서 만들게 하지 않고, 이미 짜둔 주를 재사용한다.
+ * 날짜가 아니라 **요일**로 저장해야 다음 주에도 쓸 수 있다(preset.ts).
+ */
+export async function savePreset(
+  userId: string,
+  input: SavePresetRequest,
+): Promise<PresetResponse> {
+  const rows = await db.plannedMeal.findMany({
+    where: { userId, date: { in: input.dates.map((d) => new Date(d)) } },
+    orderBy: { date: "asc" },
+  });
+  if (rows.length === 0) {
+    throw new AppError("VALIDATION", "저장할 식단이 아직 없어요. 먼저 한 끼 담아볼까요?", 400);
+  }
+
+  const created = await db.mealPreset.create({
+    data: {
+      userId,
+      name: input.name,
+      items: {
+        create: rows.map((r) => ({
+          weekday: weekdayOf(r.date.toISOString().slice(0, 10)),
+          slot: r.slot,
+          mode: r.mode,
+          refId: r.refId,
+          title: r.title,
+          emoji: r.emoji,
+        })),
+      },
+    },
+    include: { items: true },
+  });
+
+  return {
+    id: created.id,
+    name: created.name,
+    itemCount: created.items.length,
+    items: created.items.map((i) => ({
+      weekday: i.weekday,
+      slot: i.slot as MealSlot | null,
+      mode: i.mode as MealMode,
+      refId: i.refId,
+      title: i.title,
+      emoji: i.emoji,
+    })),
+  };
+}
+
+/**
+ * 프리셋을 그 주에 적용 — **빈 자리만 채운다.** 이미 담아둔 끼니나 먹은 기록은 건드리지 않는다
+ * (덮어쓰면 공들여 짠 계획이 조용히 사라진다). 무엇을 건너뛰었는지 개수로 알려준다.
+ */
+export async function applyPreset(
+  userId: string,
+  presetId: string,
+  input: ApplyPresetRequest,
+): Promise<ApplyPresetResult> {
+  const preset = await db.mealPreset.findFirst({
+    where: { id: presetId, userId }, // 소유자 검증 (security.md §4)
+    include: { items: true },
+  });
+  if (!preset) throw new AppError("NOT_FOUND", messages.error.NOT_FOUND, 404);
+
+  const dates = input.dates.map((d) => new Date(d));
+  const existing = await db.plannedMeal.findMany({
+    where: { userId, date: { in: dates } },
+    select: { date: true, slot: true },
+  });
+  const occupied = new Set(
+    existing.map((e) => slotKey(weekdayOf(e.date.toISOString().slice(0, 10)), e.slot as MealSlot | null)),
+  );
+
+  const { toCreate, skipped } = planPresetApply(
+    input.dates,
+    preset.items.map((i) => ({
+      weekday: i.weekday,
+      slot: i.slot as MealSlot | null,
+      mode: i.mode as MealMode,
+      refId: i.refId,
+      title: i.title,
+      emoji: i.emoji,
+    })),
+    occupied,
+  );
+
+  if (toCreate.length > 0) {
+    await db.plannedMeal.createMany({
+      data: toCreate.map((c) => ({
+        userId,
+        date: new Date(c.date),
+        slot: c.slot,
+        mode: c.mode,
+        refId: c.refId,
+        title: c.title,
+        emoji: c.emoji,
+      })),
+    });
+  }
+  return { added: toCreate.length, skipped };
+}
+
+/** 프리셋 삭제 — 소유자 검증. 항목은 cascade로 함께 지워진다. */
+export async function removePreset(userId: string, presetId: string): Promise<void> {
+  const { count } = await db.mealPreset.deleteMany({ where: { id: presetId, userId } });
+  if (count === 0) throw new AppError("NOT_FOUND", messages.error.NOT_FOUND, 404);
 }

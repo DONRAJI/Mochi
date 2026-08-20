@@ -163,3 +163,39 @@ export function useEatPlan() {
     onSettled: () => settlePlanIfLast(qc), // 계획(plan)은 가드로 — 다른 도메인은 위 onSuccess에서
   });
 }
+
+// ── 주간 프리셋 ──
+const presetKey = ["plan", "presets"] as const;
+
+export function usePresets() {
+  return useQuery({ queryKey: presetKey, queryFn: planApi.fetchPresets, retry: false });
+}
+
+/** 이번 주 계획을 프리셋으로 저장. */
+export function useSavePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; dates: string[] }) => planApi.savePreset(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: presetKey }),
+  });
+}
+
+/**
+ * 프리셋을 이번 주에 적용 — 서버가 빈 자리만 채운다.
+ * 낙관적 업데이트는 하지 않는다: 어떤 칸이 채워질지는 서버가 판단하므로 예측이 틀릴 수 있다.
+ */
+export function useApplyPreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; dates: string[] }) => planApi.applyPreset(v.id, v.dates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plan"] }),
+  });
+}
+
+export function useRemovePreset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => planApi.removePreset(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: presetKey }),
+  });
+}
