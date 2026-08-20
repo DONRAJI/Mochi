@@ -15,9 +15,13 @@ const db = new PrismaClient();
 
 type Row = Record<string, string>;
 
+/**
+ * 식약처 영양값 → 정수. **parseInt가 아니라 반올림**이다 —
+ * INFO_ENG는 "28.7"처럼 소수로 오는데 parseInt는 28로 버려서 전 레시피가 조금씩 낮게 잡혔다.
+ */
 function toInt(s: string | undefined): number | null {
-  const n = parseInt(s ?? "", 10);
-  return Number.isFinite(n) ? n : null;
+  const n = Number.parseFloat(s ?? "");
+  return Number.isFinite(n) ? Math.round(n) : null;
 }
 
 /** 완성 요리 사진 URL을 https로(배포 https에서 mixed-content 방지). 없으면 null. */
