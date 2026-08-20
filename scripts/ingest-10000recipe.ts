@@ -5,6 +5,7 @@ import {
   ZERO_KCAL,
   estimateGrams,
   cleanIngredientName,
+  plausibleKcal,
 } from "../src/features/recommend/kcalEstimate";
 import {
   parseCsv,
@@ -179,7 +180,8 @@ async function main(): Promise<void> {
       totalKcal += master.kcal * (amountGrams / (master.isSpoon ? 10 : 100));
     }
 
-    const estimatedKcal = Math.round(totalKcal / r.servings);
+    // 추정이 명백히 비현실적이면 값을 싣지 않는다(kcalEstimate.plausibleKcal).
+    const estimatedKcal = plausibleKcal(totalKcal / r.servings);
 
     const data = {
       name: r.nm,
