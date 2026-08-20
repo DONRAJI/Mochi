@@ -52,6 +52,11 @@ const PER_PIECE: [RegExp, number][] = [
   [/^(마늘|생강|쪽파|실파)/, 5],
   [/고추$/, 5],
   [/^(방울토마토|새우|메추리알|호두|아몬드|바지락|조개|홍합|굴|멸치)/, 15],
+  // 낱개가 작은 것들 — 기본 100g이면 "떡볶이떡 45개 = 4.5kg" 같은 값이 나온다.
+  [/김$|^김[밥가]/, 2], // 김 1장 ≈ 2g
+  [/떡$/, 10], // 떡볶이떡·치즈떡 1개 ≈ 10g
+  [/(소시지|소세지|비엔나)/, 10],
+  [/(어묵|오뎅)/, 30], // 사각 1장 ≈ 30g
   [/버섯/, 20],
   [/^(계란|달걀|노른자|흰자)/, 50],
   [/^양파/, 170],
@@ -59,6 +64,24 @@ const PER_PIECE: [RegExp, number][] = [
   [/^대파/, 140],
 ];
 const DEFAULT_PIECE = 100;
+
+/** 계량 스푼 무게. 작은술은 큰술의 1/3(15ml vs 5ml). */
+const TBSP_GRAMS = 8.5;
+const TBSP_HEAPED_GRAMS = 13.5;
+const TSP_GRAMS = 3;
+
+/**
+ * 1인분 추정치의 현실적 상한. 넘으면 **값을 싣지 않는다** —
+ * 단위 표기가 제각각이라 추정은 늘 틀릴 수 있고, 틀린 숫자는 없는 것보다 나쁘다
+ * (이 값은 화면 표시뿐 아니라 '먹었어요' 기록·칼로리 예산에도 들어간다).
+ */
+export const MAX_PLAUSIBLE_KCAL = 1500;
+
+/** 추정 1인분 kcal이 현실적이면 그대로, 아니면 null. */
+export function plausibleKcal(perServing: number): number | null {
+  const v = Math.round(perServing);
+  return v > 0 && v <= MAX_PLAUSIBLE_KCAL ? v : null;
+}
 
 function lookup(table: [RegExp, number][], name: string, fallback: number): number {
   for (const [re, g] of table) if (re.test(name)) return g;
@@ -85,13 +108,17 @@ export function estimateGrams(token: string, name: string, isSpoon: boolean): nu
   const g = token.match(/(\d+(?:\.\d+)?)\s*(?:g|그램|gram|ml)/i);
   if (g) return parseFloat(g[1]);
 
-  // ② 스푼류
-  const spoon = token.match(/(\d+(?:\.\d+)?)\s*(?:스푼|T|큰술|수저)/i);
-  if (spoon) return parseFloat(spoon[1]) * (/볼록|수북|듬뿍/.test(token) ? 13.5 : 8.5);
-  if (/볼록하게\s*1스푼|듬뿍\s*1스푼/.test(token)) return 13.5;
+  // ② 스푼류 — 수량은 readQuantity로 읽는다(정규식으로 "1/2"를 잡으면 parseFloat가 1로 읽는다).
+  const qty0 = readQuantity(token);
+  // ⚠️ 작은술을 빼먹으면 단위 매칭에 실패해 기본량 50g으로 빠진다("다진마늘 1작은술"이 50g이었다).
+  if (hasUnit(token, "작은술|찻숟갈|티스푼")) return qty0 * TSP_GRAMS;
+  if (hasUnit(token, "큰술|스푼|숟갈|숟가락|수저|T")) {
+    return qty0 * (/볼록|수북|듬뿍/.test(token) ? TBSP_HEAPED_GRAMS : TBSP_GRAMS);
+  }
+  if (/볼록하게\s*1스푼|듬뿍\s*1스푼/.test(token)) return TBSP_HEAPED_GRAMS;
 
   // ③ 세는 단위 — 반드시 수량 뒤에 와야 한다
-  const qty = readQuantity(token);
+  const qty = qty0;
   if (hasUnit(token, "포기")) return qty * 1500;
   if (hasUnit(token, "통")) return qty * lookup(PER_PIECE, name, DEFAULT_PIECE);
   if (hasUnit(token, "모")) return qty * 300; // 두부 1모
