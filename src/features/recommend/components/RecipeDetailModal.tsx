@@ -16,6 +16,7 @@ import { mgrSourceUrl } from "../mgrParse";
 import { messages } from "@/lib/messages";
 import type { MarkMealRequest, MealSlot } from "@/features/record/types";
 import type { MealMode, RecipeIngredient, RecommendationResponse } from "../types";
+import { servingsLabel, kcalLabel } from "../mealMeta";
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 
@@ -151,8 +152,9 @@ export function RecipeDetailModal({
               <div>
                 <h3 className="text-lg font-bold text-cocoa">{item.name}</h3>
                 <p className="text-sm text-cocoa-faint">
-                  {item.minutes != null ? `⏱ ${item.minutes}분 · ${item.servings}인분` : item.subtitle}
-                  {item.kcal != null && ` · ${item.kcal} kcal`}
+                  {[servingsLabel(item.minutes, item.servings) ?? item.subtitle, kcalLabel(item.kcal)]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
             </div>

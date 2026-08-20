@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import type { RecommendationResponse } from "../types";
+import { servingsLabel, kcalLabel } from "../mealMeta";
 
 /** 추천 카드 — 랭킹 뱃지 + (요리 모드) 매칭률·추가구매 (PRD 5.3). 우상단 하트=즐겨찾기(#7). */
 export function RecipeCard({
@@ -78,8 +79,9 @@ export function RecipeCard({
               )}
             </div>
             <p className="text-sm text-cocoa-faint">
-              {item.minutes != null ? `⏱ ${item.minutes}분 · ${item.servings}인분` : item.subtitle}
-              {item.kcal != null && ` · ${item.kcal} kcal`}
+              {[servingsLabel(item.minutes, item.servings) ?? item.subtitle, kcalLabel(item.kcal)]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
         </div>
