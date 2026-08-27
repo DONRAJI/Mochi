@@ -11,6 +11,7 @@ import {
   pruneExpiredSessions,
 } from "@/server/auth/session";
 import { issueAuthToken, consumeAuthToken, pruneStaleAuthTokens } from "@/server/auth/auth-token";
+import { releaseReminderChannels } from "@/server/services/push.service";
 import { sendEmail, appUrl } from "@/server/email/send";
 import { verifyEmailTemplate, resetPasswordTemplate } from "@/server/email/templates";
 import type {
@@ -172,7 +173,19 @@ export async function login(input: LoginRequest): Promise<AuthUserResponse> {
   return toAuthUser(user);
 }
 
+/**
+ * 로그아웃 — 세션 폐기 + **이 계정의 리마인더 채널 정리**.
+ *
+ * 채널을 같이 끊는 이유: 세션과 푸시 구독은 서로 다른 생명주기라, 세션만 지우면
+ * 크론(sendDinnerReminders)은 그 사실을 모른 채 계속 발송한다. 특히 앱에서 로그아웃하면
+ * 클라는 브라우저 쪽 구독에 손댈 수 없으므로(다른 실행 컨텍스트) **서버가 계정 기준으로**
+ * 지워야 "로그아웃했는데 브라우저 명의로 알림만 계속 오는" 상태가 끝난다.
+ *
+ * 도메인 간 참조는 push 서비스의 공개 함수에 userId만 넘기는 방식(conventions.md).
+ */
 export async function logout(): Promise<void> {
+  const userId = await getSessionUserId();
+  if (userId) await releaseReminderChannels(userId);
   await destroySession();
 }
 

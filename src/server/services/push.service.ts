@@ -29,7 +29,37 @@ export async function removeSubscription(userId: string, endpoint: string): Prom
   await db.pushSubscription.deleteMany({ where: { endpoint, userId } });
 }
 
-/** 네이티브(FCM) 토큰 저장 — 같은 기기로 다른 계정 로그인 시 주인을 갈아탄다(웹 구독과 동일 규칙). */
+/**
+ * 이 계정의 웹푸시 구독을 **전부** 해지한다.
+ *
+ * 왜 endpoint 단위가 아니라 계정 단위가 필요한가: 구독은 그 브라우저의 실행 컨텍스트에
+ * 묶여 있어서, **앱(Capacitor 셸)에서는 브라우저의 구독에 손을 댈 수 없다.** 앱에서
+ * 로그아웃하거나 앱이 리마인더 채널을 가져갈 때, 서버가 계정 기준으로 지워 주지 않으면
+ * 그 브라우저 구독이 영원히 살아남아 크론이 계속 발송한다(= 로그아웃했는데 삼성인터넷·
+ * 크롬 명의로 알림이 오던 원인).
+ */
+export async function clearWebSubscriptions(userId: string): Promise<void> {
+  await db.pushSubscription.deleteMany({ where: { userId } });
+}
+
+/**
+ * 로그아웃 시 이 계정의 리마인더 채널을 통째로 정리한다(웹 구독 + 네이티브 토큰).
+ * 세션이 끊긴 계정으로 알림이 계속 가는 상태를 서버에서 확실히 끊는 게 목적이라,
+ * 클라의 해지 호출이 실패했더라도 여기서 마무리된다.
+ */
+export async function releaseReminderChannels(userId: string): Promise<void> {
+  await Promise.all([
+    db.pushSubscription.deleteMany({ where: { userId } }),
+    db.deviceToken.deleteMany({ where: { userId } }),
+  ]);
+}
+
+/**
+ * 네이티브(FCM) 토큰 저장 — 같은 기기로 다른 계정 로그인 시 주인을 갈아탄다(웹 구독과 동일 규칙).
+ * 등록과 동시에 **그 계정의 웹 구독을 정리**한다: 앱이 리마인더 채널을 가져가면 브라우저로는
+ * 보내지 않는 게 원래 정책인데, 예전엔 그걸 발송 시점의 억제로만 처리해서 토큰이 사라지는
+ * 순간(로그아웃·알림 끄기) 잠자던 웹 구독이 되살아났다. 여기서 지워 그 상태를 없앤다.
+ */
 export async function saveDeviceToken(
   userId: string,
   token: string,
@@ -40,6 +70,7 @@ export async function saveDeviceToken(
     create: { userId, token, platform },
     update: { userId, platform },
   });
+  await clearWebSubscriptions(userId);
 }
 
 /** 네이티브 토큰 해지 — 소유자 검증: 내 토큰만 지울 수 있다. */
@@ -105,6 +136,9 @@ export async function sendDinnerReminders(): Promise<ReminderRunResult> {
 
   for (const sub of subs) {
     // 앱에서도 등록한 유저 — 네이티브로 이미 갔으니 웹으로 또 보내지 않는다.
+    // ⚠️ 이건 이제 **안전망**일 뿐이다. 예전엔 이 억제가 웹 구독을 막는 유일한 장치라,
+    // 토큰이 사라지면(로그아웃·알림 끄기) 웹 구독이 되살아났다. 지금은 앱이 채널을
+    // 가져갈 때 clearWebSubscriptions로 아예 지우므로, 여기 걸릴 일 자체가 드물다.
     if (ateDinner.has(sub.userId) || nativeUsers.has(sub.userId)) {
       result.skipped += 1;
       continue;

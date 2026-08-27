@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "../api/auth.api";
 import { setIdleSession, clearIdleSession } from "../idleSession";
-import { releaseNativePushToken } from "@/features/notify/native";
+import { releaseReminderChannel } from "@/features/notify/release";
 import type {
   SignupRequest,
   LoginRequest,
@@ -45,10 +45,11 @@ export function useLogin() {
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
-    // 로그아웃 전에 이 기기의 푸시 토큰을 서버에서 뗀다 — 안 그러면 로그아웃한 뒤에도
+    // 로그아웃 전에 이 기기의 리마인더 채널을 해지한다 — 안 그러면 로그아웃한 뒤에도
     // 이 기기가 그 계정의 리마인더를 계속 받는다(세션은 끊겼는데 알림만 오는 상태).
+    // 앱이면 FCM 토큰, 브라우저면 웹푸시 구독. 서버 쪽 행은 logout()이 계정 기준으로 지운다.
     mutationFn: async () => {
-      await releaseNativePushToken();
+      await releaseReminderChannel();
       return authApi.logout();
     },
     onSuccess: () => {
