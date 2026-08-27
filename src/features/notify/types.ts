@@ -13,8 +13,13 @@ export const pushSubscribeSchema = z.object({
   }),
 });
 
+/**
+ * 웹푸시 해지. `endpoint`가 있으면 그 구독 하나만, **없으면 내 웹 구독 전부**를 해지한다.
+ * 전부 해지는 앱(네이티브 셸)이 리마인더 채널을 가져갈 때 쓴다 — 앱은 브라우저의 구독
+ * endpoint를 알 수 없으므로 계정 기준으로 지워달라고 요청할 길이 있어야 한다.
+ */
 export const pushUnsubscribeSchema = z.object({
-  endpoint: z.string().url().max(1000),
+  endpoint: z.string().url().max(1000).optional(),
 });
 
 /** 네이티브(FCM) 토큰 등록 — Capacitor 셸에서. 토큰은 FCM registration token(불투명 문자열). */

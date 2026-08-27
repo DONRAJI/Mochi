@@ -24,6 +24,15 @@ export function NativeShellBridge() {
     // 첫 화면이 그려졌으니 스플래시를 내린다(웹 로딩 동안만 보이게).
     void Promise.resolve(splash?.hide()).catch(() => {});
 
+    // 앱이 이 계정의 리마인더 채널을 가져간다 — 예전에 이 폰의 브라우저(삼성인터넷·크롬)에서
+    // 리마인더를 켠 적이 있으면 그 구독이 서버에 그대로 남아, 앱을 쓰는 지금도 브라우저 명의로
+    // 알림이 뜬다. 앱은 그 구독의 endpoint를 알 수 없으므로(다른 실행 컨텍스트) 계정 기준으로
+    // 지워달라고 부탁한다. 리마인더를 켜지 않은 사용자에게도 필요해서 부팅 시 1회 보낸다.
+    // 미로그인이면 401 — 그냥 넘긴다(다음 실행에서 다시 시도).
+    void import("../api/notify.api")
+      .then(({ unsubscribeAllPush }) => unsubscribeAllPush())
+      .catch(() => {});
+
     // 안드로이드 뒤로가기: 갈 곳이 있으면 뒤로, 앱 첫 화면이면 종료.
     // 리스너를 달면 기본 동작을 우리가 가져오므로 두 갈래를 직접 처리해야 한다.
     void listenNative(app, "backButton", ({ canGoBack }) => {
