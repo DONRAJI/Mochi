@@ -4,6 +4,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useTodayMeals, useDailyBudget, useDeleteMeal } from "../hooks/useRecord";
 import { dailyBalanceMessage } from "../balance";
 import { SLOT_LABEL, SLOT_EMOJI } from "../slot";
@@ -20,7 +21,7 @@ const MODE_LABEL: Record<"cook" | "eatout" | "convenience", string> = {
  * 칼로리는 detail(관리) 모드에서만 노출(#4) — 서버가 kcal을 채워 보낼 때만.
  */
 export function TodayMealsStrip() {
-  const { data: meals } = useTodayMeals();
+  const { data: meals, isPending } = useTodayMeals();
   const { data: budgetData } = useDailyBudget();
   const del = useDeleteMeal();
   const total = (meals ?? []).reduce((sum, m) => sum + (m.kcal ?? 0), 0);
@@ -30,7 +31,14 @@ export function TodayMealsStrip() {
     <Card className="flex flex-col gap-2">
       <p className="font-display text-cocoa">오늘의 기록</p>
 
-      {meals && meals.length > 0 ? (
+      {isPending ? (
+        // 오늘 기록해 둔 게 있는데도 "아직 없어요"가 먼저 뜨는 걸 막는다 — 그 찰나가
+        // "아무것도 못 했다"로 읽힌다(불변 #1). FridgeScreen과 같은 자리지킴 패턴.
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-2/3" />
+        </div>
+      ) : meals && meals.length > 0 ? (
         <ul className="flex flex-col gap-1.5">
           {meals.map((m) => (
             <li key={m.id} className="flex items-center gap-2 text-sm text-cocoa-soft">

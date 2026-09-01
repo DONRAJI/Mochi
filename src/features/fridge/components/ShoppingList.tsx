@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import {
   useShopping,
@@ -15,7 +16,7 @@ import {
 
 /** 🛒 장보기 리스트 (PRD 5.3) — 추가구매 재료를 모아 체크, 사면 냉장고로. */
 export function ShoppingList() {
-  const { data: items } = useShopping();
+  const { data: items, isPending } = useShopping();
   const add = useAddShopping();
   const toggle = useToggleShopping();
   const remove = useRemoveShopping();
@@ -37,7 +38,13 @@ export function ShoppingList() {
     <Card className="flex flex-col gap-3">
       <p className="font-display text-cocoa">🛒 장보기 리스트</p>
 
-      {list.length === 0 ? (
+      {isPending ? (
+        // 담아둔 게 있는데도 '비었다'는 안내가 먼저 뜨는 걸 막는다(불변 #1, FridgeScreen과 같은 패턴).
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+      ) : list.length === 0 ? (
         <p className="text-sm text-cocoa-faint">
           추가구매 재료를 담아보세요. 레시피에서 한 번에 담을 수 있어요.
         </p>

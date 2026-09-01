@@ -17,7 +17,10 @@ const MODES: { value: DisplayMode; label: string; hint: string }[] = [
 export function DisplayModeToggle() {
   const { data: me } = useMe();
   const setMode = useSetDisplayMode();
-  const current: DisplayMode = me?.displayMode ?? "cozy";
+  // 불러오기 전엔 **아무것도 선택된 것처럼 보이지 않게** null로 둔다. 예전엔 `?? "cozy"`라
+  // detail 모드 사용자가 마이에 들어올 때마다 '모찌랑 편하게'가 켜진 채 잠깐 보였다가
+  // 뒤집혔다 — 내가 고른 설정이 아닌 게 먼저 보이는 건 가짜 값을 그리는 것과 같다.
+  const current: DisplayMode | null = me?.displayMode ?? null;
 
   return (
     <Card className="flex flex-col gap-2">
