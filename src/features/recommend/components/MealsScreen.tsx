@@ -30,15 +30,25 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
+/**
+ * 식단 탭의 뷰 축.
+ *
+ * `week`(주간 식단)를 스크롤 아래가 아니라 별도 뷰로 뺀 이유: 추천과 주간 계획이 한
+ * 화면에서 서로 자리를 깎고 있었다 — 주간 식단을 빨리 보이게 하려고 추천을 6개로
+ * 자르고, 그래도 주간 식단은 스크롤 아래에 있었다. 둘은 시간 축이 다르다(지금 뭐 먹지
+ * vs 이번 주 짜기). 분리해도 '이번 주 식단에 담기'는 RecipeDetailModal 안에 있어
+ * 추천→담기 흐름은 끊기지 않는다.
+ */
+type MealsView = "recommend" | "favorites" | "week";
+
 /** 🍽️ 식단 화면 — 시드 카탈로그 실데이터를 3모드로 (불변 #5). 즐겨찾기 뷰(#7). */
 export function MealsScreen() {
-  const [view, setView] = useState<"recommend" | "favorites">("recommend");
+  const [view, setView] = useState<MealsView>("recommend");
   const [mode, setMode] = useState<MealMode>("cook");
   const [category, setCategory] = useState("전체");
   const [cookFilter, setCookFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false); // 기본은 몇 개만 — 주간 식단이 금방 보이게
   const { data, isPending, isError, refetch } = useRecommendations(mode);
   const toggleFav = useToggleFavorite();
 
@@ -58,8 +68,20 @@ export function MealsScreen() {
 
   // ?open=<id> 딥링크 — 홈 '오늘의 제안' 탭 시 그 메뉴 상세가 바로 열린다(다시 찾지 않게, PRD 4.2).
   // 한 번 열고 나면 소비 처리 — 모달 닫은 뒤 데이터 갱신으로 다시 열리지 않게.
-  const openId = useSearchParams().get("open");
+  const params = useSearchParams();
+  const openId = params.get("open");
   const openConsumed = useRef(false);
+
+  // ?view=week 딥링크 — 홈 축약 달력의 '이번 주 전체 ›'가 주간 뷰로 바로 들어온다.
+  // 주간 식단을 칩 뒤로 옮긴 대가는 '존재를 잊는 것'인데, 홈에서 한 번에 닿으면 그게 상쇄된다.
+  // ?open과 달리 한 번만 소비할 필요가 없다(뷰 전환은 사용자가 칩으로 되돌릴 수 있다).
+  const viewParam = params.get("view");
+  const viewApplied = useRef(false);
+  useEffect(() => {
+    if (viewParam !== "week" || viewApplied.current) return;
+    setView("week");
+    viewApplied.current = true;
+  }, [viewParam]);
   useEffect(() => {
     if (!openId || openConsumed.current || !data) return;
     const found = data.find((r) => r.id === openId);
@@ -73,7 +95,6 @@ export function MealsScreen() {
     setMode(v as MealMode);
     setCategory("전체"); // 모드 바뀌면 카테고리 초기화
     setCookFilter(null);
-    setShowAll(false);
     setNameQuery(""); // 검색 초기화
     setIngQuery("");
     setAdvancedOpen(false);
@@ -87,10 +108,8 @@ export function MealsScreen() {
         ? data
         : data?.filter((r) => r.subtitle === category);
 
-  // 추천은 상위 몇 개만 먼저 보여주고 나머지는 '더 보기'로 — 스크롤을 짧게 유지(주간 식단 접근성).
-  const RECIPE_LIMIT = 6;
-  const visible = showAll ? shown : shown?.slice(0, RECIPE_LIMIT);
-  const hiddenCount = (shown?.length ?? 0) - (visible?.length ?? 0);
+  // 주간 식단을 별도 뷰로 뺐으므로 추천을 6개로 자를 이유가 없어졌다 — 전부 보여준다.
+  const visible = shown;
 
   return (
     <div className="flex flex-col gap-4">
@@ -103,9 +122,14 @@ export function MealsScreen() {
         <Chip active={view === "favorites"} onClick={() => setView("favorites")}>
           ♥ 즐겨찾기
         </Chip>
+        <Chip active={view === "week"} onClick={() => setView("week")}>
+          🗓️ 이번 주
+        </Chip>
       </div>
 
-      {view === "favorites" ? (
+      {view === "week" ? (
+        <WeeklyPlanCalendar />
+      ) : view === "favorites" ? (
         <FavoritesList />
       ) : (
         <>
@@ -201,17 +225,6 @@ export function MealsScreen() {
                 ))}
               </div>
 
-              {!showAll && hiddenCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  className="rounded-mochi bg-cream-50 px-4 py-3 text-sm text-cocoa-soft shadow-mochi-press transition-transform ease-jelly active:scale-[0.98]"
-                >
-                  추천 {hiddenCount}개 더 보기
-                </button>
-              )}
-
-              <WeeklyPlanCalendar />
             </>
           )}
         </>
