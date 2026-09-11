@@ -53,10 +53,22 @@ export function AddIngredientSheet({ open, onClose }: { open: boolean; onClose: 
       </div>
 
       <form onSubmit={customAdd} className="flex flex-col gap-2">
-        <Input placeholder="직접 입력 (예: 감자)" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          name="ingredient-name"
+          autoComplete="off"
+          placeholder="직접 입력 (예: 감자)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <label className="flex items-center gap-2 text-sm text-cocoa-faint">
           <span className="whitespace-nowrap">유통기한 (선택)</span>
-          <Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
+          <Input
+            name="ingredient-expiry"
+            autoComplete="off"
+            type="date"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+          />
         </label>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {FRIDGE_CATEGORIES.filter((c) => c !== "전체").map((c) => (

@@ -156,6 +156,8 @@ function NicknameCard({ currentNickname, email }: { currentNickname: string; ema
         </label>
         <div className="flex gap-2">
           <Input
+            name="nickname"
+            autoComplete="nickname"
             id="nickname"
             value={nickname}
             maxLength={20}
@@ -169,9 +171,7 @@ function NicknameCard({ currentNickname, email }: { currentNickname: string; ema
         {save.isSuccess && !save.isPending && !changed && (
           <p className="text-sm text-cocoa-soft">바꿨어요 🌿</p>
         )}
-        {save.isError && (
-          <p className="text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
-        )}
+        {save.isError && <p className="text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>}
       </form>
 
       <div className="flex flex-col gap-1 border-t border-cream-200 pt-3">

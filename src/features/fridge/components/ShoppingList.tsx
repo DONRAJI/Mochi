@@ -83,7 +83,13 @@ export function ShoppingList() {
       )}
 
       <form onSubmit={submit} className="flex gap-2">
-        <Input placeholder="직접 담기 (예: 두부)" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          name="shopping-item"
+          autoComplete="off"
+          placeholder="직접 담기 (예: 두부)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
         <Button type="submit" variant="soft">
           담기
         </Button>

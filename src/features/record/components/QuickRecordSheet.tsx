@@ -80,6 +80,8 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
             무엇을 드셨나요?
           </label>
           <Input
+            name="record-title"
+            autoComplete="off"
             id="meal-title"
             value={title}
             maxLength={40}
@@ -116,6 +118,8 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
               칼로리 (알면 적어주세요)
             </label>
             <Input
+              name="record-kcal"
+              autoComplete="off"
               id="meal-kcal"
               type="number"
               inputMode="numeric"

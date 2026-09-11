@@ -69,6 +69,8 @@ function TagRow({
       )}
       <div className="flex gap-2">
         <Input
+          name="preference-input"
+          autoComplete="off"
           placeholder="재료를 적고 Enter"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -112,7 +114,13 @@ export function PreferencesSection() {
 
       <TagRow label="좋아하는 재료" tone="mint" items={likes} onChange={setLikes} />
       <TagRow label="안 좋아하는 재료" tone="default" items={dislikes} onChange={setDislikes} />
-      <TagRow label="알러지" hint="추천에서 빼드려요" tone="peach" items={allergies} onChange={setAllergies} />
+      <TagRow
+        label="알러지"
+        hint="추천에서 빼드려요"
+        tone="peach"
+        items={allergies}
+        onChange={setAllergies}
+      />
 
       <Button className="w-full" onClick={() => save.mutate({ likes, dislikes, allergies })}>
         {save.isPending ? "저장하는 중…" : "저장"}
