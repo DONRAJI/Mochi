@@ -27,6 +27,8 @@ export function WeightSection() {
     <Card className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex gap-2">
         <Input
+          name="weight"
+          autoComplete="off"
           type="number"
           inputMode="decimal"
           step="0.1"

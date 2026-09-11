@@ -49,6 +49,8 @@ export function SignupForm() {
     <Card className="w-full">
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <Input
+          name="nickname"
+          autoComplete="nickname"
           placeholder="닉네임"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
@@ -101,6 +103,8 @@ export function SignupForm() {
           )}
           <div className="flex gap-2">
             <Input
+              name="allergy-input"
+              autoComplete="off"
               placeholder="예: 새우 (Enter로 추가)"
               value={allergyDraft}
               onChange={(e) => setAllergyDraft(e.target.value)}

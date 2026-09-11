@@ -27,6 +27,8 @@ export function RecipeSearchBar({
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
+            name="recipe-search-name"
+            autoComplete="off"
             placeholder="요리 이름 검색 (예: 알리오)"
             value={name}
             onChange={(e) => onName(e.target.value)}
@@ -57,6 +59,8 @@ export function RecipeSearchBar({
       </div>
       {advancedOpen && (
         <Input
+          name="recipe-search-ingredients"
+          autoComplete="off"
           placeholder="재료로 검색 (예: 두부, 계란) — 쉼표로 구분"
           value={ingredients}
           onChange={(e) => onIngredients(e.target.value)}

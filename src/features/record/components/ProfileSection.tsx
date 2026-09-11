@@ -64,6 +64,8 @@ export function ProfileSection() {
 
       <div className="flex gap-2">
         <Input
+          name="profile-birth-year"
+          autoComplete="off"
           type="number"
           inputMode="numeric"
           placeholder="태어난 해 (예: 1998)"
@@ -71,6 +73,8 @@ export function ProfileSection() {
           onChange={(e) => setBirthYear(e.target.value)}
         />
         <Input
+          name="profile-height"
+          autoComplete="off"
           type="number"
           inputMode="numeric"
           placeholder="키 (cm)"

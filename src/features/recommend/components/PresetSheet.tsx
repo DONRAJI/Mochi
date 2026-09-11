@@ -45,6 +45,8 @@ export function PresetSheet({ open, onClose, week }: PresetSheetProps) {
           <p className="text-sm text-cocoa-faint">이번 주를 프리셋으로</p>
           <div className="flex gap-2">
             <Input
+              name="preset-name"
+              autoComplete="off"
               value={name}
               maxLength={20}
               placeholder="예: 평일 루틴"

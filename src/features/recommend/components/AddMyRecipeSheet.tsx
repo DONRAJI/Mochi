@@ -70,7 +70,13 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div>
           <label className="mb-1 block text-sm text-cocoa-faint">요리 이름</label>
-          <Input placeholder="예: 두부 계란 볶음" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            name="recipe-name"
+            autoComplete="off"
+            placeholder="예: 두부 계란 볶음"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
 
         <div>
@@ -91,6 +97,8 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
           )}
           <div className="flex gap-2">
             <Input
+              name="recipe-ingredient"
+              autoComplete="off"
               placeholder="재료를 적고 Enter (예: 두부)"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -103,7 +111,9 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
         </div>
 
         <div>
-          <label className="mb-1 block text-sm text-cocoa-faint">조리 단계 (선택 · 한 줄에 하나)</label>
+          <label className="mb-1 block text-sm text-cocoa-faint">
+            조리 단계 (선택 · 한 줄에 하나)
+          </label>
           <textarea
             value={steps}
             onChange={(e) => setSteps(e.target.value)}
@@ -116,6 +126,8 @@ export function AddMyRecipeSheet({ open, onClose }: { open: boolean; onClose: ()
         <div>
           <label className="mb-1 block text-sm text-cocoa-faint">칼로리 (선택 · 1인분 kcal)</label>
           <Input
+            name="recipe-kcal"
+            autoComplete="off"
             type="number"
             inputMode="numeric"
             placeholder="예: 320 — 넣으면 관리 모드에서 보여요"
