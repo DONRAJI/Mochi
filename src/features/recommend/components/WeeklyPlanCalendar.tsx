@@ -127,7 +127,7 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
         {compact ? (
           <button
             type="button"
-            onClick={() => router.push("/meals")}
+            onClick={() => router.push("/meals?view=week")}
             className="rounded-mochi-sm bg-cream-100 px-2.5 py-1 text-xs text-cocoa-soft transition-transform ease-jelly active:scale-90"
           >
             이번 주 전체 ›
