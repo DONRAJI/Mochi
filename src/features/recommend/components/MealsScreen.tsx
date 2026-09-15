@@ -10,6 +10,7 @@ import { RecipeDetailModal } from "./RecipeDetailModal";
 import { RecipeSearchBar } from "./RecipeSearchBar";
 import { AddMyRecipeSheet } from "./AddMyRecipeSheet";
 import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
+import { RecipePager } from "./RecipePager";
 import { FavoritesList } from "./FavoritesList";
 import { BalanceBanner } from "@/features/record/components/BalanceBanner";
 import { Chip } from "@/components/ui/Chip";
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { RetryNotice } from "@/components/ui/RetryNotice";
 import { useRecommendations, useRecipeSearch, useToggleFavorite } from "../hooks/useRecommend";
 import { matchesCookFilter } from "../cookFilter";
+import { pageSlice, pageCount, clampPage } from "../paging";
 import type { MealMode, RecommendationResponse } from "../types";
 import { messages } from "@/lib/messages";
 
@@ -58,7 +60,10 @@ export function MealsScreen() {
   const [ingQuery, setIngQuery] = useState("");
   const debouncedName = useDebounced(nameQuery, 300);
   const debouncedIng = useDebounced(ingQuery, 300);
-  const searchIngredients = debouncedIng.split(",").map((s) => s.trim()).filter(Boolean);
+  const searchIngredients = debouncedIng
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const searchActive =
     mode === "cook" && (debouncedName.trim().length > 0 || searchIngredients.length > 0);
   const searchResult = useRecipeSearch(
@@ -108,8 +113,23 @@ export function MealsScreen() {
         ? data
         : data?.filter((r) => r.subtitle === category);
 
-  // 주간 식단을 별도 뷰로 뺐으므로 추천을 6개로 자를 이유가 없어졌다 — 전부 보여준다.
-  const visible = shown;
+  // 추천은 번호 페이지로 끊는다(paging.ts) — 주간 식단 분리 후 50장이 한 줄로 이어져 길었다.
+  // 목록을 바꾸는 조건(모드·카테고리·필터·검색어)이 바뀌면 1페이지로 돌아간다.
+  const [page, setPage] = useState(0);
+  const listKey = `${mode}|${category}|${cookFilter ?? ""}|${searchActive ? `${debouncedName}|${debouncedIng}` : ""}`;
+  useEffect(() => setPage(0), [listKey]);
+  const listTopRef = useRef<HTMLDivElement>(null);
+  function goToPage(next: number, total: number) {
+    setPage(clampPage(next, total));
+    // 맨 아래 '다음'을 누른 채 새 페이지의 끝을 보게 되지 않도록 목록 첫 카드로 올린다.
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  const shownCount = shown?.length ?? 0;
+  const curPage = clampPage(page, shownCount); // 목록이 줄어도 "9 / 2" 같은 표시가 안 나오게
+  const visible = pageSlice(shown ?? [], curPage);
+  const searchItems = searchResult.data ?? [];
+  const searchPage = clampPage(page, searchItems.length);
+  const searchVisible = pageSlice(searchItems, searchPage);
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,8 +178,8 @@ export function MealsScreen() {
                     찾는 요리가 없어요. 다른 이름이나 재료로 찾아볼까요?
                   </p>
                 )}
-              <div className="flex flex-col gap-3">
-                {searchResult.data?.map((r) => (
+              <div ref={listTopRef} className="flex flex-col gap-3">
+                {searchVisible.map((r) => (
                   <RecipeCard
                     key={r.id}
                     item={r}
@@ -175,6 +195,11 @@ export function MealsScreen() {
                   />
                 ))}
               </div>
+              <RecipePager
+                page={searchPage}
+                totalPages={pageCount(searchItems.length)}
+                onChange={(p) => goToPage(p, searchItems.length)}
+              />
             </>
           ) : (
             <>
@@ -207,8 +232,8 @@ export function MealsScreen() {
               )}
               {isError && <RetryNotice onRetry={() => refetch()} />}
 
-              <div className="flex flex-col gap-3">
-                {visible?.map((r) => (
+              <div ref={listTopRef} className="flex flex-col gap-3">
+                {visible.map((r) => (
                   <RecipeCard
                     key={r.id}
                     item={r}
@@ -224,7 +249,11 @@ export function MealsScreen() {
                   />
                 ))}
               </div>
-
+              <RecipePager
+                page={curPage}
+                totalPages={pageCount(shownCount)}
+                onChange={(p) => goToPage(p, shownCount)}
+              />
             </>
           )}
         </>
