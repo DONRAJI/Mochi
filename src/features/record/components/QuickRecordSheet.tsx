@@ -42,6 +42,8 @@ interface QuickRecordSheetProps {
    * 이름·끼니만 확인하고 바로 기록하게 한다(같은 시트를 재사용해 기록 경로를 하나로 유지).
    */
   initialFood?: FoodSearchItem | null;
+  /** 미리 고른 음식을 어떻게 먹었는지 — 편의점 장소면 간편식, 그 밖의 장소면 외식. */
+  initialMode?: RecordMode;
 }
 
 interface CatalogRow {
@@ -97,7 +99,12 @@ function SuggestionButton({ emoji, name, meta, onPick }: SuggestionButtonProps) 
  * - 외식·편의점 **카탈로그**(catalogMatch.ts) → 고르면 refId로 기록
  * - 공공 영양성분 DB에서 정리한 **음식 사전**(서버 검색) → 고르면 foodId로 기록
  */
-export function QuickRecordSheet({ open, onClose, initialFood }: QuickRecordSheetProps) {
+export function QuickRecordSheet({
+  open,
+  onClose,
+  initialFood,
+  initialMode = "eatout",
+}: QuickRecordSheetProps) {
   const router = useRouter();
   const mark = useMarkMealEaten();
   const { data: me } = useMe();
@@ -113,8 +120,8 @@ export function QuickRecordSheet({ open, onClose, initialFood }: QuickRecordShee
     if (!open || !initialFood) return;
     setPicked({ kind: "food", item: initialFood });
     setTitle(initialFood.name);
-    setMode("eatout");
-  }, [open, initialFood]);
+    setMode(initialMode);
+  }, [open, initialFood, initialMode]);
 
   // 이 시트는 홈에 항상 마운트돼 있다 — 열렸을 때만 받아야 홈 진입마다 요청이 나가지 않는다.
   const eatout = useRecommendations("eatout", { enabled: open });

@@ -4,7 +4,11 @@ import {
   parseAmount,
   servingKcal,
   splitFoodName,
+  baseFoodName,
+  brandKeyOf,
   MAX_SERVING_KCAL,
+  CONVENIENCE_CATEGORIES,
+  CONVENIENCE_MAX_GRAMS,
   type NutriRow,
 } from "./foodDict";
 
@@ -79,6 +83,58 @@ describe("양·단위 읽기", () => {
     });
     expect(splitFoodName("김치찌개")).toEqual({ category: null, name: "김치찌개" });
   });
+
+  // 실제 이름들 — 밑줄 뒤가 늘 메뉴명은 아니다(버거·치킨 목록에 "양념"·"다리"가 메뉴처럼 올라왔다)
+  it("세트는 세트 표시 뒤가 메뉴", () => {
+    expect(splitFoodName("햄버거_간편조리세트_새우버거")).toEqual({
+      category: "햄버거",
+      name: "새우버거",
+    });
+    expect(splitFoodName("닭튀김_간편조리세트_후라이드치킨_다리").name).toBe("후라이드치킨 다리");
+  });
+
+  it("재료를 나열한 이름은 앞이 음식", () => {
+    expect(splitFoodName("오이생채_오이_부추").name).toBe("오이생채");
+    expect(splitFoodName("햄버거_소고기패티_토마토_양상추").name).toBe("햄버거");
+  });
+
+  it("꾸미는 말만 붙은 이름은 분류와 합친다", () => {
+    expect(splitFoodName("햄버거_치즈").name).toBe("치즈 햄버거");
+    expect(splitFoodName("닭튀김_양념").name).toBe("양념 닭튀김");
+  });
+});
+
+describe("같은 메뉴 합치기", () => {
+  it("핫/아이스·사이즈·용량 표기를 뗀다", () => {
+    expect(baseFoodName("아메리카노 핫(HOT)")).toBe("아메리카노");
+    expect(baseFoodName("카페 라떼 아이스(ICED)")).toBe("카페 라떼");
+    expect(baseFoodName("국민반반 피자 (L)")).toBe("국민반반 피자");
+    expect(baseFoodName("콜드브루 Grande 473ml")).toBe("콜드브루");
+  });
+
+  it("메뉴명 속 단어는 지우지 않는다 — 아이스티·아이스크림·괄호 속 다른 이름", () => {
+    expect(baseFoodName("복숭아 아이스티")).toBe("복숭아 아이스티");
+    expect(baseFoodName("아이스크림 크로플")).toBe("아이스크림 크로플");
+    expect(baseFoodName("홍합국(홍합탕)")).toBe("홍합국(홍합탕)");
+  });
+
+  it("핫·아이스가 한 메뉴로 묶인다", () => {
+    const entries = buildFoodEntries([
+      row("A", "라떼_카페 라떼 핫(HOT)", "58", "100ml", "355ml", "수집"),
+      row("B", "라떼_카페 라떼 아이스(ICED)", "52", "100ml", "355ml", "수집"),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ name: "카페 라떼", category: "라떼", variantCount: 2 });
+  });
+
+  it("공백이 달라도 같은 음식으로 묶는다", () => {
+    const entries = buildFoodEntries([
+      row("A", "샌드위치_BELT샌드위치", "250", "100g", "180g", "수집"),
+      row("B", "샌드위치_BELT 샌드위치", "250", "100g", "180g", "수집"),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].variantCount).toBe(2);
+  });
 });
 
 describe("이름별 대표 1인분 정하기", () => {
@@ -97,7 +153,7 @@ describe("이름별 대표 1인분 정하기", () => {
   });
 
   it("같은 층 안에선 중앙값, 0kcal도 실제 값으로 센다 — 아메리카노 11kcal", () => {
-    expect(byName(americano, "아메리카노 핫(HOT)")).toMatchObject({
+    expect(byName(americano, "아메리카노")).toMatchObject({
       kcal: 11,
       category: "커피",
       servingAmount: 354,
@@ -109,20 +165,76 @@ describe("이름별 대표 1인분 정하기", () => {
 
   it(`1인분 ${MAX_SERVING_KCAL}kcal 넘는 '한 판' 크기는 사전에서 뺀다`, () => {
     const entries = buildFoodEntries(pizzas);
-    expect(entries.map((e) => e.name)).toEqual(["국민반반 (R)"]);
+    expect(entries.map((e) => e.name)).toEqual(["국민반반"]);
     expect(entries[0].kcal).toBe(1194);
   });
 
   it("같은 행이 두 번 와도 한 번만 센다", () => {
     expect(byName([...kimchiStew, ...kimchiStew], "김치찌개")?.variantCount).toBe(5);
   });
+});
 
-  it("공백이 달라도 같은 음식으로 묶는다", () => {
-    const entries = buildFoodEntries([
-      row("A", "샌드위치_BELT샌드위치", "250", "100g", "180g", "수집"),
-      row("B", "샌드위치_BELT 샌드위치", "250", "100g", "180g", "수집"),
+describe("대중성 — 파는·만드는 서로 다른 곳의 수", () => {
+  it("같은 곳의 핫·아이스·사이즈는 한 곳으로 센다", () => {
+    const [entry] = buildFoodEntries([
+      { ...row("A1", "라떼_카페 라떼 핫(HOT)", "58", "100ml", "355ml", "수집"), brand: "이디야" },
+      {
+        ...row("A2", "라떼_카페 라떼 아이스(ICED)", "52", "100ml", "591ml", "수집"),
+        brand: "이디야",
+      },
+      { ...row("B1", "라떼_카페 라떼 핫(HOT)", "60", "100ml", "355ml", "수집"), brand: "스타벅스" },
     ]);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].variantCount).toBe(2);
+    expect(entry).toMatchObject({ variantCount: 3, popularity: 2 });
+  });
+
+  it("브랜드가 없으면(급식) 출처 묶음으로 센다 — 김치찌개는 5곳", () => {
+    expect(byName(kimchiStew, "김치찌개")?.popularity).toBe(5);
+  });
+
+  it("제조사는 공장·지점·법인 표기를 떼고 회사 단위로", () => {
+    expect(brandKeyOf("(주)원푸드림 주촌지점")).toBe("원푸드림");
+    expect(brandKeyOf("롯데후레쉬델리카제2호(주)")).toBe("롯데후레쉬델리카");
+    expect(brandKeyOf("롯데후레쉬델리카제3호주식회사")).toBe("롯데후레쉬델리카");
+    expect(brandKeyOf("(주)삼영데리카후레쉬/(주)한국데리카후레쉬")).toBe("삼영데리카후레쉬");
+    expect(brandKeyOf("(주) 원푸드림")).toBe("원푸드림");
+    expect(brandKeyOf("해당없음")).toBeNull();
+    expect(brandKeyOf("")).toBeNull();
+  });
+});
+
+describe("편의점 가공식품", () => {
+  // 실제 가공식품 행(샌드위치 분류) — 706g은 같은 상품 다른 행(168~173g)과 비교해 중량 오기다
+  const sandwich = [
+    {
+      ...row("P-706", "참치샐러드듬뿍샌드위치", "63", "100g", "706g", "수집"),
+      category: "샌드위치",
+    },
+    {
+      ...row("P-173", "참치샐러드듬뿍샌드위치", "247", "100g", "173g", "수집"),
+      category: "샌드위치",
+    },
+    {
+      ...row("P-168", "참치샐러드듬뿍샌드위치", "257", "100g", "168g", "수집"),
+      category: "샌드위치",
+    },
+  ];
+
+  it("원본 필드로 받은 분류를 이름 접두어보다 우선한다", () => {
+    const [entry] = buildFoodEntries([
+      { ...row("P-1", "참치김치찌개도시락", "146", "100g", "356g", "수집"), category: "도시락" },
+    ]);
+    expect(entry).toMatchObject({ category: "도시락", kcal: 520 });
+  });
+
+  it("분류별 최대 중량을 넘는 행은 뺀다 — 중량이 잘못 적힌 706g 샌드위치", () => {
+    expect(buildFoodEntries(sandwich)[0].variantCount).toBe(3);
+    const [capped] = buildFoodEntries(sandwich, { maxAmountByCategory: CONVENIENCE_MAX_GRAMS });
+    expect(capped.variantCount).toBe(2);
+    expect(capped.kcal).toBe(430);
+  });
+
+  it("편의점 분류마다 상한이 있다", () => {
+    expect(CONVENIENCE_CATEGORIES).toEqual(["주먹밥/김밥/초밥", "도시락", "샌드위치"]);
+    for (const c of CONVENIENCE_CATEGORIES) expect(CONVENIENCE_MAX_GRAMS[c]).toBeGreaterThan(0);
   });
 });

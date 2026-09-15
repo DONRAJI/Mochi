@@ -52,7 +52,7 @@ export interface FoodSearchItem {
  * 같아야 한다(테스트로 고정).
  */
 export const foodBrowseQuerySchema = z.object({
-  place: z.enum(["cafe", "bakery", "fastfood", "meal"]),
+  place: z.enum(["cafe", "bakery", "fastfood", "meal", "convenience"]),
   page: z.coerce.number().int().min(0).default(0),
   size: z.coerce.number().int().min(1).max(20).default(10),
 });
