@@ -52,9 +52,11 @@ export function PhotoRecordButton({ compact = false }: PhotoRecordButtonProps) {
           onClick={() => inputRef.current?.click()}
           disabled={record.isPending}
           aria-label="사진 한 장으로 기록"
-          className="shrink-0 rounded-mochi bg-butter-soft px-4 text-lg shadow-mochi-press transition-transform ease-jelly active:scale-90"
+          className="flex shrink-0 flex-col items-center justify-center rounded-mochi bg-butter-soft px-4 text-lg leading-none shadow-mochi-press transition-transform ease-jelly active:scale-90"
         >
-          {record.isPending ? "⏳" : "📷"}
+          {/* 아이콘만으론 뭔지 몰라 안 눌렸다 — 짧은 이름을 붙인다. */}
+          <span>{record.isPending ? "⏳" : "📷"}</span>
+          <span className="mt-1 text-[10px] text-cocoa-soft">사진</span>
         </button>
         {/* 좁은 버튼엔 결과를 못 담으니 화면 아래에 잠깐 띄우고 사라진다(2.5초). */}
         {(earned != null || record.isError) && (
