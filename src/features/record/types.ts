@@ -47,6 +47,29 @@ export interface FoodSearchItem {
   kcal: number | null;
 }
 
+/**
+ * '밖에서 먹기' 장소별 음식 사전 목록 — 가벼운 순, 페이지. 장소 값은 outsidePlaces.ts의 OUTSIDE_PLACES와
+ * 같아야 한다(테스트로 고정).
+ */
+export const foodBrowseQuerySchema = z.object({
+  place: z.enum(["cafe", "bakery", "fastfood", "meal"]),
+  page: z.coerce.number().int().min(0).default(0),
+  size: z.coerce.number().int().min(1).max(20).default(10),
+});
+
+export interface FoodBrowseItem extends FoodSearchItem {
+  /** 대표 1인분 양 — 브랜드마다 컵·포장 크기가 달라 대략값 */
+  servingAmount: number;
+  servingUnit: string;
+}
+
+export interface FoodBrowseResponse {
+  items: FoodBrowseItem[];
+  page: number;
+  size: number;
+  total: number;
+}
+
 export interface MealRecordResponse {
   recordId: string;
   mochiState: string; // 'cheer'

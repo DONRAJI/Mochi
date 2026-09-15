@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +37,11 @@ const MAX_FOOD_SUGGESTIONS = 3;
 interface QuickRecordSheetProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * 열 때 미리 골라둘 음식 사전 항목 — 식단 탭 '밖에서'에서 음식을 누르고 들어온 경우.
+   * 이름·끼니만 확인하고 바로 기록하게 한다(같은 시트를 재사용해 기록 경로를 하나로 유지).
+   */
+  initialFood?: FoodSearchItem | null;
 }
 
 interface CatalogRow {
@@ -92,7 +97,7 @@ function SuggestionButton({ emoji, name, meta, onPick }: SuggestionButtonProps) 
  * - 외식·편의점 **카탈로그**(catalogMatch.ts) → 고르면 refId로 기록
  * - 공공 영양성분 DB에서 정리한 **음식 사전**(서버 검색) → 고르면 foodId로 기록
  */
-export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
+export function QuickRecordSheet({ open, onClose, initialFood }: QuickRecordSheetProps) {
   const router = useRouter();
   const mark = useMarkMealEaten();
   const { data: me } = useMe();
@@ -102,6 +107,14 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
   const [slot, setSlot] = useState<MealSlot>(() => estimateSlot(new Date()));
   const [kcal, setKcal] = useState("");
   const [picked, setPicked] = useState<Picked | null>(null);
+
+  // 목록에서 음식을 누르고 열었으면 그 음식을 골라둔 상태로 시작한다.
+  useEffect(() => {
+    if (!open || !initialFood) return;
+    setPicked({ kind: "food", item: initialFood });
+    setTitle(initialFood.name);
+    setMode("eatout");
+  }, [open, initialFood]);
 
   // 이 시트는 홈에 항상 마운트돼 있다 — 열렸을 때만 받아야 홈 진입마다 요청이 나가지 않는다.
   const eatout = useRecommendations("eatout", { enabled: open });
