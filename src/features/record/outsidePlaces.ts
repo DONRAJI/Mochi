@@ -1,20 +1,24 @@
+import { FOOD_SOURCE } from "./foodDict";
+
 /**
- * '밖에서 먹기' 장소 → 음식 사전 분류 (순수).
+ * '밖에서 먹기' 장소 → 음식 사전 조회 기준 (순수).
  *
  * 왜: 식단 탭의 외식·간편식은 고정 목록 36개라 결정에 도움이 안 됐다(이미 아는 메뉴).
  * 음식 사전(식약처 영양성분 DB)의 외식 데이터는 카페·디저트·버거·치킨·베이커리에 몰려 있고,
  * 다이어트하는 사람이 흔들리는 곳도 바로 여기다 — 같은 카페에서 아메리카노 11kcal, 스무디 415kcal.
  * 장소를 고르면 그 안에서 가벼운 순으로 보여줘 '고르는 순간'을 돕는다.
  *
- * 분류는 원본 이름의 접두어(예: "커피_아메리카노")다. 2026-09 기준 459종이라 전부 나열하지 않고:
- * - 카페·빵집·버거는 접두어 목록으로
- * - 식사는 이름 끝말(밥·국·탕·찌개·면…) + 최소 kcal로 가른다 — 된장국·나물 같은 곁들이는 빠진다
- * - 피자는 어디에도 넣지 않는다 — 데이터가 '한 판' 단위라 조각 기준이 없다
+ * 장소는 출처(source)로 먼저 나뉜다:
+ * - 편의점 = 가공식품 DB의 편의점류(김밥·주먹밥·도시락·샌드위치) 전체
+ * - 나머지 = 통합 DB의 음식. 분류는 원본 이름의 접두어(예: "커피_아메리카노")이고 459종이라:
+ *   카페·빵집·버거는 접두어 목록으로, 식사는 이름 끝말(밥·국·탕·찌개·면…) + 최소 kcal로 가른다
+ *   (된장국·나물 같은 곁들이는 빠진다). 피자는 어디에도 넣지 않는다 — '한 판' 단위라 조각 기준이 없다.
+ * 출처로 먼저 나누는 이유: 카페 샌드위치(음식)와 편의점 샌드위치(가공식품)가 같은 '샌드위치' 분류명을 쓴다.
  *
  * ⚠️ 서버 조회 조건(food.service whereForPlace)이 이 목록을 그대로 쓴다. placeOf와 1:1이어야 한다.
  */
 
-export const OUTSIDE_PLACES = ["cafe", "bakery", "fastfood", "meal"] as const;
+export const OUTSIDE_PLACES = ["cafe", "bakery", "fastfood", "meal", "convenience"] as const;
 export type OutsidePlace = (typeof OUTSIDE_PLACES)[number];
 
 export const PLACE_INFO: Record<OutsidePlace, { emoji: string; label: string }> = {
@@ -22,7 +26,11 @@ export const PLACE_INFO: Record<OutsidePlace, { emoji: string; label: string }> 
   bakery: { emoji: "🥐", label: "빵집·디저트" },
   fastfood: { emoji: "🍔", label: "버거·치킨" },
   meal: { emoji: "🍚", label: "식사 한 끼" },
+  convenience: { emoji: "🏪", label: "편의점" },
 };
+
+/** 음식 출처에서 접두어 목록으로 가르는 장소 */
+export type CategoryPlace = "cafe" | "bakery" | "fastfood";
 
 const CAFE = [
   "커피", "라떼", "스무디", "에이드", "아이스티", "기타차", "허브차", "홍차", "자몽차", "과ㆍ채주스",
@@ -63,7 +71,7 @@ export const MEAL_SUFFIXES = [
 /** 한 끼 최소 kcal — 된장국(약 80)·나물 같은 곁들이는 빼고 김치찌개(244)는 남는다. */
 export const MEAL_MIN_KCAL = 200;
 
-const CATEGORIES: Record<Exclude<OutsidePlace, "meal">, readonly string[]> = {
+const CATEGORIES: Record<CategoryPlace, readonly string[]> = {
   cafe: CAFE,
   bakery: BAKERY,
   fastfood: FASTFOOD,
@@ -72,12 +80,12 @@ const CATEGORIES: Record<Exclude<OutsidePlace, "meal">, readonly string[]> = {
 /** 식사 조회에서 제외할 분류 — 카페·빵집·버거·피자에 속한 건 이름이 '밥'으로 끝나도 식사가 아니다. */
 export const NON_MEAL_CATEGORIES: readonly string[] = [...CAFE, ...BAKERY, ...FASTFOOD, ...EXCLUDED];
 
-export function categoriesOf(place: Exclude<OutsidePlace, "meal">): readonly string[] {
+export function categoriesOf(place: CategoryPlace): readonly string[] {
   return CATEGORIES[place];
 }
 
-const PLACE_BY_CATEGORY = new Map<string, OutsidePlace>(
-  (Object.keys(CATEGORIES) as Exclude<OutsidePlace, "meal">[]).flatMap((place) =>
+const PLACE_BY_CATEGORY = new Map<string, CategoryPlace>(
+  (Object.keys(CATEGORIES) as CategoryPlace[]).flatMap((place) =>
     CATEGORIES[place].map((c) => [c, place] as const),
   ),
 );
@@ -88,7 +96,11 @@ export function placeOf(entry: {
   name: string;
   category: string | null;
   kcal: number;
+  source: string;
 }): OutsidePlace | null {
+  if (entry.source === FOOD_SOURCE.convenience) return "convenience";
+  if (entry.source !== FOOD_SOURCE.dish) return null;
+
   if (entry.category) {
     const place = PLACE_BY_CATEGORY.get(entry.category);
     if (place) return place;

@@ -5,6 +5,8 @@ import {
   servingKcal,
   splitFoodName,
   MAX_SERVING_KCAL,
+  CONVENIENCE_CATEGORIES,
+  CONVENIENCE_MAX_GRAMS,
   type NutriRow,
 } from "./foodDict";
 
@@ -124,5 +126,33 @@ describe("이름별 대표 1인분 정하기", () => {
     ]);
     expect(entries).toHaveLength(1);
     expect(entries[0].variantCount).toBe(2);
+  });
+});
+
+describe("편의점 가공식품", () => {
+  // 실제 가공식품 행(샌드위치 분류) — 706g은 같은 상품 다른 행(168~173g)과 비교해 중량 오기다
+  const sandwich = [
+    { ...row("P-706", "참치샐러드듬뿍샌드위치", "63", "100g", "706g", "수집"), category: "샌드위치" },
+    { ...row("P-173", "참치샐러드듬뿍샌드위치", "247", "100g", "173g", "수집"), category: "샌드위치" },
+    { ...row("P-168", "참치샐러드듬뿍샌드위치", "257", "100g", "168g", "수집"), category: "샌드위치" },
+  ];
+
+  it("원본 필드로 받은 분류를 이름 접두어보다 우선한다", () => {
+    const [entry] = buildFoodEntries([
+      { ...row("P-1", "참치김치찌개도시락", "146", "100g", "356g", "수집"), category: "도시락" },
+    ]);
+    expect(entry).toMatchObject({ category: "도시락", kcal: 520 });
+  });
+
+  it("분류별 최대 중량을 넘는 행은 뺀다 — 중량이 잘못 적힌 706g 샌드위치", () => {
+    expect(buildFoodEntries(sandwich)[0].variantCount).toBe(3);
+    const [capped] = buildFoodEntries(sandwich, { maxAmountByCategory: CONVENIENCE_MAX_GRAMS });
+    expect(capped.variantCount).toBe(2);
+    expect(capped.kcal).toBe(430);
+  });
+
+  it("편의점 분류마다 상한이 있다", () => {
+    expect(CONVENIENCE_CATEGORIES).toEqual(["주먹밥/김밥/초밥", "도시락", "샌드위치"]);
+    for (const c of CONVENIENCE_CATEGORIES) expect(CONVENIENCE_MAX_GRAMS[c]).toBeGreaterThan(0);
   });
 });

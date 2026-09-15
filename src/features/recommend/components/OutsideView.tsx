@@ -19,21 +19,12 @@ import { RecipePager } from "./RecipePager";
  * 외식·간편식 고정 목록(36개씩)을 대신한다. 음식 사전의 외식 데이터는 카페·디저트·버거·치킨·베이커리에
  * 몰려 있고, 다이어트하는 사람이 흔들리는 곳도 여기다(같은 카페에서 아메리카노 11kcal · 스무디 415kcal).
  * "무슨 메뉴가 있는지"는 다 알지만 "여기서 뭘 고르면 가벼운지"는 모른다 — 모찌가 대신 골라주는 자리.
- *
- * 편의점은 아직 음식 사전에 없어(가공식품 데이터는 2단계) 기존 간편식 카탈로그를 MealsScreen이 보여준다.
+ * 편의점은 가공식품 데이터(김밥·주먹밥·도시락·샌드위치)로 같은 방식이다.
  */
 
-/** '밖에서' 갈래에서 고르는 곳 — 음식 사전 장소 + 편의점(기존 간편식 카탈로그). */
-export type OutsideChoice = OutsidePlace | "convenience";
-
-const CHOICES: { value: OutsideChoice; emoji: string; label: string }[] = [
-  ...OUTSIDE_PLACES.map((place) => ({ value: place, ...PLACE_INFO[place] })),
-  { value: "convenience", emoji: "🏪", label: "편의점" },
-];
-
 interface OutsidePlaceChipsProps {
-  value: OutsideChoice;
-  onChange: (value: OutsideChoice) => void;
+  value: OutsidePlace;
+  onChange: (value: OutsidePlace) => void;
 }
 
 export function OutsidePlaceChips({ value, onChange }: OutsidePlaceChipsProps) {
@@ -41,15 +32,22 @@ export function OutsidePlaceChips({ value, onChange }: OutsidePlaceChipsProps) {
     <div className="flex flex-col gap-2">
       <p className="px-1 text-sm text-cocoa-soft">지금 어디예요?</p>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {CHOICES.map((c) => (
-          <Chip key={c.value} active={value === c.value} onClick={() => onChange(c.value)}>
-            {c.emoji} {c.label}
+        {OUTSIDE_PLACES.map((place) => (
+          <Chip key={place} active={value === place} onClick={() => onChange(place)}>
+            {PLACE_INFO[place].emoji} {PLACE_INFO[place].label}
           </Chip>
         ))}
       </div>
     </div>
   );
 }
+
+/** 편의점 가공식품 분류는 원본 이름이 딱딱해서("주먹밥/김밥/초밥") 보여줄 이름·아이콘을 따로 둔다. */
+const CONVENIENCE_LOOK: Record<string, { emoji: string; label: string }> = {
+  "주먹밥/김밥/초밥": { emoji: "🍙", label: "김밥·주먹밥" },
+  도시락: { emoji: "🍱", label: "도시락" },
+  샌드위치: { emoji: "🥪", label: "샌드위치" },
+};
 
 function servingLabel(item: FoodBrowseItem): string {
   return `${Math.round(item.servingAmount)}${item.servingUnit}`;
@@ -74,7 +72,7 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
   const showKcal = me?.displayMode === "detail";
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / FOOD_BROWSE_PAGE_SIZE)) : 1;
-  const { emoji } = PLACE_INFO[place];
+  const isConvenience = place === "convenience";
 
   function goToPage(next: number) {
     setPage(Math.min(Math.max(0, next), totalPages - 1));
@@ -86,7 +84,9 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
     <div ref={listTopRef} className="flex flex-col gap-3">
       <p className="px-1 text-xs text-cocoa-faint">
         {showKcal
-          ? "가벼운 것부터 · 1인분 대략값이에요(브랜드마다 크기가 달라요) · 누르면 바로 기록"
+          ? isConvenience
+            ? "가벼운 것부터 · 브랜드를 구분하지 않은 대략값이에요 · 누르면 바로 기록"
+            : "가벼운 것부터 · 1인분 대략값이에요(브랜드마다 크기가 달라요) · 누르면 바로 기록"
           : "가벼운 것부터 보여드려요 · 누르면 바로 기록할 수 있어요"}
       </p>
 
@@ -104,27 +104,30 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
         <p className="px-1 text-sm text-cocoa-soft">{messages.empty.outside}</p>
       )}
 
-      {data?.items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => setRecording(item)}
-          className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
-        >
-          <Card className="flex items-center gap-3">
-            <span className="text-2xl">{emoji}</span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-cocoa">{item.name}</p>
-              <p className="text-xs text-cocoa-faint">
-                {[item.category, servingLabel(item)].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-            {showKcal && item.kcal != null && (
-              <span className="shrink-0 text-sm text-cocoa-soft">{item.kcal}kcal</span>
-            )}
-          </Card>
-        </button>
-      ))}
+      {data?.items.map((item) => {
+        const look = isConvenience && item.category ? CONVENIENCE_LOOK[item.category] : undefined;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setRecording(item)}
+            className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
+          >
+            <Card className="flex items-center gap-3">
+              <span className="text-2xl">{look?.emoji ?? PLACE_INFO[place].emoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-cocoa">{item.name}</p>
+                <p className="text-xs text-cocoa-faint">
+                  {[look?.label ?? item.category, servingLabel(item)].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              {showKcal && item.kcal != null && (
+                <span className="shrink-0 text-sm text-cocoa-soft">{item.kcal}kcal</span>
+              )}
+            </Card>
+          </button>
+        );
+      })}
 
       <RecipePager page={page} totalPages={totalPages} onChange={goToPage} />
 
@@ -132,6 +135,7 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
         open={recording != null}
         onClose={() => setRecording(null)}
         initialFood={recording}
+        initialMode={isConvenience ? "convenience" : "eatout"}
       />
     </div>
   );

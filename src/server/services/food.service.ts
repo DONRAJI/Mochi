@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
-import { searchKeyOf } from "@/features/record/foodDict";
+import { FOOD_SOURCE, searchKeyOf } from "@/features/record/foodDict";
 import {
   MEAL_MIN_KCAL,
   MEAL_SUFFIXES,
@@ -13,7 +13,7 @@ import type { FoodBrowseResponse, FoodSearchItem } from "@/features/record/types
 
 /**
  * 음식 영양 사전 — 공공 영양성분 DB에서 이름별 대표 1인분으로 정리한 표(scripts/ingest-mfds-food.ts).
- * - 이름 검색: 직접 입력 기록의 칼로리 제안
+ * - 이름 검색: 직접 입력 기록의 칼로리 제안 (음식·편의점 출처 모두)
  * - 장소별 목록: 식단 탭 '밖에서 먹기'에서 그 장소의 가벼운 선택 순서
  */
 
@@ -78,8 +78,13 @@ export async function searchFoods(
 
 /** 장소 → 조회 조건. outsidePlaces.placeOf와 같은 규칙이어야 한다(그 모듈의 목록을 그대로 쓴다). */
 function whereForPlace(place: OutsidePlace): Prisma.FoodNutritionWhereInput {
-  if (place !== "meal") return { category: { in: [...categoriesOf(place)] } };
+  // 출처로 먼저 나눈다 — 카페 샌드위치(음식)와 편의점 샌드위치(가공식품)가 같은 분류명을 쓴다.
+  if (place === "convenience") return { source: FOOD_SOURCE.convenience };
+  if (place !== "meal") {
+    return { source: FOOD_SOURCE.dish, category: { in: [...categoriesOf(place)] } };
+  }
   return {
+    source: FOOD_SOURCE.dish,
     kcal: { gte: MEAL_MIN_KCAL },
     AND: [
       { OR: MEAL_SUFFIXES.map((s) => ({ name: { endsWith: s } })) },
