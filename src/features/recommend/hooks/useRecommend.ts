@@ -11,10 +11,12 @@ import {
 import type { CreateRecipeRequest, MealMode } from "../types";
 import type { ToggleFavoriteRequest } from "../favorite";
 
-export function useRecommendations(mode: MealMode) {
+/** `enabled`: 필요할 때만 조회 — 예) 직접 입력 시트가 열렸을 때만 외식·편의점 카탈로그를 받는다. */
+export function useRecommendations(mode: MealMode, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["recommend", mode],
     queryFn: () => fetchRecommendations(mode),
+    enabled: opts?.enabled ?? true,
   });
 }
 

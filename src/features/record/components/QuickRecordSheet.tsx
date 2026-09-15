@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
 import { useMarkMealEaten } from "../hooks/useRecord";
 import { useMe } from "@/features/auth/hooks/useAuth";
+import { useRecommendations } from "@/features/recommend/hooks/useRecommend";
 import { SLOT_LABEL, SLOT_EMOJI, estimateSlot } from "../slot";
+import { matchCatalog, type CatalogCandidate, type CatalogMode } from "../catalogMatch";
 import type { MealSlot } from "../types";
 
 const MODES = [
@@ -17,38 +19,92 @@ const MODES = [
   { value: "convenience", label: "🏪 간편식" },
 ] as const;
 
+type RecordMode = (typeof MODES)[number]["value"];
+
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
+
+const MODE_NAME: Record<CatalogMode, string> = { eatout: "외식", convenience: "간편식" };
 
 interface QuickRecordSheetProps {
   open: boolean;
   onClose: () => void;
 }
 
+interface CatalogRow {
+  id: string;
+  name: string;
+  emoji: string | null;
+  subtitle: string | null;
+  kcal: number | null;
+}
+
+const toCandidate =
+  (mode: CatalogMode) =>
+  (row: CatalogRow): CatalogCandidate => ({
+    id: row.id,
+    name: row.name,
+    mode,
+    emoji: row.emoji,
+    subtitle: row.subtitle,
+    kcal: row.kcal,
+  });
+
 /**
  * 직접 입력 기록 — 카탈로그에 없는 걸 그 자리에서 남긴다(예: "추러스", "외식 감자탕").
- *
- * 지금까지는 추천 카탈로그나 내 요리에서 **골라야만** 기록이 됐다. 밖에서 사 먹은 것,
- * 간식처럼 목록에 없는 건 남길 방법이 아예 없어 그날 기록이 비었다.
  * 이름만 있으면 되고, 나머지(끼니·모드)는 기본값이 잡혀 있어 한 줄 적고 바로 끝난다.
+ *
+ * **적은 이름이 외식·편의점 카탈로그와 맞으면 그 항목으로 기록하게 제안한다**(catalogMatch.ts).
+ * 고르면 이름 대신 refId로 기록되고 kcal은 서버가 카탈로그에서 붙인다 — 손으로 적던 칼로리가
+ * 자동으로 정확해지고, 숫자를 숨기는(cozy) 사용자의 기록에도 kcal이 들어간다(불변 #2).
  */
 export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
   const router = useRouter();
   const mark = useMarkMealEaten();
   const { data: me } = useMe();
   const [title, setTitle] = useState("");
-  const [mode, setMode] = useState<(typeof MODES)[number]["value"]>("eatout");
+  const [mode, setMode] = useState<RecordMode>("eatout");
   // 지금 시간대로 끼니를 미리 골라둔다 — 대부분 그대로 두고 넘어간다.
   const [slot, setSlot] = useState<MealSlot>(() => estimateSlot(new Date()));
   const [kcal, setKcal] = useState("");
+  /** 제안에서 고른 카탈로그 항목. 있으면 이름이 아니라 이 항목으로 기록된다. */
+  const [picked, setPicked] = useState<CatalogCandidate | null>(null);
+
+  // 이 시트는 홈에 항상 마운트돼 있다 — 열렸을 때만 받아야 홈 진입마다 요청이 나가지 않는다.
+  // 식단 탭을 거쳤다면 캐시에 이미 있어 요청 없이 바로 쓴다.
+  const eatout = useRecommendations("eatout", { enabled: open });
+  const convenience = useRecommendations("convenience", { enabled: open });
+  const catalog = [
+    ...(eatout.data ?? []).map(toCandidate("eatout")),
+    ...(convenience.data ?? []).map(toCandidate("convenience")),
+  ];
+  const suggestions = picked ? [] : matchCatalog(title, catalog);
 
   const trimmed = title.trim();
   const canSubmit = trimmed.length > 0 && !mark.isPending;
-  // 칼로리 입력은 숫자를 보기로 한 사람에게만 (불변 #2 — cozy는 숫자를 숨긴다).
+  // 칼로리 입력·표시는 숫자를 보기로 한 사람에게만 (불변 #2 — cozy는 숫자를 숨긴다).
   const showKcal = me?.displayMode === "detail";
 
   function reset() {
     setTitle("");
     setKcal("");
+    setPicked(null);
+  }
+
+  function changeTitle(value: string) {
+    setTitle(value);
+    // 고른 뒤 이름을 고치면 더 이상 그 항목이 아니다 — 직접 입력으로 돌아간다.
+    if (picked && value !== picked.name) setPicked(null);
+  }
+
+  function changeMode(value: RecordMode) {
+    setMode(value);
+    if (picked && picked.mode !== value) setPicked(null);
+  }
+
+  function pick(item: CatalogCandidate) {
+    setPicked(item);
+    setTitle(item.name);
+    setMode(item.mode);
   }
 
   function onSubmit(e: FormEvent) {
@@ -56,13 +112,16 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
     if (!canSubmit) return;
     const parsedKcal = showKcal && kcal.trim() ? Number(kcal) : undefined;
     mark.mutate(
-      {
-        mode,
-        slot,
-        title: trimmed,
-        ...(Number.isFinite(parsedKcal) ? { kcal: parsedKcal } : {}),
-        rarity: "common",
-      },
+      picked
+        ? // 카탈로그 항목 — kcal은 서버가 조회해 붙인다. 음식 도감 희귀도는 이제 화면에 안 쓰여 common.
+          { mode: picked.mode, slot, refId: picked.id, rarity: "common" }
+        : {
+            mode,
+            slot,
+            title: trimmed,
+            ...(Number.isFinite(parsedKcal) ? { kcal: parsedKcal } : {}),
+            rarity: "common",
+          },
       {
         onSuccess: () => {
           reset();
@@ -86,15 +145,61 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
             value={title}
             maxLength={40}
             placeholder="예: 추러스, 감자탕"
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => changeTitle(e.target.value)}
           />
+
+          {suggestions.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-cocoa-faint">
+                {showKcal ? "혹시 이거예요? 고르면 칼로리가 자동으로 들어가요" : "혹시 이거예요?"}
+              </span>
+              {suggestions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => pick(c)}
+                  className="flex items-center gap-2 rounded-mochi-sm bg-cream-100 px-3 py-2 text-left text-sm text-cocoa transition-transform ease-jelly active:scale-[0.98]"
+                >
+                  <span className="text-base">
+                    {c.emoji ?? (c.mode === "eatout" ? "🍽️" : "🏪")}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                  <span className="shrink-0 text-xs text-cocoa-faint">
+                    {[
+                      MODE_NAME[c.mode],
+                      c.subtitle,
+                      showKcal && c.kcal != null ? `${c.kcal}kcal` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {picked && (
+            <p className="flex items-center gap-1.5 text-xs text-cocoa-soft">
+              <span>
+                ✓ {MODE_NAME[picked.mode]} 목록의 항목으로 남겨요
+                {showKcal && picked.kcal != null ? ` · ${picked.kcal}kcal` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPicked(null)}
+                className="ml-auto text-cocoa-faint underline"
+              >
+                직접 적을래요
+              </button>
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-cocoa-soft">어떻게 드셨어요?</span>
           <div className="flex gap-2">
             {MODES.map((m) => (
-              <Chip key={m.value} active={mode === m.value} onClick={() => setMode(m.value)}>
+              <Chip key={m.value} active={mode === m.value} onClick={() => changeMode(m.value)}>
                 {m.label}
               </Chip>
             ))}
@@ -112,7 +217,8 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
           </div>
         </div>
 
-        {showKcal && (
+        {/* 카탈로그 항목을 골랐으면 칼로리는 서버가 붙이므로 손으로 적는 칸은 감춘다. */}
+        {showKcal && !picked && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="meal-kcal" className="text-sm text-cocoa-soft">
               칼로리 (알면 적어주세요)
