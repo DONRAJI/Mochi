@@ -20,11 +20,28 @@ export function useMe() {
   return useQuery<AuthUserResponse>({ queryKey: meKey, queryFn: authApi.fetchMe, retry: false });
 }
 
+/**
+ * 계정이 바뀌는 순간(가입·로그인·로그아웃)엔 **이전 계정의 서버 데이터 캐시를 전부 버린다.**
+ *
+ * 예전엔 `me` 하나만 갈아 끼웠다. 그래서 로그아웃 → 새 계정 가입을 하면 서버 세션은 새
+ * 계정인데, 스트릭·모찌·냉장고·기록 같은 나머지 쿼리는 옛 계정 값이 캐시(신선 1분·보관
+ * 10분)에 남아 **새 계정 이름 옆에 옛 계정 데이터**가 떴다. 앱을 껐다 켜야(메모리 캐시
+ * 소멸) 정상이 됐다.
+ *
+ * `clear()`가 아니라 `removeQueries()`인 이유: 이 함수는 뮤테이션 onSuccess 안에서 불리므로
+ * 뮤테이션 캐시까지 비우면 호출부(`mutate(..., { onSuccess })`)의 후속 동작과 얽힐 수 있다.
+ * 비워야 하는 건 쿼리(서버 데이터)뿐이다.
+ */
+function dropAccountCache(qc: ReturnType<typeof useQueryClient>) {
+  qc.removeQueries();
+}
+
 export function useSignup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SignupRequest) => authApi.signup(input),
     onSuccess: (user) => {
+      dropAccountCache(qc);
       qc.setQueryData(meKey, user);
       clearIdleSession(); // 가입은 로그인 유지 — 유휴 로그아웃 대상 아님
     },
@@ -36,6 +53,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (input: LoginRequest) => authApi.login(input),
     onSuccess: (user, variables) => {
+      dropAccountCache(qc);
       qc.setQueryData(meKey, user);
       setIdleSession(variables.remember); // 유지 안 하면 유휴 자동 로그아웃 활성
     },
@@ -53,6 +71,7 @@ export function useLogout() {
       return authApi.logout();
     },
     onSuccess: () => {
+      dropAccountCache(qc);
       qc.setQueryData(meKey, null);
       clearIdleSession();
     },
