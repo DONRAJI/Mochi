@@ -10,6 +10,7 @@ import { RecipeDetailModal } from "./RecipeDetailModal";
 import { RecipeSearchBar } from "./RecipeSearchBar";
 import { AddMyRecipeSheet } from "./AddMyRecipeSheet";
 import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
+import { OutsidePlaceChips, OutsideFoodList, type OutsideChoice } from "./OutsideView";
 import { RecipePager } from "./RecipePager";
 import { FavoritesList } from "./FavoritesList";
 import { BalanceBanner } from "@/features/record/components/BalanceBanner";
@@ -20,6 +21,7 @@ import { useRecommendations, useRecipeSearch, useToggleFavorite } from "../hooks
 import { matchesCookFilter } from "../cookFilter";
 import { pageSlice, pageCount, clampPage } from "../paging";
 import type { MealMode, RecommendationResponse } from "../types";
+import type { MealsSegment } from "../data";
 import { messages } from "@/lib/messages";
 
 /** 입력을 디바운스 — 타이핑 중 매 글자마다 조회하지 않게. */
@@ -46,12 +48,22 @@ type MealsView = "recommend" | "favorites" | "week";
 /** 🍽️ 식단 화면 — 시드 카탈로그 실데이터를 3모드로 (불변 #5). 즐겨찾기 뷰(#7). */
 export function MealsScreen() {
   const [view, setView] = useState<MealsView>("recommend");
-  const [mode, setMode] = useState<MealMode>("cook");
+  // 화면은 '요리 / 밖에서' 두 갈래이고, 밖에서는 장소를 고른다. 기록·즐겨찾기·상세에 쓰는 모드 값
+  // (cook/eatout/convenience)은 DB와 여러 곳이 쓰므로 그대로 두고 여기서 파생한다.
+  const [segment, setSegment] = useState<MealsSegment>("cook");
+  const [place, setPlace] = useState<OutsideChoice>("cafe");
+  const mode: MealMode =
+    segment === "cook" ? "cook" : place === "convenience" ? "convenience" : "eatout";
+  /** 음식 사전 목록을 보여줄 장소. 편의점은 아직 사전에 없어 기존 간편식 카탈로그를 쓴다. */
+  const foodPlace = segment === "outside" && place !== "convenience" ? place : null;
   const [category, setCategory] = useState("전체");
   const [cookFilter, setCookFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const { data, isPending, isError, refetch } = useRecommendations(mode);
+  // 음식 사전 장소를 보는 중엔 카탈로그를 받을 필요가 없다.
+  const { data, isPending, isError, refetch } = useRecommendations(mode, {
+    enabled: foodPlace == null,
+  });
   const toggleFav = useToggleFavorite();
 
   // 레시피 검색(cook) — 이름 부분일치 + 상세검색(재료). 입력은 디바운스해 서버 조회.
@@ -96,13 +108,23 @@ export function MealsScreen() {
     }
   }, [openId, data]);
 
-  function changeMode(v: string) {
-    setMode(v as MealMode);
-    setCategory("전체"); // 모드 바뀌면 카테고리 초기화
+  /** 보는 목록이 바뀌면 카테고리·필터·검색을 초기화한다. */
+  function resetListFilters() {
+    setCategory("전체");
     setCookFilter(null);
-    setNameQuery(""); // 검색 초기화
+    setNameQuery("");
     setIngQuery("");
     setAdvancedOpen(false);
+  }
+
+  function changeSegment(v: string) {
+    setSegment(v as MealsSegment);
+    resetListFilters();
+  }
+
+  function changePlace(next: OutsideChoice) {
+    setPlace(next);
+    resetListFilters();
   }
 
   // 요리는 정렬/필터 칩, 외식·간편식은 카테고리(subtitle)로 필터.
@@ -154,7 +176,8 @@ export function MealsScreen() {
       ) : (
         <>
           <BalanceBanner />
-          <ModeToggle value={mode} onChange={changeMode} />
+          <ModeToggle value={segment} onChange={changeSegment} />
+          {segment === "outside" && <OutsidePlaceChips value={place} onChange={changePlace} />}
 
           {mode === "cook" && (
             <RecipeSearchBar
@@ -167,7 +190,9 @@ export function MealsScreen() {
             />
           )}
 
-          {searchActive ? (
+          {foodPlace ? (
+            <OutsideFoodList key={foodPlace} place={foodPlace} />
+          ) : searchActive ? (
             // 검색 결과 뷰 — 이름/재료로 찾은 요리 (칩·주간식단은 잠시 숨겨 집중)
             <>
               {searchResult.isError && <RetryNotice onRetry={() => searchResult.refetch()} />}

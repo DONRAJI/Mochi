@@ -2,21 +2,29 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { searchKeyOf } from "@/features/record/foodDict";
-import type { FoodSearchItem } from "@/features/record/types";
+import {
+  MEAL_MIN_KCAL,
+  MEAL_SUFFIXES,
+  NON_MEAL_CATEGORIES,
+  categoriesOf,
+  type OutsidePlace,
+} from "@/features/record/outsidePlaces";
+import type { FoodBrowseResponse, FoodSearchItem } from "@/features/record/types";
 
 /**
- * 음식 영양 사전 검색 — 직접 입력 기록에서 이름으로 칼로리 후보를 찾는다.
- * 사전은 공공 영양성분 DB에서 이름별 대표 1인분으로 정리한 표(scripts/ingest-mfds-food.ts).
+ * 음식 영양 사전 — 공공 영양성분 DB에서 이름별 대표 1인분으로 정리한 표(scripts/ingest-mfds-food.ts).
+ * - 이름 검색: 직접 입력 기록의 칼로리 제안
+ * - 장소별 목록: 식단 탭 '밖에서 먹기'에서 그 장소의 가벼운 선택 순서
  */
 
-const FIELDS = { id: true, name: true, category: true, kcal: true, searchKey: true } as const;
+const SEARCH_FIELDS = { id: true, name: true, category: true, kcal: true, searchKey: true } as const;
 
 function find(where: Prisma.FoodNutritionWhereInput, take: number) {
-  return db.foodNutrition.findMany({ where, take, select: FIELDS });
+  return db.foodNutrition.findMany({ where, take, select: SEARCH_FIELDS });
 }
 
 /**
- * 마이그레이션 전에 이 코드가 먼저 배포돼도 기록 화면이 깨지지 않게 — 표가 없으면 제안만 비운다.
+ * 마이그레이션 전에 이 코드가 먼저 배포돼도 화면이 깨지지 않게 — 표가 없으면 빈 결과로 둔다.
  * (device_tokens 때와 같은 배포 순서 대비)
  */
 function isMissingTable(e: unknown): boolean {
@@ -66,4 +74,71 @@ export async function searchFoods(
     category: row.category,
     kcal: detail ? row.kcal : null, // cozy 사용자에겐 숫자를 싣지 않는다 (불변 #2)
   }));
+}
+
+/** 장소 → 조회 조건. outsidePlaces.placeOf와 같은 규칙이어야 한다(그 모듈의 목록을 그대로 쓴다). */
+function whereForPlace(place: OutsidePlace): Prisma.FoodNutritionWhereInput {
+  if (place !== "meal") return { category: { in: [...categoriesOf(place)] } };
+  return {
+    kcal: { gte: MEAL_MIN_KCAL },
+    AND: [
+      { OR: MEAL_SUFFIXES.map((s) => ({ name: { endsWith: s } })) },
+      // category NOT IN (...)만 쓰면 분류 없는(null) 가정식·급식이 SQL에서 통째로 빠진다 — null을 따로 허용.
+      { OR: [{ category: null }, { category: { notIn: [...NON_MEAL_CATEGORIES] } }] },
+    ],
+  };
+}
+
+/**
+ * 장소별 음식 목록 — 가벼운 순(kcal 오름차순), 페이지.
+ * 숫자를 숨기는(cozy) 사용자에게도 '가벼운 순' 정렬은 그대로 준다 — 경고가 아니라 제안이다.
+ * kcal 숫자만 싣지 않는다(불변 #2).
+ */
+export async function browseFoods(
+  userId: string,
+  place: OutsidePlace,
+  page: number,
+  size: number,
+): Promise<FoodBrowseResponse> {
+  const where = whereForPlace(place);
+  let results;
+  try {
+    results = await Promise.all([
+      db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
+      db.foodNutrition.count({ where }),
+      db.foodNutrition.findMany({
+        where,
+        orderBy: [{ kcal: "asc" }, { name: "asc" }],
+        skip: page * size,
+        take: size,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          kcal: true,
+          servingAmount: true,
+          servingUnit: true,
+        },
+      }),
+    ]);
+  } catch (e) {
+    if (isMissingTable(e)) return { items: [], page, size, total: 0 };
+    throw e;
+  }
+  const [user, total, rows] = results;
+
+  const detail = user?.displayMode === "detail";
+  return {
+    page,
+    size,
+    total,
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      kcal: detail ? row.kcal : null,
+      servingAmount: row.servingAmount,
+      servingUnit: row.servingUnit,
+    })),
+  };
 }
