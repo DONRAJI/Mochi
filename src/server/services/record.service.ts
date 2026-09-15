@@ -391,8 +391,10 @@ export async function saveProfile(
   return toProfile(row);
 }
 
-/** 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee}(kcal/day), 아니면 null. (넛지·예산 공용) */
-async function computeUserEnergy(userId: string): Promise<{ bmr: number; tdee: number } | null> {
+/** 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee, gender}(kcal/day), 아니면 null. (넛지·예산 공용) */
+async function computeUserEnergy(
+  userId: string,
+): Promise<{ bmr: number; tdee: number; gender: Gender } | null> {
   const [profile, latestWeight] = await Promise.all([
     db.userProfile.findUnique({ where: { userId } }),
     db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
@@ -412,7 +414,12 @@ async function computeUserEnergy(userId: string): Promise<{ bmr: number; tdee: n
     ageFromBirthYear(profile.birthYear),
     profile.gender as Gender,
   );
-  return { bmr, tdee: computeTDEE(bmr, profile.activityLevel as ActivityLevel) };
+  return {
+    bmr,
+    tdee: computeTDEE(bmr, profile.activityLevel as ActivityLevel),
+    // 예산 하한이 성별 최소 섭취량이라 함께 넘긴다(energy.ts computeCalorieBudget)
+    gender: profile.gender as Gender,
+  };
 }
 
 /**
@@ -434,7 +441,7 @@ export async function getBalanceNudge(userId: string): Promise<Nudge> {
 }
 
 /**
- * 오늘의 kcal 예산 (#4 detail 모드) — 감량 목표(유지 TDEE보다 적게, BMR 하한).
+ * 오늘의 kcal 예산 (#4 detail 모드) — 감량 목표(유지 TDEE − 500, 성별 최소 섭취량 하한 · energy.ts).
  * detail이 아니거나 프로필 미완비면 null(미표시).
  * 죄책감 제로: 초과해도 경고가 아니라 그냥 숫자. (섭취량은 클라가 오늘 끼니에서 합산)
  */
@@ -442,5 +449,5 @@ export async function getDailyBudget(userId: string): Promise<DailyBudgetRespons
   const user = await db.user.findUnique({ where: { id: userId }, select: { displayMode: true } });
   if (user?.displayMode !== "detail") return { budget: null };
   const energy = await computeUserEnergy(userId);
-  return { budget: energy ? computeCalorieBudget(energy.tdee, energy.bmr) : null };
+  return { budget: energy ? computeCalorieBudget(energy.tdee, energy.gender) : null };
 }
