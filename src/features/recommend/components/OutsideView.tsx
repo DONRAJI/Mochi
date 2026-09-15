@@ -83,6 +83,8 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
   return (
     <div ref={listTopRef} className="flex flex-col gap-3">
       <p className="px-1 text-xs text-cocoa-faint">
+        {/* 전부가 아니라 여러 곳에서 파는 대표 메뉴만(outsidePlaces PLACE_TOP_N) — 찾기 쉽고 제안답게. */}
+        {data && data.total > 0 ? `여러 곳에서 파는 대표 메뉴 ${data.total}개 · ` : ""}
         {showKcal
           ? isConvenience
             ? "가벼운 것부터 · 브랜드를 구분하지 않은 대략값이에요 · 누르면 바로 기록"

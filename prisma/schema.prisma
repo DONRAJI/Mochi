@@ -435,10 +435,12 @@ model FoodNutrition {
   servingUnit   String   @map("serving_unit") // g | ml
   method        String // 분석 | 수집 | 산출
   variantCount  Int      @map("variant_count") // 묶인 원본 행 수
-  source        String // mfds_dish (가공식품 편의점류가 나중에 같은 표에 들어온다)
+  popularity    Int      @default(1) // 파는·만드는 서로 다른 곳의 수 — '밖에서 먹기' 대표 메뉴를 추리는 대중성
+  source        String // mfds_dish | mfds_convenience
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@index([source])
+  @@index([source, popularity])
   @@map("food_nutrition")
 }
 

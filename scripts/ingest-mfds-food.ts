@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import {
+  brandKeyOf,
   buildFoodEntries,
   CONVENIENCE_CATEGORIES,
   CONVENIENCE_MAX_GRAMS,
@@ -18,7 +19,7 @@ import {
  *
  *  - 음식은 통합 엔드포인트(typeNm=음식, 약 1.96만 행). 가공식품 쪽엔 분류가 없어서 편의점류는
  *    가공식품 엔드포인트의 분류(foodLv4Nm)로 받는다. 둘 다 호출 수십 회(개발계정 하루 1만 회와 무관).
- *  - 이름별로 묶어 대표 1인분 kcal을 정한다 — 규칙과 근거는 foodDict.ts와 그 테스트.
+ *  - 메뉴별로 묶어 대표 1인분 kcal과 대중성(파는 곳 수)을 정한다 — 규칙과 근거는 foodDict.ts와 그 테스트.
  *  - 멱등: 대상 출처(source)의 행만 새 결과로 통째 교체한다(한 트랜잭션). 다른 출처는 건드리지 않는다.
  *    기록(MealRecord)은 제목·kcal 스냅샷을 저장하고 이 표를 참조하지 않으므로 교체해도 안전하다.
  *  - 결과가 비정상적으로 적으면(API 장애·응답 변경) DB를 건드리지 않고 멈춘다.
@@ -46,8 +47,9 @@ const PROFILES: Record<string, Profile> = {
     endpoint: API + "tn_pubr_public_nutri_info_api",
     source: FOOD_SOURCE.dish,
     queries: [{ typeNm: "음식" }],
-    minExpected: 5000, // 2026-09 기준 약 1.5만 개
-    toRow: (raw) => raw as unknown as NutriRow,
+    minExpected: 5000, // 2026-09 기준 메뉴 합친 뒤 1만여 개
+    // 대중성은 프랜차이즈명으로 센다. 급식·가정식은 "해당없음"이라 foodDict가 출처 묶음으로 센다.
+    toRow: (raw) => ({ ...(raw as unknown as NutriRow), brand: raw.companyNm }),
     build: {},
   },
   convenience: {
@@ -55,9 +57,13 @@ const PROFILES: Record<string, Profile> = {
     endpoint: API + "tn_pubr_public_nutri_process_info_api",
     source: FOOD_SOURCE.convenience,
     queries: CONVENIENCE_CATEGORIES.map((c) => ({ foodLv4Nm: c })),
-    minExpected: 2000, // 세 분류 고유 약 1.1만 행 → 이름별로 묶으면 수천 개
-    // 가공식품 이름엔 '분류_' 접두어가 없다 — 원본 분류 필드를 쓴다.
-    toRow: (raw) => ({ ...(raw as unknown as NutriRow), category: raw.foodLv4Nm }),
+    minExpected: 2000, // 세 분류 고유 약 1.1만 행 → 메뉴로 묶으면 수천 개
+    // 가공식품 이름엔 '분류_' 접두어가 없다 — 원본 분류 필드를 쓴다. 대중성은 제조사를 회사 단위로.
+    toRow: (raw) => ({
+      ...(raw as unknown as NutriRow),
+      category: raw.foodLv4Nm,
+      brand: brandKeyOf(raw.mfrNm),
+    }),
     build: { maxAmountByCategory: CONVENIENCE_MAX_GRAMS },
   },
 };
@@ -127,11 +133,14 @@ async function main(): Promise<void> {
   }
 
   const entries = buildFoodEntries(rows, profile.build);
+  const common = entries.filter((e) => e.popularity >= 2).length;
   console.log(
-    `사전 ${entries.length}개로 정리 — 1인분 ${MAX_SERVING_KCAL}kcal 초과·계산 불가·중량 초과 제외, 이름별 대표값`,
+    `사전 ${entries.length}개로 정리(그중 2곳 이상에서 파는 메뉴 ${common}개) — 1인분 ${MAX_SERVING_KCAL}kcal 초과·계산 불가·중량 초과 제외, 핫/아이스·사이즈 합침`,
   );
   if (entries.length < profile.minExpected) {
-    throw new Error(`결과가 너무 적어요(${entries.length}개) — API 응답을 확인하세요. DB는 건드리지 않았어요.`);
+    throw new Error(
+      `결과가 너무 적어요(${entries.length}개) — API 응답을 확인하세요. DB는 건드리지 않았어요.`,
+    );
   }
 
   await db.$transaction(

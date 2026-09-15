@@ -5,6 +5,9 @@ import {
   NON_MEAL_CATEGORIES,
   MEAL_MIN_KCAL,
   OUTSIDE_PLACES,
+  PLAIN_RICE,
+  PLACE_TOP_N,
+  MIN_POPULARITY,
 } from "./outsidePlaces";
 import { FOOD_SOURCE } from "./foodDict";
 import { foodBrowseQuerySchema } from "./types";
@@ -24,7 +27,7 @@ const convenience = (name: string, category: string, kcal: number) => ({
 
 describe("밖에서 먹기 — 장소 분류", () => {
   it("카페 음료 (특수문자 들어간 분류명 포함)", () => {
-    expect(placeOf(dish("아메리카노 핫(HOT)", "커피", 11))).toBe("cafe");
+    expect(placeOf(dish("아메리카노", "커피", 11))).toBe("cafe");
     expect(placeOf(dish("딸기 스무디", "스무디", 415))).toBe("cafe");
     expect(placeOf(dish("오렌지 주스", "과ㆍ채주스", 175))).toBe("cafe");
     expect(placeOf(dish("타로 버블티", "밀크티/버블티", 331))).toBe("cafe");
@@ -41,7 +44,7 @@ describe("밖에서 먹기 — 장소 분류", () => {
   });
 
   it("피자는 어디에도 넣지 않는다 — 한 판 단위라 조각 기준이 없다", () => {
-    expect(placeOf(dish("국민반반 (R)", "피자", 1194))).toBeNull();
+    expect(placeOf(dish("국민반반", "피자", 1194))).toBeNull();
   });
 
   it("식사 한 끼 = 이름 끝말 + 최소 kcal (분류 없는 가정식·급식도)", () => {
@@ -54,6 +57,19 @@ describe("밖에서 먹기 — 장소 분류", () => {
   it(`곁들이는 한 끼가 아니다 — ${MEAL_MIN_KCAL}kcal 미만 국·나물`, () => {
     expect(placeOf(dish("된장국", null, 80))).toBeNull();
     expect(placeOf(dish("콩나물무침", null, 40))).toBeNull();
+  });
+
+  it("맨밥은 식사 한 끼가 아니다 — 대중성으로 뽑으면 자장면·비빔밥 옆에 올라오던 현미밥·보리밥", () => {
+    expect(placeOf(dish("현미밥", null, 360))).toBeNull();
+    expect(placeOf(dish("보리밥", null, 336))).toBeNull();
+    expect(placeOf(dish("강낭콩밥", null, 335))).toBeNull();
+    expect(PLAIN_RICE).toContain("수수밥");
+    expect(placeOf(dish("알밥", null, 430))).toBe("meal");
+  });
+
+  it("'탕'으로 끝나도 간식은 식사가 아니다 — 고구마맛탕", () => {
+    expect(placeOf(dish("고구마맛탕", null, 492))).toBeNull();
+    expect(placeOf(dish("감자탕", null, 376))).toBe("meal");
   });
 
   it("편의점은 출처로 나뉜다 — 같은 '샌드위치' 분류라도 편의점 상품이면 편의점", () => {
@@ -81,6 +97,11 @@ describe("밖에서 먹기 — 장소 분류", () => {
   it("분류 목록끼리 겹치지 않는다 — 한 항목은 한 장소에만", () => {
     const all = [...categoriesOf("cafe"), ...categoriesOf("bakery"), ...categoriesOf("fastfood")];
     expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("대표 메뉴만 — 장소당 최대 개수와 최소 대중성", () => {
+    expect(PLACE_TOP_N).toBe(40);
+    expect(MIN_POPULARITY).toBeGreaterThanOrEqual(2);
   });
 
   it("장소 조회 쿼리가 받는 값이 장소 목록과 같다", () => {
