@@ -10,22 +10,42 @@ export const markMealSchema = z
     slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(), // 없으면 서버가 시간대로 추정
     refId: z.string().min(1).max(60).optional(),
     /**
+     * 음식 영양 사전(FoodNutrition)에서 고른 항목. 있으면 서버가 사전의 이름·대표 1인분 kcal로 기록한다
+     * — 클라가 보낸 kcal은 쓰지 않는다. 사전이 재적재돼 못 찾으면 title로 기록된다(title도 함께 보냄).
+     */
+    foodId: z.string().min(1).max(80).optional(),
+    /**
      * 카탈로그에 없는 걸 직접 적어 기록할 때의 이름(예: "추러스", "외식 감자탕").
      * refId가 있으면 카탈로그 이름을 쓰므로 보내지 않는다.
      */
     title: z.string().trim().min(1).max(40).optional(),
-    /** 직접 입력에 한해 사용자가 아는 값을 받는다(선택). 카탈로그 항목은 서버가 조회한다. */
+    /** 직접 입력에 한해 사용자가 아는 값을 받는다(선택). 카탈로그·사전 항목은 서버가 조회한다. */
     kcal: z.number().int().min(0).max(5000).optional(),
     rarity: z.enum(["common", "rare", "epic", "seasonal"]).default("common"),
     memo: z.string().max(200).optional(),
   })
   // 무엇을 먹었는지 알 수 없는 기록은 만들지 않는다 — 나중에 '오늘의 기록'에 이름이 안 뜬다.
-  .refine((v) => !!v.refId || !!v.title, {
+  .refine((v) => !!v.refId || !!v.title || !!v.foodId, {
     message: "무엇을 드셨는지 알려줄래요?",
     path: ["title"],
   });
 
 export type MarkMealRequest = z.infer<typeof markMealSchema>;
+
+/** 음식 영양 사전 검색 — 직접 입력 기록 때 이름으로 칼로리 후보를 찾는다. 목록은 작게(최대 10). */
+export const foodSearchQuerySchema = z.object({
+  q: z.string().trim().min(2, "두 글자 이상 적어줄래요?").max(40),
+  size: z.coerce.number().int().min(1).max(10).default(5),
+});
+
+export interface FoodSearchItem {
+  id: string;
+  name: string;
+  /** 원본 이름의 분류(예: "커피"). 없을 수 있다. */
+  category: string | null;
+  /** 대표 1인분 kcal — detail(관리) 모드일 때만 채워진다. cozy면 null (불변 #2) */
+  kcal: number | null;
+}
 
 export interface MealRecordResponse {
   recordId: string;

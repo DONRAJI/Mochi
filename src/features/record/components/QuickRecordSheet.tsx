@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
 import { useMarkMealEaten } from "../hooks/useRecord";
+import { useFoodSearch } from "../hooks/useFoodSearch";
 import { useMe } from "@/features/auth/hooks/useAuth";
 import { useRecommendations } from "@/features/recommend/hooks/useRecommend";
 import { SLOT_LABEL, SLOT_EMOJI, estimateSlot } from "../slot";
-import { matchCatalog, type CatalogCandidate, type CatalogMode } from "../catalogMatch";
-import type { MealSlot } from "../types";
+import {
+  matchCatalog,
+  normalizeName,
+  type CatalogCandidate,
+  type CatalogMode,
+} from "../catalogMatch";
+import type { FoodSearchItem, MealSlot } from "../types";
 
 const MODES = [
   { value: "cook", label: "🍳 요리" },
@@ -24,6 +30,9 @@ type RecordMode = (typeof MODES)[number]["value"];
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 
 const MODE_NAME: Record<CatalogMode, string> = { eatout: "외식", convenience: "간편식" };
+
+/** 음식 사전 제안 최대 개수 — 카탈로그 제안(최대 3) 아래에 붙는다. */
+const MAX_FOOD_SUGGESTIONS = 3;
 
 interface QuickRecordSheetProps {
   open: boolean;
@@ -49,13 +58,39 @@ const toCandidate =
     kcal: row.kcal,
   });
 
+/** 고른 제안 — 카탈로그 항목이면 refId로, 음식 사전 항목이면 foodId로 기록한다. */
+type Picked = { kind: "catalog"; item: CatalogCandidate } | { kind: "food"; item: FoodSearchItem };
+
+interface SuggestionButtonProps {
+  emoji: string;
+  name: string;
+  meta: (string | null)[];
+  onPick: () => void;
+}
+
+function SuggestionButton({ emoji, name, meta, onPick }: SuggestionButtonProps) {
+  const detail = meta.filter(Boolean).join(" · ");
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className="flex items-center gap-2 rounded-mochi-sm bg-cream-100 px-3 py-2 text-left text-sm text-cocoa transition-transform ease-jelly active:scale-[0.98]"
+    >
+      <span className="text-base">{emoji}</span>
+      <span className="min-w-0 flex-1 truncate">{name}</span>
+      {detail && <span className="shrink-0 text-xs text-cocoa-faint">{detail}</span>}
+    </button>
+  );
+}
+
 /**
  * 직접 입력 기록 — 카탈로그에 없는 걸 그 자리에서 남긴다(예: "추러스", "외식 감자탕").
  * 이름만 있으면 되고, 나머지(끼니·모드)는 기본값이 잡혀 있어 한 줄 적고 바로 끝난다.
  *
- * **적은 이름이 외식·편의점 카탈로그와 맞으면 그 항목으로 기록하게 제안한다**(catalogMatch.ts).
- * 고르면 이름 대신 refId로 기록되고 kcal은 서버가 카탈로그에서 붙인다 — 손으로 적던 칼로리가
- * 자동으로 정확해지고, 숫자를 숨기는(cozy) 사용자의 기록에도 kcal이 들어간다(불변 #2).
+ * 적은 이름으로 칼로리를 찾아 제안한다 — 고르면 kcal은 서버가 붙인다(숫자를 숨기는 cozy 사용자의
+ * 기록도 정확해진다, 불변 #2). 두 곳에서 찾는다:
+ * - 외식·편의점 **카탈로그**(catalogMatch.ts) → 고르면 refId로 기록
+ * - 공공 영양성분 DB에서 정리한 **음식 사전**(서버 검색) → 고르면 foodId로 기록
  */
 export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
   const router = useRouter();
@@ -66,18 +101,26 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
   // 지금 시간대로 끼니를 미리 골라둔다 — 대부분 그대로 두고 넘어간다.
   const [slot, setSlot] = useState<MealSlot>(() => estimateSlot(new Date()));
   const [kcal, setKcal] = useState("");
-  /** 제안에서 고른 카탈로그 항목. 있으면 이름이 아니라 이 항목으로 기록된다. */
-  const [picked, setPicked] = useState<CatalogCandidate | null>(null);
+  const [picked, setPicked] = useState<Picked | null>(null);
 
   // 이 시트는 홈에 항상 마운트돼 있다 — 열렸을 때만 받아야 홈 진입마다 요청이 나가지 않는다.
-  // 식단 탭을 거쳤다면 캐시에 이미 있어 요청 없이 바로 쓴다.
   const eatout = useRecommendations("eatout", { enabled: open });
   const convenience = useRecommendations("convenience", { enabled: open });
   const catalog = [
     ...(eatout.data ?? []).map(toCandidate("eatout")),
     ...(convenience.data ?? []).map(toCandidate("convenience")),
   ];
-  const suggestions = picked ? [] : matchCatalog(title, catalog);
+  const catalogMatches = picked ? [] : matchCatalog(title, catalog);
+
+  // 카탈로그 72개로 못 찾는 대부분의 음식은 음식 사전에서 서버가 찾는다. 같은 이름은 카탈로그를 우선.
+  const foodSearch = useFoodSearch(title, { enabled: open && !picked });
+  const catalogNames = new Set(catalogMatches.map((c) => normalizeName(c.name)));
+  const foodMatches = picked
+    ? []
+    : (foodSearch.data ?? [])
+        .filter((f) => !catalogNames.has(normalizeName(f.name)))
+        .slice(0, MAX_FOOD_SUGGESTIONS);
+  const hasSuggestions = catalogMatches.length + foodMatches.length > 0;
 
   const trimmed = title.trim();
   const canSubmit = trimmed.length > 0 && !mark.isPending;
@@ -93,18 +136,24 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
   function changeTitle(value: string) {
     setTitle(value);
     // 고른 뒤 이름을 고치면 더 이상 그 항목이 아니다 — 직접 입력으로 돌아간다.
-    if (picked && value !== picked.name) setPicked(null);
+    if (picked && value !== picked.item.name) setPicked(null);
   }
 
   function changeMode(value: RecordMode) {
     setMode(value);
-    if (picked && picked.mode !== value) setPicked(null);
+    // 카탈로그 항목은 모드에 속해 있어 모드를 바꾸면 풀린다. 사전 음식은 어떻게 먹었든 같은 음식이라 유지.
+    if (picked?.kind === "catalog" && picked.item.mode !== value) setPicked(null);
   }
 
-  function pick(item: CatalogCandidate) {
-    setPicked(item);
+  function pickCatalog(item: CatalogCandidate) {
+    setPicked({ kind: "catalog", item });
     setTitle(item.name);
     setMode(item.mode);
+  }
+
+  function pickFood(item: FoodSearchItem) {
+    setPicked({ kind: "food", item });
+    setTitle(item.name);
   }
 
   function onSubmit(e: FormEvent) {
@@ -112,16 +161,19 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
     if (!canSubmit) return;
     const parsedKcal = showKcal && kcal.trim() ? Number(kcal) : undefined;
     mark.mutate(
-      picked
+      picked?.kind === "catalog"
         ? // 카탈로그 항목 — kcal은 서버가 조회해 붙인다. 음식 도감 희귀도는 이제 화면에 안 쓰여 common.
-          { mode: picked.mode, slot, refId: picked.id, rarity: "common" }
-        : {
-            mode,
-            slot,
-            title: trimmed,
-            ...(Number.isFinite(parsedKcal) ? { kcal: parsedKcal } : {}),
-            rarity: "common",
-          },
+          { mode: picked.item.mode, slot, refId: picked.item.id, rarity: "common" }
+        : picked?.kind === "food"
+          ? // 음식 사전 — 이름·kcal은 서버가 사전에서 붙인다. title은 사전에서 못 찾을 때의 대비.
+            { mode, slot, foodId: picked.item.id, title: trimmed, rarity: "common" }
+          : {
+              mode,
+              slot,
+              title: trimmed,
+              ...(Number.isFinite(parsedKcal) ? { kcal: parsedKcal } : {}),
+              rarity: "common",
+            },
       {
         onSuccess: () => {
           reset();
@@ -148,32 +200,32 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
             onChange={(e) => changeTitle(e.target.value)}
           />
 
-          {suggestions.length > 0 && (
+          {hasSuggestions && (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-cocoa-faint">
                 {showKcal ? "혹시 이거예요? 고르면 칼로리가 자동으로 들어가요" : "혹시 이거예요?"}
               </span>
-              {suggestions.map((c) => (
-                <button
+              {catalogMatches.map((c) => (
+                <SuggestionButton
                   key={c.id}
-                  type="button"
-                  onClick={() => pick(c)}
-                  className="flex items-center gap-2 rounded-mochi-sm bg-cream-100 px-3 py-2 text-left text-sm text-cocoa transition-transform ease-jelly active:scale-[0.98]"
-                >
-                  <span className="text-base">
-                    {c.emoji ?? (c.mode === "eatout" ? "🍽️" : "🏪")}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                  <span className="shrink-0 text-xs text-cocoa-faint">
-                    {[
-                      MODE_NAME[c.mode],
-                      c.subtitle,
-                      showKcal && c.kcal != null ? `${c.kcal}kcal` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </button>
+                  emoji={c.emoji ?? (c.mode === "eatout" ? "🍽️" : "🏪")}
+                  name={c.name}
+                  meta={[
+                    MODE_NAME[c.mode],
+                    c.subtitle,
+                    showKcal && c.kcal != null ? `${c.kcal}kcal` : null,
+                  ]}
+                  onPick={() => pickCatalog(c)}
+                />
+              ))}
+              {foodMatches.map((f) => (
+                <SuggestionButton
+                  key={f.id}
+                  emoji="🥣"
+                  name={f.name}
+                  meta={[f.category, showKcal && f.kcal != null ? `${f.kcal}kcal` : null]}
+                  onPick={() => pickFood(f)}
+                />
               ))}
             </div>
           )}
@@ -181,8 +233,13 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
           {picked && (
             <p className="flex items-center gap-1.5 text-xs text-cocoa-soft">
               <span>
-                ✓ {MODE_NAME[picked.mode]} 목록의 항목으로 남겨요
-                {showKcal && picked.kcal != null ? ` · ${picked.kcal}kcal` : ""}
+                ✓{" "}
+                {picked.kind === "catalog"
+                  ? `${MODE_NAME[picked.item.mode]} 목록의 항목으로 남겨요`
+                  : showKcal
+                    ? "음식 사전의 1인분 칼로리로 남겨요"
+                    : "음식 사전에서 찾은 음식으로 남겨요"}
+                {showKcal && picked.item.kcal != null ? ` · ${picked.item.kcal}kcal` : ""}
               </span>
               <button
                 type="button"
@@ -217,7 +274,7 @@ export function QuickRecordSheet({ open, onClose }: QuickRecordSheetProps) {
           </div>
         </div>
 
-        {/* 카탈로그 항목을 골랐으면 칼로리는 서버가 붙이므로 손으로 적는 칸은 감춘다. */}
+        {/* 제안에서 골랐으면 칼로리는 서버가 붙이므로 손으로 적는 칸은 감춘다. */}
         {showKcal && !picked && (
           <div className="flex flex-col gap-1.5">
             <label htmlFor="meal-kcal" className="text-sm text-cocoa-soft">

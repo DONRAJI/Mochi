@@ -68,7 +68,18 @@ export async function markMealEaten(
 
   return db.$transaction(async (tx) => {
     // 카탈로그 항목은 서버가 kcal을 조회하고, 직접 입력은 사용자가 아는 값만 받는다(선택).
-    const kcal = input.refId ? await lookupKcal(tx, input.mode, input.refId) : (input.kcal ?? null);
+    // 음식 사전(foodId)에서 고른 건 사전의 이름·대표 1인분 kcal을 서버가 붙인다 — 클라가 보낸 kcal은
+    // 믿지 않고, 숫자를 숨기는(cozy) 사용자의 기록도 정확해진다. 사전이 재적재돼 못 찾으면 title로 남는다.
+    const food =
+      !input.refId && input.foodId
+        ? await tx.foodNutrition.findUnique({
+            where: { id: input.foodId },
+            select: { name: true, kcal: true },
+          })
+        : null;
+    const kcal = input.refId
+      ? await lookupKcal(tx, input.mode, input.refId)
+      : (food?.kcal ?? input.kcal ?? null);
     const record = await tx.mealRecord.create({
       data: {
         userId,
@@ -76,7 +87,7 @@ export async function markMealEaten(
         slot,
         refId: input.refId,
         // 카탈로그 항목이면 이름은 카탈로그에서 읽으므로 저장하지 않는다(스냅샷 중복 방지).
-        title: input.refId ? null : (input.title ?? null),
+        title: input.refId ? null : (food?.name ?? input.title ?? null),
         kcal,
         memo: input.memo,
         photoUrl,
