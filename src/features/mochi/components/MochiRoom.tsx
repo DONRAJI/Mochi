@@ -8,6 +8,7 @@ import { RetryNotice } from "@/components/ui/RetryNotice";
 import { TodaySuggestionCard } from "./TodaySuggestionCard";
 import { GrowthCard } from "./GrowthCard";
 import { StartHereCard } from "./StartHereCard";
+import { FeatureTourCard } from "./FeatureTourCard";
 import { QuickActionBar } from "./QuickActionBar";
 import { WeeklyPlanCalendar } from "@/features/recommend/components/WeeklyPlanCalendar";
 import { useMochiState } from "../hooks/useMochi";
@@ -60,7 +61,8 @@ export function MochiRoom() {
 
   // 아직 첫 모찌를 못 뽑은 사용자에겐 아래 안내 카드를 가리키는 인사로 — 첫 화면에서
   // 뭘 해야 할지 모르던 문제(핵심 루프가 안 보임)를 말풍선부터 이어준다.
-  const isNewcomer = !mochiQuery.isPending && !!mochi && !isOnboardingComplete(mochi.collectedCount);
+  const isNewcomer =
+    !mochiQuery.isPending && !!mochi && !isOnboardingComplete(mochi.collectedCount);
 
   // 말풍선 우선순위: 방금 잘 먹은 환호가 최우선(신규 안내보다 축하가 먼저), 다음 밸런싱
   // 넛지(가벼운 제안, 경고 아님 — PRD 11.5), 신규 인사, 그 외 상태 인사.
@@ -90,6 +92,8 @@ export function MochiRoom() {
       <GrowthCard />
       {/* 첫 안내 — 핵심 루프(재료→기록→뽑기). 첫 모찌를 뽑으면 스스로 사라진다. */}
       <StartHereCard />
+      {/* 첫 모찌 뒤 한 번 — 설명 없던 기능(사진·체중·숫자 모드) 소개. 첫 안내와 겹치지 않는다. */}
+      <FeatureTourCard />
 
       <TodaySuggestionCard />
       {/* 다가오는 끼니만(오늘·내일). 7일 전체는 식단 탭에 있어 홈에선 축약한다. */}

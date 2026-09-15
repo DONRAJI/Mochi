@@ -41,6 +41,10 @@ export function DisplayModeToggle() {
           </button>
         ))}
       </div>
+      {/* 무엇이 달라지는지 한 줄 — 토글만 있고 설명이 없어 숫자 모드가 있는 줄 몰랐다. */}
+      <p className="text-xs text-cocoa-faint">
+        홈(모찌의 방)엔 어느 쪽이든 숫자가 없어요 · 언제든 바꿀 수 있어요
+      </p>
     </Card>
   );
 }
