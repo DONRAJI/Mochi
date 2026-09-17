@@ -140,6 +140,8 @@ export const historyQuerySchema = z.object({
 /** 오늘의 kcal 예산 (#4 detail 모드). null이면 미표시(cozy거나 프로필 미완비). */
 export interface DailyBudgetResponse {
   budget: number | null;
+  /** 예산 계산에 쓴 체중이 오래됐는지(weightFreshness) — budget이 null이면 늘 false */
+  weightStale: boolean;
 }
 
 /** 체중 기록 — 숫자는 마이>더보기에서만 (불변 #2). */

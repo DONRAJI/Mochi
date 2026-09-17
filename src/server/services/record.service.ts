@@ -9,6 +9,7 @@ import { balanceNudge, type Nudge } from "@/features/record/balance";
 import { buildMealHistory, monthsOf, type HistoryMeal } from "@/features/record/history";
 import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
 import { kstDayKey, kstDayStart, kstMonthRange } from "@/lib/kst";
+import { isWeightStale } from "@/features/record/weightFreshness";
 import {
   computeBMR,
   computeTDEE,
@@ -415,10 +416,13 @@ export async function saveProfile(userId: string, input: ProfileRequest): Promis
   return toProfile(row);
 }
 
-/** 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee, gender}(kcal/day), 아니면 null. (넛지·예산 공용) */
+/**
+ * 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee, gender, weightLoggedAt}(kcal/day), 아니면 null.
+ * (넛지·예산 공용) weightLoggedAt은 계산에 쓴 체중의 기록 시각 — 오래됐는지 알리는 데 쓴다.
+ */
 async function computeUserEnergy(
   userId: string,
-): Promise<{ bmr: number; tdee: number; gender: Gender } | null> {
+): Promise<{ bmr: number; tdee: number; gender: Gender; weightLoggedAt: Date } | null> {
   const [profile, latestWeight] = await Promise.all([
     db.userProfile.findUnique({ where: { userId } }),
     db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
@@ -443,6 +447,7 @@ async function computeUserEnergy(
     tdee: computeTDEE(bmr, profile.activityLevel as ActivityLevel),
     // 예산 하한이 성별 최소 섭취량이라 함께 넘긴다(energy.ts computeCalorieBudget)
     gender: profile.gender as Gender,
+    weightLoggedAt: latestWeight.loggedAt,
   };
 }
 
@@ -471,7 +476,12 @@ export async function getBalanceNudge(userId: string): Promise<Nudge> {
  */
 export async function getDailyBudget(userId: string): Promise<DailyBudgetResponse> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { displayMode: true } });
-  if (user?.displayMode !== "detail") return { budget: null };
+  if (user?.displayMode !== "detail") return { budget: null, weightStale: false };
   const energy = await computeUserEnergy(userId);
-  return { budget: energy ? computeCalorieBudget(energy.tdee, energy.gender) : null };
+  if (!energy) return { budget: null, weightStale: false };
+  return {
+    budget: computeCalorieBudget(energy.tdee, energy.gender),
+    // 예산은 최신 체중으로 계산한다 — 오래된 체중이면 예산이 실제보다 높게 나온다.
+    weightStale: isWeightStale(energy.weightLoggedAt.getTime()),
+  };
 }
