@@ -10,21 +10,34 @@ import { AddIngredientFab } from "./AddIngredientFab";
 import { AddIngredientSheet } from "./AddIngredientSheet";
 import { ShoppingList } from "./ShoppingList";
 import { EmptyFridgeState } from "./EmptyFridgeState";
-import { useIngredients, useRemoveIngredient } from "../hooks/useFridge";
+import { useIngredients, useMoveIngredient, useRemoveIngredient } from "../hooks/useFridge";
 import { splitByExpiry } from "../expiry";
 import { FRIDGE_CATEGORIES } from "../data";
+import type { IngredientResponse } from "../types";
 
-/** 🧊 냉장고 화면 — 실데이터. 재료를 담으면 식단(추천) 매칭률이 자동 점등(쿼리 무효화). */
+/**
+ * 🧊 냉장고 화면 — 실데이터. 재료를 담으면 식단(추천) 매칭률이 자동 점등(쿼리 무효화).
+ * 냉장 / ❄️ 냉동 구역으로 나누고, 스티커를 누르면 서로 옮긴다(보관 기한도 다시 계산 — shelfLife).
+ * 사 온 새우를 얼리는 경우처럼 담은 뒤에 보관이 바뀌는 일이 흔해서, 담기 창의 선택과 함께 둘 다 둔다.
+ */
 export function FridgeScreen() {
   const [category, setCategory] = useState<string>("전체");
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data, isPending, isError, refetch } = useIngredients();
   const remove = useRemoveIngredient();
+  const move = useMoveIngredient();
 
   const all = data ?? [];
   const items = category === "전체" ? all : all.filter((i) => i.category === category);
+  const fridgeItems = items.filter((i) => i.storage !== "freezer");
+  const freezerItems = items.filter((i) => i.storage === "freezer");
   // 재료는 마운트 뒤 조회로 오므로 렌더 중 현재 시각을 써도 프리렌더 HTML과 어긋나지 않는다.
   const shelf = splitByExpiry(all, new Date());
+
+  const toggle = (i: IngredientResponse) =>
+    move.mutate({ id: i.id, storage: i.storage === "freezer" ? "fridge" : "freezer" });
+  const label = (i: IngredientResponse) =>
+    i.storage === "freezer" ? `${i.name} 냉장으로 옮기기` : `${i.name} 냉동으로 옮기기`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,7 +64,33 @@ export function FridgeScreen() {
             ))}
           </div>
         ) : all.length > 0 ? (
-          <IngredientGrid items={items} onRemove={(id) => remove.mutate(id)} />
+          <div className="flex flex-col gap-3">
+            {fridgeItems.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <p className="px-1 text-sm text-cocoa-soft">🧊 냉장</p>
+                <IngredientGrid
+                  items={fridgeItems}
+                  onRemove={(id) => remove.mutate(id)}
+                  onPress={toggle}
+                  pressLabel={label}
+                />
+              </section>
+            )}
+            {freezerItems.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <p className="px-1 text-sm text-cocoa-soft">❄️ 냉동</p>
+                <IngredientGrid
+                  items={freezerItems}
+                  onRemove={(id) => remove.mutate(id)}
+                  onPress={toggle}
+                  pressLabel={label}
+                />
+              </section>
+            )}
+            <p className="px-1 text-xs text-cocoa-faint">
+              스티커를 누르면 냉장 ↔ 냉동으로 옮겨요. 보관 기간도 맞춰 다시 챙겨요.
+            </p>
+          </div>
         ) : (
           <EmptyFridgeState />
         ))}

@@ -8,7 +8,17 @@
  *
  * 기간은 개봉 전 냉장 기준의 보수적인 값(식약처·소비자원 가정 보관 안내의 통상 범위). 쌀·곡물·양념처럼
  * 오래 두는 건 null(추정 안 함). 정확한 날짜를 아는 사람은 여전히 직접 적을 수 있다.
+ *
+ * 냉동(2026-09-17): 이름만으론 냉동인지 알 수 없어 '새우' 스티커로 담은 냉동새우가 2일로 잡혔다.
+ * 재료마다 냉장/냉동을 저장하고, 냉동이면 대략 3개월(빵은 1개월)로 본다.
  */
+
+export const STORAGES = ["fridge", "freezer"] as const;
+export type Storage = (typeof STORAGES)[number];
+
+/** 냉동 보관 대략 기간 — 가정용 냉동실 기준 품질 유지 통상 범위. */
+const FREEZER_DEFAULT_DAYS = 90;
+const FREEZER_DAYS_BY_NAME: Record<string, number> = { 빵: 30 };
 
 /** 재료 마스터(1,011종) 분류 → 냉장고 탭 분류. 없는 분류(양념·오일·당류 등)는 '기타'. */
 const FRIDGE_CATEGORY: Record<string, string> = {
@@ -60,14 +70,24 @@ const DAYS_BY_CATEGORY: Record<string, number> = {
   과일: 5,
 };
 
-export function shelfLifeDays(name: string, fridgeCategory: string): number | null {
+export function shelfLifeDays(
+  name: string,
+  fridgeCategory: string,
+  storage: Storage = "fridge",
+): number | null {
   const key = name.trim();
+  if (storage === "freezer") return FREEZER_DAYS_BY_NAME[key] ?? FREEZER_DEFAULT_DAYS;
   if (key in DAYS_BY_NAME) return DAYS_BY_NAME[key];
   return DAYS_BY_CATEGORY[fridgeCategory] ?? null;
 }
 
-/** 담은 순간부터 보관 일수만큼 — 추정할 수 없는 재료는 null. */
-export function estimateExpiry(name: string, fridgeCategory: string, from: Date): Date | null {
-  const days = shelfLifeDays(name, fridgeCategory);
+/** 담은(옮긴) 순간부터 보관 일수만큼 — 추정할 수 없는 재료는 null. */
+export function estimateExpiry(
+  name: string,
+  fridgeCategory: string,
+  from: Date,
+  storage: Storage = "fridge",
+): Date | null {
+  const days = shelfLifeDays(name, fridgeCategory, storage);
   return days == null ? null : new Date(from.getTime() + days * 86_400_000);
 }

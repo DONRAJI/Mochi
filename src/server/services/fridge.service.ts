@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import { COMMON_INGREDIENTS } from "@/features/fridge/ingredients";
-import { estimateExpiry, fridgeCategoryOf } from "@/features/fridge/shelfLife";
+import { estimateExpiry, fridgeCategoryOf, type Storage } from "@/features/fridge/shelfLife";
 import type { CreateIngredientRequest, IngredientResponse } from "@/features/fridge/types";
 
 type IngredientRow = {
@@ -13,6 +13,7 @@ type IngredientRow = {
   category: string;
   rarity: string;
   expiresAt: Date | null;
+  storage: string;
 };
 
 type Client = Prisma.TransactionClient | typeof db;
@@ -28,6 +29,7 @@ function toResponse(i: IngredientRow, emoji: string): IngredientResponse {
     rarity: i.rarity,
     expiresAt: i.expiresAt ? i.expiresAt.toISOString() : null,
     emoji,
+    storage: i.storage === "freezer" ? "freezer" : "fridge",
   };
 }
 
@@ -91,7 +93,7 @@ export async function listIngredients(
 async function stock(
   client: Client,
   userId: string,
-  items: { name: string; category?: string; expiresAt?: string }[],
+  items: { name: string; category?: string; expiresAt?: string; storage?: Storage }[],
 ): Promise<IngredientResponse[]> {
   const now = new Date();
   const names = items.map((i) => i.name.trim()).filter(Boolean);
@@ -110,16 +112,20 @@ async function stock(
     const found = info.get(name) ?? { category: "기타", emoji: DEFAULT_EMOJI };
     const same = existing.find((e) => e.name === name);
     const category = item.category ?? same?.category ?? found.category;
+    // 보관: 이번에 고른 값 → 이미 있던 재료의 보관 → 냉장
+    const storage: Storage = item.storage ?? (same?.storage === "freezer" ? "freezer" : "fridge");
     const expiresAt = item.expiresAt
       ? new Date(item.expiresAt)
-      : estimateExpiry(name, category, now);
+      : estimateExpiry(name, category, now, storage);
 
     const row = same
       ? await client.ingredient.update({
           where: { id: same.id },
-          data: { expiresAt, createdAt: now },
+          data: { expiresAt, storage, createdAt: now },
         })
-      : await client.ingredient.create({ data: { userId, name, category, expiresAt } });
+      : await client.ingredient.create({
+          data: { userId, name, category, expiresAt, storage },
+        });
     results.push(toResponse(row, found.emoji));
   }
   return results;
@@ -145,6 +151,30 @@ export function stockIngredients(
     userId,
     names.map((name) => ({ name })),
   );
+}
+
+/**
+ * 냉장 ↔ 냉동 옮기기 — 소유자 검증 후 보관을 바꾸고, 보관 기한을 **옮긴 시점부터** 다시 추정한다
+ * (얼리면 길어지고, 꺼내 해동하면 냉장 기준으로 짧아진다). 직접 적었던 날짜도 이때는 새로 계산한다.
+ */
+export async function moveIngredient(
+  userId: string,
+  id: string,
+  storage: Storage,
+): Promise<IngredientResponse> {
+  const found = await db.ingredient.findUnique({ where: { id } });
+  if (!found || found.userId !== userId) {
+    throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
+  }
+  const row = await db.ingredient.update({
+    where: { id },
+    data: {
+      storage,
+      expiresAt: estimateExpiry(found.name, found.category, new Date(), storage),
+    },
+  });
+  const info = await lookupIngredients(db, [row.name]);
+  return toResponse(row, info.get(row.name)?.emoji ?? DEFAULT_EMOJI);
 }
 
 export async function removeIngredient(userId: string, id: string): Promise<void> {
