@@ -14,6 +14,18 @@ import type { MochiStateResponse } from "@/features/mochi/types";
  * 시각·'오늘'은 한국 기준(lib/kst) — 서버가 UTC라 `getHours()`로는 한국 오전 8시~오후 3시에 잠들어 있었다.
  */
 
+/**
+ * 기록이 있는 한국 날짜 수. eaten_at은 UTC로 저장되므로 +9시간 뒤 날짜로 센다(한국은 서머타임 없음).
+ * 날짜별 DISTINCT라 Prisma 쿼리 빌더로는 표현이 안 돼 한 줄 raw SQL(값은 바인딩 — 인젝션 안전).
+ */
+async function countGoodDays(userId: string): Promise<number> {
+  const rows = await db.$queryRaw<{ days: bigint }[]>`
+    SELECT COUNT(DISTINCT (eaten_at + interval '9 hours')::date) AS days
+    FROM meal_records
+    WHERE user_id = ${userId}`;
+  return Number(rows[0]?.days ?? 0);
+}
+
 export async function getMochiState(userId: string | null): Promise<MochiStateResponse> {
   const now = Date.now();
   const hour = kstHour(now);
@@ -25,13 +37,14 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
       growthStage: 1,
       collectedCount: 0,
       mealCount: 0,
+      goodDays: 0,
       seeds: 0,
       drawCost: DRAW_COST,
     };
   }
 
   // 씨앗은 첫 안내(StartHereCard)가 쓰는 값 — 홈에서 도감 전체를 또 부르지 않으려고 여기서 함께.
-  const [collectedCount, ateToday, user, mealCount] = await Promise.all([
+  const [collectedCount, ateToday, user, mealCount, goodDays] = await Promise.all([
     // ⚠️ `type: "mochi"` 필수. markMealEaten은 '먹었어요' 때마다 음식 CollectionEntry
     // (recipe/convenience)도 만든다 — 가챠 개편 전 음식 도감의 잔재로, 지금은 화면에 안 뜨고
     // '첫 발견' 감지용으로만 쓰인다. 타입을 안 거르면 한 끼만 기록해도 카드를 얻은 것으로
@@ -41,6 +54,7 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
     db.user.findUnique({ where: { id: userId }, select: { mochiSeeds: true } }),
     // 성장의 기준 — 지금까지 잘 먹은 날의 누적(줄지 않으므로 모찌가 작아지지 않는다).
     db.mealRecord.count({ where: { userId } }),
+    countGoodDays(userId),
   ]);
 
   let state: MochiState;
@@ -53,6 +67,7 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
     growthStage: growthStageFor(mealCount),
     collectedCount,
     mealCount,
+    goodDays,
     seeds: user?.mochiSeeds ?? 0,
     drawCost: DRAW_COST,
   };

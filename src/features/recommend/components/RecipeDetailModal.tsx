@@ -82,7 +82,14 @@ export function RecipeDetailModal({
   function planTo(date: string, label: string) {
     if (!item) return;
     addPlan.mutate(
-      { date, slot: planSlot, mode, refId: item.id, title: item.name, emoji: item.emoji ?? undefined },
+      {
+        date,
+        slot: planSlot,
+        mode,
+        refId: item.id,
+        title: item.name,
+        emoji: item.emoji ?? undefined,
+      },
       { onSuccess: () => setPlannedDay(`${label}요일 ${SLOT_LABEL[planSlot]}`) },
     );
   }
@@ -109,7 +116,10 @@ export function RecipeDetailModal({
             </p>
             {/* 뽑기 씨앗 적립 — 건강 행동의 보상(PRD 12.2) */}
             <p className="text-sm font-display text-cocoa">🌱 씨앗 +{result.seedsEarned}</p>
-            <p className="text-sm text-cocoa-faint">스트릭 {result.streakCount}일째 🍮</p>
+            {/* 연속은 이어갈 때만 — 끊겨 1일로 돌아간 순간에 숫자를 들이밀지 않는다(growth.streakNote). */}
+            {result.streakCount >= 2 && (
+              <p className="text-sm text-cocoa-faint">🍮 {result.streakCount}일째 이어가는 중</p>
+            )}
             {result.shieldUsed && (
               <p className="text-sm text-cocoa-soft">🛡️ 보호권이 스트릭을 지켜줬어요!</p>
             )}
@@ -152,7 +162,10 @@ export function RecipeDetailModal({
               <div>
                 <h3 className="text-lg font-bold text-cocoa">{item.name}</h3>
                 <p className="text-sm text-cocoa-faint">
-                  {[servingsLabel(item.minutes, item.servings) ?? item.subtitle, kcalLabel(item.kcal)]
+                  {[
+                    servingsLabel(item.minutes, item.servings) ?? item.subtitle,
+                    kcalLabel(item.kcal),
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -173,9 +186,13 @@ export function RecipeDetailModal({
                 ))}
               </ol>
             ) : mode === "eatout" ? (
-              <p className="mt-4 text-center text-sm text-cocoa-soft">맛있게 즐기고 아래로 기록해요 😊</p>
+              <p className="mt-4 text-center text-sm text-cocoa-soft">
+                맛있게 즐기고 아래로 기록해요 😊
+              </p>
             ) : mode === "convenience" ? (
-              <p className="mt-4 text-center text-sm text-cocoa-soft">가까운 편의점에서 만나요 🏪</p>
+              <p className="mt-4 text-center text-sm text-cocoa-soft">
+                가까운 편의점에서 만나요 🏪
+              </p>
             ) : mgrSourceUrl(item.id) ? (
               // 만개의레시피 인기 레시피 — 덤프에 조리 단계가 없어 원문으로 연결 (결정은 모찌, 조리법은 원문)
               <a
@@ -187,7 +204,9 @@ export function RecipeDetailModal({
                 📖 자세한 조리법 보기 — 만개의레시피
               </a>
             ) : (
-              <p className="mt-4 text-center text-sm text-cocoa-soft">재료만 있으면 금방이에요 😊</p>
+              <p className="mt-4 text-center text-sm text-cocoa-soft">
+                재료만 있으면 금방이에요 😊
+              </p>
             )}
 
             {/* 출처 표시 — CC BY 의무(만개)이자 공공데이터 예의(식약처). 지우지 말 것.
@@ -260,18 +279,24 @@ export function RecipeDetailModal({
                   : "잘 먹었어요! 🌱 씨앗 받기"}
             </Button>
             {markError && (
-              <p className="mt-2 text-center text-sm text-cocoa-soft">잠깐 안 됐어요. 다시 해볼까요?</p>
+              <p className="mt-2 text-center text-sm text-cocoa-soft">
+                잠깐 안 됐어요. 다시 해볼까요?
+              </p>
             )}
 
             {mode === "cook" &&
               item.missingIngredients.length > 0 &&
               (shopped ? (
-                <p className="mt-2 text-center text-sm text-cocoa-soft">장보기 리스트에 담았어요 🛒</p>
+                <p className="mt-2 text-center text-sm text-cocoa-soft">
+                  장보기 리스트에 담았어요 🛒
+                </p>
               ) : (
                 <button
                   type="button"
                   onClick={() =>
-                    addShopping.mutate(item.missingIngredients, { onSuccess: () => setShopped(true) })
+                    addShopping.mutate(item.missingIngredients, {
+                      onSuccess: () => setShopped(true),
+                    })
                   }
                   className="mt-2 w-full rounded-mochi border border-dashed border-mint-deep bg-cream-50 px-4 py-2.5 text-sm text-cocoa-soft transition-transform ease-jelly active:scale-[0.98]"
                 >
@@ -294,7 +319,9 @@ export function RecipeDetailModal({
                         type="button"
                         onClick={() => setPlanSlot(s)}
                         className={`rounded-mochi-sm px-2 py-0.5 text-xs transition-transform ease-jelly active:scale-90 ${
-                          planSlot === s ? "bg-lavender text-cocoa" : "bg-cream-200 text-cocoa-faint"
+                          planSlot === s
+                            ? "bg-lavender text-cocoa"
+                            : "bg-cream-200 text-cocoa-faint"
                         }`}
                       >
                         {SLOT_LABEL[s]}
