@@ -6,13 +6,10 @@ import { messages } from "@/lib/messages";
 import { advanceStreak } from "@/features/record/streak";
 import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
-import {
-  buildMealHistory,
-  availableMonths,
-  kstDayKey as kstDayKeyOf,
-  type HistoryMeal,
-} from "@/features/record/history";
+import { buildMealHistory, monthsOf, type HistoryMeal } from "@/features/record/history";
 import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
+import { kstDayKey, kstDayStart, kstMonthRange } from "@/lib/kst";
+import { isWeightStale } from "@/features/record/weightFreshness";
 import {
   computeBMR,
   computeTDEE,
@@ -179,18 +176,6 @@ export async function markMealEaten(
   });
 }
 
-/** 한국 기준 오늘 날짜 키(YYYY-MM-DD) — 씨앗 일일 상한 추적용. */
-function kstDayKey(nowMs = Date.now()): string {
-  return new Date(nowMs + 9 * 3_600_000).toISOString().slice(0, 10);
-}
-
-/** KST 자정의 UTC 순간 — 서버가 UTC(Vercel)라도 한국 기준 '오늘'을 정확히 자른다. */
-function kstDayStart(nowMs = Date.now()): Date {
-  const KST = 9 * 3_600_000;
-  const shifted = nowMs + KST;
-  return new Date(shifted - (shifted % 86_400_000) - KST);
-}
-
 /** 오늘(KST 자정 이후) 먹은 끼니 — 마이 '오늘의 기록' 스트립. 이른 순. detail이면 kcal 포함(#4). */
 export async function listTodayMeals(userId: string): Promise<TodayMealResponse[]> {
   const since = kstDayStart();
@@ -199,8 +184,14 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
       where: { userId, eatenAt: { gte: since } },
       orderBy: { eatenAt: "asc" },
       select: {
-        id: true, slot: true, mode: true, eatenAt: true, kcal: true, photoUrl: true,
-        refId: true, title: true,
+        id: true,
+        slot: true,
+        mode: true,
+        eatenAt: true,
+        kcal: true,
+        photoUrl: true,
+        refId: true,
+        title: true,
       },
     }),
     db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
@@ -230,7 +221,11 @@ export async function listTodayMeals(userId: string): Promise<TodayMealResponse[
 async function resolveMealTitles(
   rows: { mode: string; refId: string | null }[],
 ): Promise<Map<string, string>> {
-  const ids = { cook: new Set<string>(), eatout: new Set<string>(), convenience: new Set<string>() };
+  const ids = {
+    cook: new Set<string>(),
+    eatout: new Set<string>(),
+    convenience: new Set<string>(),
+  };
   for (const r of rows) {
     if (r.refId && (r.mode === "cook" || r.mode === "eatout" || r.mode === "convenience")) {
       ids[r.mode].add(r.refId);
@@ -238,10 +233,16 @@ async function resolveMealTitles(
   }
   const [recipes, menus, convs] = await Promise.all([
     ids.cook.size
-      ? db.recipe.findMany({ where: { id: { in: [...ids.cook] } }, select: { id: true, name: true } })
+      ? db.recipe.findMany({
+          where: { id: { in: [...ids.cook] } },
+          select: { id: true, name: true },
+        })
       : Promise.resolve([]),
     ids.eatout.size
-      ? db.menu.findMany({ where: { id: { in: [...ids.eatout] } }, select: { id: true, name: true } })
+      ? db.menu.findMany({
+          where: { id: { in: [...ids.eatout] } },
+          select: { id: true, name: true },
+        })
       : Promise.resolve([]),
     ids.convenience.size
       ? db.convenienceItem.findMany({
@@ -258,22 +259,18 @@ async function resolveMealTitles(
 /**
  * 식사·체중 회고 타임라인 (마이 '기록 되돌아보기', PRD 6장 회고 흐름).
  * 월(month)을 골라 그 달을 page 단위로 돌려준다. detail이면 kcal 포함(#4).
- * delta는 전체 기록 기준으로 계산한 뒤 월/페이지로 잘라, 달 경계를 넘는 "다음날 체중"도 정확.
- * 사진은 반환하는 페이지분만 서명(비공개 버킷) — 페이지 밖은 서명 호출 안 함.
+ *
+ * 식사는 **고른 달만** 불러온다 — 예전엔 페이지를 넘길 때마다 가입 이후 전체 식사와 그 이름(카탈로그
+ * 조회)을 다 읽고 잘라내서, 오래 쓸수록 느려졌다. 달 칩은 시각만 읽어 만든다.
+ * 체중은 하루 한두 건이라 전부 읽는다 — delta(직전 기록일 대비)가 달 경계를 넘어도 정확하도록.
+ * 사진은 반환하는 페이지분만 서명(비공개 버킷).
  */
 export async function listMealHistory(
   userId: string,
   opts: { month?: string; page: number; size: number },
 ): Promise<MealHistoryResponse> {
-  const [mealRows, weightRows, user] = await Promise.all([
-    db.mealRecord.findMany({
-      where: { userId },
-      orderBy: { eatenAt: "desc" },
-      select: {
-        id: true, slot: true, mode: true, refId: true, kcal: true, photoUrl: true, eatenAt: true,
-        title: true, // 직접 입력 기록의 이름(카탈로그 항목은 refId로 조회)
-      },
-    }),
+  const [mealTimes, weightRows, user] = await Promise.all([
+    db.mealRecord.findMany({ where: { userId }, select: { eatenAt: true } }),
     db.weightLog.findMany({
       where: { userId },
       orderBy: { loggedAt: "desc" },
@@ -281,10 +278,37 @@ export async function listMealHistory(
     }),
     db.user.findUnique({ where: { id: userId }, select: { displayMode: true } }),
   ]);
+  const weights = weightRows.map((w) => ({
+    weight: Number(w.weight),
+    loggedAt: w.loggedAt.toISOString(),
+  }));
+
+  const months = monthsOf([
+    ...mealTimes.map((m) => m.eatenAt.toISOString()),
+    ...weights.map((w) => w.loggedAt),
+  ]);
+  // 요청 달이 유효하면 그 달, 아니면 가장 최근 기록 달, 기록이 없으면 이번 달(KST).
+  const month =
+    opts.month && months.includes(opts.month) ? opts.month : (months[0] ?? kstDayKey().slice(0, 7));
+
+  const mealRows = await db.mealRecord.findMany({
+    where: { userId, eatenAt: kstMonthRange(month) },
+    orderBy: { eatenAt: "desc" },
+    select: {
+      id: true,
+      slot: true,
+      mode: true,
+      refId: true,
+      kcal: true,
+      photoUrl: true,
+      eatenAt: true,
+      title: true, // 직접 입력 기록의 이름(카탈로그 항목은 refId로 조회)
+    },
+  });
   const detail = user?.displayMode === "detail";
   const titles = await resolveMealTitles(mealRows);
 
-  // 사진 경로는 아직 서명 전(raw) — 월/페이지로 슬라이스 후 반환분만 서명한다.
+  // 사진 경로는 아직 서명 전(raw) — 페이지로 자른 뒤 반환분만 서명한다.
   const meals: HistoryMeal[] = mealRows.map((r) => ({
     id: r.id,
     slot: r.slot,
@@ -294,17 +318,8 @@ export async function listMealHistory(
     photoUrl: r.photoUrl, // raw 경로
     eatenAt: r.eatenAt.toISOString(),
   }));
-  const weights = weightRows.map((w) => ({ weight: Number(w.weight), loggedAt: w.loggedAt.toISOString() }));
 
-  const allDays = buildMealHistory(meals, weights); // 전체(delta 계산 위해)
-  const months = availableMonths(allDays);
-  // 요청 달이 유효하면 그 달, 아니면 가장 최근 기록 달, 기록이 없으면 이번 달(KST).
-  const month =
-    opts.month && months.includes(opts.month)
-      ? opts.month
-      : (months[0] ?? kstDayKeyOf(new Date().toISOString()).slice(0, 7));
-
-  const monthDays = allDays.filter((d) => d.date.startsWith(month));
+  const monthDays = buildMealHistory(meals, weights).filter((d) => d.date.startsWith(month));
   const totalPages = Math.max(1, Math.ceil(monthDays.length / opts.size));
   const page = Math.min(Math.max(0, opts.page), totalPages - 1);
   const days = monthDays.slice(page * opts.size, page * opts.size + opts.size);
@@ -359,12 +374,14 @@ export async function listWeights(userId: string, size: number): Promise<WeightL
   return rows.reverse().map(toWeight);
 }
 
-function toProfile(row: {
-  birthYear: number | null;
-  gender: string | null;
-  heightCm: number | null;
-  activityLevel: string | null;
-} | null): ProfileResponse {
+function toProfile(
+  row: {
+    birthYear: number | null;
+    gender: string | null;
+    heightCm: number | null;
+    activityLevel: string | null;
+  } | null,
+): ProfileResponse {
   const p = {
     birthYear: row?.birthYear ?? null,
     gender: (row?.gender ?? null) as ProfileResponse["gender"],
@@ -384,10 +401,7 @@ export async function getProfile(userId: string): Promise<ProfileResponse> {
 }
 
 /** opt-in 프로필 저장(upsert). 마이 탭에서 원하는 사람만. */
-export async function saveProfile(
-  userId: string,
-  input: ProfileRequest,
-): Promise<ProfileResponse> {
+export async function saveProfile(userId: string, input: ProfileRequest): Promise<ProfileResponse> {
   const data = {
     birthYear: input.birthYear ?? null,
     gender: input.gender ?? null,
@@ -402,10 +416,13 @@ export async function saveProfile(
   return toProfile(row);
 }
 
-/** 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee, gender}(kcal/day), 아니면 null. (넛지·예산 공용) */
+/**
+ * 프로필 4항목 + 최신 체중이 모두 있으면 {bmr, tdee, gender, weightLoggedAt}(kcal/day), 아니면 null.
+ * (넛지·예산 공용) weightLoggedAt은 계산에 쓴 체중의 기록 시각 — 오래됐는지 알리는 데 쓴다.
+ */
 async function computeUserEnergy(
   userId: string,
-): Promise<{ bmr: number; tdee: number; gender: Gender } | null> {
+): Promise<{ bmr: number; tdee: number; gender: Gender; weightLoggedAt: Date } | null> {
   const [profile, latestWeight] = await Promise.all([
     db.userProfile.findUnique({ where: { userId } }),
     db.weightLog.findFirst({ where: { userId }, orderBy: { loggedAt: "desc" } }),
@@ -430,6 +447,7 @@ async function computeUserEnergy(
     tdee: computeTDEE(bmr, profile.activityLevel as ActivityLevel),
     // 예산 하한이 성별 최소 섭취량이라 함께 넘긴다(energy.ts computeCalorieBudget)
     gender: profile.gender as Gender,
+    weightLoggedAt: latestWeight.loggedAt,
   };
 }
 
@@ -458,7 +476,12 @@ export async function getBalanceNudge(userId: string): Promise<Nudge> {
  */
 export async function getDailyBudget(userId: string): Promise<DailyBudgetResponse> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { displayMode: true } });
-  if (user?.displayMode !== "detail") return { budget: null };
+  if (user?.displayMode !== "detail") return { budget: null, weightStale: false };
   const energy = await computeUserEnergy(userId);
-  return { budget: energy ? computeCalorieBudget(energy.tdee, energy.gender) : null };
+  if (!energy) return { budget: null, weightStale: false };
+  return {
+    budget: computeCalorieBudget(energy.tdee, energy.gender),
+    // 예산은 최신 체중으로 계산한다 — 오래된 체중이면 예산이 실제보다 높게 나온다.
+    weightStale: isWeightStale(energy.weightLoggedAt.getTime()),
+  };
 }

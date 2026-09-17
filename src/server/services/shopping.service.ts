@@ -14,7 +14,10 @@ export async function listShopping(userId: string): Promise<ShoppingItemResponse
 }
 
 /** 여러 재료 담기(중복은 무시 — userId+name unique). 추가구매 재료 한 번에. */
-export async function addShopping(userId: string, names: string[]): Promise<ShoppingItemResponse[]> {
+export async function addShopping(
+  userId: string,
+  names: string[],
+): Promise<ShoppingItemResponse[]> {
   const clean = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
   await Promise.all(
     clean.map((name) =>
@@ -52,7 +55,8 @@ export async function moveCheckedToFridge(userId: string): Promise<ShoppingItemR
       ...checked.map((c) =>
         db.ingredient.create({ data: { userId, name: c.name, category: "기타" } }),
       ),
-      db.shoppingItem.deleteMany({ where: { userId, checked: true } }),
+      // 읽은 항목만 지운다 — 그 사이에 새로 체크한 항목이 냉장고에 안 들어간 채 사라지지 않게.
+      db.shoppingItem.deleteMany({ where: { userId, id: { in: checked.map((c) => c.id) } } }),
     ]);
   }
   return listShopping(userId);

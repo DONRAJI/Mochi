@@ -99,6 +99,9 @@ export function useSetDisplayMode() {
       qc.setQueryData(meKey, user);
       qc.invalidateQueries({ queryKey: ["recommend"] });
       qc.invalidateQueries({ queryKey: ["record"] });
+      // 음식 검색·'밖에서 먹기'도 kcal을 싣는지 서버가 모드로 정하고 10분 캐시한다 — 안 비우면
+      // 숫자 모드로 바꿔도 한동안 칼로리가 안 보이고, 편하게로 돌려도 숫자가 남았다(불변 #2).
+      qc.invalidateQueries({ queryKey: ["foods"] });
     },
   });
 }

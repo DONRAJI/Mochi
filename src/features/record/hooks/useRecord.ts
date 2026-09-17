@@ -16,6 +16,7 @@ import {
   fetchMealHistory,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
+import { estimateSlot } from "../slot";
 import type { MarkMealRequest, MealSlot, ProfileRequest } from "../types";
 
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
@@ -51,7 +52,11 @@ export function useDeleteMeal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteMeal(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["record"] }),
+    // 모찌 표정(오늘 먹음)·성장(누적 기록 수)도 기록 수에서 나온다.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["record"] });
+      qc.invalidateQueries({ queryKey: ["mochi"] });
+    },
   });
 }
 
@@ -92,7 +97,9 @@ export function useRecordPhoto() {
   const qc = useQueryClient();
   const cheer = useMochiStore((s) => s.cheer);
   return useMutation({
-    mutationFn: (file: Blob) => recordPhoto(file),
+    // 끼니를 보내지 않으면 서버가 추정한다 — 예전엔 서버(UTC) 시각으로 추정돼 점심이 '간식', 저녁이
+    // '아침'으로 남았고, 저녁 리마인더도 '오늘 저녁 기록 있음'을 못 알아봤다.
+    mutationFn: (file: Blob) => recordPhoto(file, { slot: estimateSlot(new Date()) }),
     onSuccess: () => {
       cheer();
       qc.invalidateQueries({ queryKey: ["record"] });

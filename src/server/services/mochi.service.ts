@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { DRAW_COST } from "@/features/collection/gacha";
+import { kstDayStart, kstHour } from "@/lib/kst";
 import { growthStageFor } from "@/features/mochi/growth";
 import type { MochiState } from "@/types/mochi";
 import type { MochiStateResponse } from "@/features/mochi/types";
@@ -10,16 +11,13 @@ import type { MochiStateResponse } from "@/features/mochi/types";
  * 파생 규칙: 밤(23~6시)→sleepy · 오늘 먹은 기록 있으면→happy · 그 외→idle.
  * 성장 단계는 **누적 기록 수**로 (growth.ts — 도감=뽑기 운, 성장=꾸준함으로 역할 분리).
  * 비로그인은 시간대만.
+ * 시각·'오늘'은 한국 기준(lib/kst) — 서버가 UTC라 `getHours()`로는 한국 오전 8시~오후 3시에 잠들어 있었다.
  */
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
 
 export async function getMochiState(userId: string | null): Promise<MochiStateResponse> {
-  const now = new Date();
-  const isNight = now.getHours() >= 23 || now.getHours() < 6;
+  const now = Date.now();
+  const hour = kstHour(now);
+  const isNight = hour >= 23 || hour < 6;
 
   if (!userId) {
     return {
@@ -39,7 +37,7 @@ export async function getMochiState(userId: string | null): Promise<MochiStateRe
     // '첫 발견' 감지용으로만 쓰인다. 타입을 안 거르면 한 끼만 기록해도 카드를 얻은 것으로
     // 집계돼 모찌가 멋대로 자라고, 도감(collection.service는 type:"mochi"로 거름)과 어긋난다.
     db.collectionEntry.count({ where: { userId, type: "mochi" } }),
-    db.mealRecord.count({ where: { userId, eatenAt: { gte: startOfDay(now) } } }),
+    db.mealRecord.count({ where: { userId, eatenAt: { gte: kstDayStart(now) } } }),
     db.user.findUnique({ where: { id: userId }, select: { mochiSeeds: true } }),
     // 성장의 기준 — 지금까지 잘 먹은 날의 누적(줄지 않으므로 모찌가 작아지지 않는다).
     db.mealRecord.count({ where: { userId } }),

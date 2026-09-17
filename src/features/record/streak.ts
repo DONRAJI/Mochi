@@ -4,19 +4,18 @@
  * - 하루 이상 빠지면: 보호권이 있으면 소진하고 이어감(+1), 없으면 오늘의 1부터 새 시작(0 아님).
  * - 연속 7일마다 보호권 +1 (최대 3). 죄책감 제로: 리셋도 '새로운 시작', 비난 없음.
  */
-const DAY_MS = 86_400_000;
+import { kstDayNumber } from "@/lib/kst";
+
 const SHIELD_CAP = 3;
 const REGEN_EVERY = 7;
 
-function startOfDay(d: Date): number {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x.getTime();
-}
-
-/** 마지막 기록일→오늘 사이 온전한 하루 수 (0=같은 날, 1=어제 이어서, ≥2=빠진 날 있음). */
+/**
+ * 마지막 기록일→오늘 사이 한국(KST) 달력 기준 하루 수 (0=같은 날, 1=어제 이어서, ≥2=빠진 날 있음).
+ * 이 함수는 서버(UTC)에서 돈다 — 예전 `setHours(0)`는 하루 경계가 한국 오전 9시라, 같은 날 아침 8시·
+ * 10시 기록이 이틀로 세져 스트릭이 +1 되고, 밤 11시·다음 날 아침 8시는 같은 날로 세져 안 올랐다.
+ */
 export function dayGap(last: Date, now: Date): number {
-  return Math.round((startOfDay(now) - startOfDay(last)) / DAY_MS);
+  return kstDayNumber(now.getTime()) - kstDayNumber(last.getTime());
 }
 
 export interface StreakState {

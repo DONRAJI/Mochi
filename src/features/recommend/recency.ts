@@ -1,3 +1,4 @@
+import { kstDayNumber } from "@/lib/kst";
 /**
  * 최근에 먹은 건 아래로 — 추천의 다양성 신호 (순수 함수).
  *
@@ -28,9 +29,7 @@ export function recencyPenalty(daysSinceEaten: number | null): number {
  * "어제 먹었는데 오늘도 1등"이 그대로 남는다. 달력 기준이 사용자 감각과 맞다.
  */
 export function daysBetweenKst(eatenAtMs: number, nowMs: number): number {
-  const KST = 9 * 3_600_000;
-  const day = (ms: number) => Math.floor((ms + KST) / 86_400_000);
-  return Math.max(0, day(nowMs) - day(eatenAtMs));
+  return Math.max(0, kstDayNumber(nowMs) - kstDayNumber(eatenAtMs));
 }
 
 /** 마지막 섭취 시각(없으면 null) → 감점. 서비스가 쓰는 진입점. */

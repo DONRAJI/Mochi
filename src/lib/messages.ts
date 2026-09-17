@@ -46,4 +46,9 @@ export const messages = {
     rest: "쉬어가도 괜찮아요.",
     expirySoon: (name: string) => `${name} 곧 써볼까요?`,
   },
+  /** 체중 기록이 오래됐을 때(weightFreshness) — 숫자 모드에서만. 며칠 지났는지는 말하지 않는다. */
+  weight: {
+    staleBudget: "⚖️ 체중을 새로 남기면 예산이 지금 몸에 맞춰져요",
+    staleHere: "요즘 체중도 한 번 남겨볼까요? 칼로리 예산이 지금 몸에 맞춰져요 🌿",
+  },
 } as const;

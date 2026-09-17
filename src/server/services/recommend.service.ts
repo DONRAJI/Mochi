@@ -63,6 +63,50 @@ async function recentlyEatenMap(
   return map;
 }
 
+/**
+ * 공용 요리 카탈로그 캐시 — 레시피(내 요리 제외)·재료 마스터·재료 등장 빈도.
+ *
+ * 요리 추천은 한 페이지를 넘길 때마다 레시피 1천여 개(재료·조리단계 배열 포함)와 재료 마스터를 DB에서
+ * 통째로 읽고, 빈도표를 다시 만들었다. 이 셋은 인제스트·시드 때만 바뀌므로 인스턴스마다 10분 캐시한다
+ * (인메모리 랭킹 구조는 그대로 — workflow '뺀 것'의 DB 페이징과는 다른 결정).
+ * 재적재 후엔 최대 10분 옛 카탈로그가 보일 수 있다. 동시에 들어온 요청은 같은 조회를 공유한다.
+ */
+const CATALOG_TTL_MS = 10 * 60_000;
+
+function loadSeedRecipes() {
+  return db.recipe.findMany({ where: { ownerId: null } });
+}
+
+interface CookCatalog {
+  recipes: Awaited<ReturnType<typeof loadSeedRecipes>>;
+  canon: ReturnType<typeof buildCanonicalMap>;
+  ingFreq: Map<string, number>;
+}
+
+let catalogCache: { expiresAt: number; value: Promise<CookCatalog> } | null = null;
+
+function getCookCatalog(): Promise<CookCatalog> {
+  const now = Date.now();
+  if (catalogCache && catalogCache.expiresAt > now) return catalogCache.value;
+
+  const value = (async () => {
+    const [recipes, masters] = await Promise.all([
+      loadSeedRecipes(),
+      db.ingredientMaster.findMany({ select: { name: true, aliases: true } }),
+    ]);
+    const canon = buildCanonicalMap(masters);
+    // 카탈로그 전체로 재료 등장 빈도 집계 → '흔한 재료'로 만든 요리를 자취 점수에 반영.
+    const ingFreq = buildIngredientFrequency(recipes, (name) => canonicalize(name, canon));
+    return { recipes, canon, ingFreq };
+  })();
+  catalogCache = { expiresAt: now + CATALOG_TTL_MS, value };
+  // 실패한 조회는 캐시에 남기지 않는다 — 다음 요청이 다시 시도하게.
+  value.catch(() => {
+    if (catalogCache?.value === value) catalogCache = null;
+  });
+  return value;
+}
+
 export async function getRecommendations(
   mode: MealMode,
   userId: string | null,
@@ -94,24 +138,24 @@ export async function getRecommendations(
 
   if (mode === "cook") {
     // 시드 카탈로그(ownerId=null) + 내 요리(ownerId=userId)만. 남의 요리는 노출 안 함.
-    const [recipes, fridge, masters] = await Promise.all([
-      db.recipe.findMany({
-        where: { OR: [{ ownerId: null }, ...(userId ? [{ ownerId: userId }] : [])] },
-      }),
+    // 공용 카탈로그(재료 표준명·등장 빈도 포함)는 캐시에서, 내 요리·냉장고는 매번.
+    const [catalog, myRecipes, fridge] = await Promise.all([
+      getCookCatalog(),
+      userId ? db.recipe.findMany({ where: { ownerId: userId } }) : Promise.resolve([]),
       userId
         ? db.ingredient.findMany({ where: { userId }, select: { name: true, expiresAt: true } })
         : Promise.resolve([] as { name: string; expiresAt: Date | null }[]),
-      db.ingredientMaster.findMany({ select: { name: true, aliases: true } }),
     ]);
     const now = new Date();
-    const canon = buildCanonicalMap(masters);
-    // 카탈로그 전체로 재료 등장 빈도 집계 → '흔한 재료'로 만든 요리를 자취 점수에 반영(추가 쿼리 0).
-    const ingFreq = buildIngredientFrequency(recipes, (name) => canonicalize(name, canon));
+    const { canon, ingFreq } = catalog;
+    const recipes = [...catalog.recipes, ...myRecipes];
     const owned = fridge.map((f) => canonicalize(f.name, canon));
     const ownedSet = new Set(owned);
     // 유통기한 임박(3일 이내·지난 것 포함) 재료 — 먼저 쓰도록 추천 가산점 (PRD 5.2).
     const expiringSet = new Set(
-      fridge.filter((f) => isExpiringSoon(f.expiresAt, now)).map((f) => canonicalize(f.name, canon)),
+      fridge
+        .filter((f) => isExpiringSoon(f.expiresAt, now))
+        .map((f) => canonicalize(f.name, canon)),
     );
     // 취향 라벨도 표준명으로 정규화(토마토→방울토마토)해 재료와 정확일치시킨다.
     const canonLabels = (arr: string[]) => arr.map((l) => canonicalize(l, canon));
@@ -129,7 +173,10 @@ export async function getRecommendations(
     const candidateRecipes = searching
       ? recipes.filter((r) => {
           if (searchQ && !nameMatches(r.name, searchQ)) return false;
-          if (searchIngs.length && !ingredientsMatch(recipeSearchTokens(r.ingredients, canon), searchIngs))
+          if (
+            searchIngs.length &&
+            !ingredientsMatch(recipeSearchTokens(r.ingredients, canon), searchIngs)
+          )
             return false;
           return true;
         })
@@ -207,7 +254,10 @@ export async function getRecommendations(
         key:
           c.matchRate +
           preferenceScore(ingredientMatcher(c.ingredients.map((i) => i.name)), likesC, dislikesC) +
-          expiryBonus(c.ingredients.map((i) => i.name), expiringSet) +
+          expiryBonus(
+            c.ingredients.map((i) => i.name),
+            expiringSet,
+          ) +
           // 자취생이 혼자 할 만한 현실적인 요리를 위로 — 쉬움(재료·단계·시간) + 흔한 재료 비율.
           soloFriendlyScore({
             ingredientCount: c.ingredients.length,
@@ -216,7 +266,7 @@ export async function getRecommendations(
             commonRatio: commonIngredientRatio(
               c.ingredients.map((i) => i.name),
               ingFreq,
-              recipes.length,
+              catalog.recipes.length,
             ),
           }) -
           // 최근에 먹은 건 아래로(제외 아님) — 어제 먹은 요리가 오늘도 1등이던 문제.
@@ -236,7 +286,8 @@ export async function getRecommendations(
       });
       const latest = new Map<string, string>();
       for (const row of photoRows) {
-        if (row.refId && row.photoUrl && !latest.has(row.refId)) latest.set(row.refId, row.photoUrl);
+        if (row.refId && row.photoUrl && !latest.has(row.refId))
+          latest.set(row.refId, row.photoUrl);
       }
       await Promise.all(
         ranked.map(async (c) => {
