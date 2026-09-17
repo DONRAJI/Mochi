@@ -31,6 +31,10 @@ const WEIGHTS: [CardRarity, number][] = [
  * 먹기/기록으로 얻는 씨앗 수 (PRD 12.2).
  * base +1은 **그날 그 끼니 슬롯 '처음' 기록일 때만** — 지웠다 재등록 반복으로는 안 나온다(farming 차단).
  * 첫 발견 +1, 스트릭 이어감 +1, 7·14·30일 마일스톤 +3 (이들은 본래 1회성이라 재등록에 안 나옴).
+ *
+ * 첫 발견도 **그 끼니의 첫 기록일 때만**(2026-09-17): 직접 입력·음식 사전의 첫 발견은 '같은 이름을 기록한
+ * 적 있나'로 판단해서(discovery.ts), 기록을 지우면 다시 첫 발견이 됐다 — 지웠다 다시 기록하는 반복으로
+ * 일일 상한까지 채울 수 있었다. 끼니 첫 기록에 묶으면 재등록엔 끼니·발견 둘 다 안 나온다.
  */
 export function mealSeeds(o: {
   firstMealForSlot: boolean;
@@ -39,7 +43,7 @@ export function mealSeeds(o: {
   streakCount: number;
 }): number {
   let s = o.firstMealForSlot ? 1 : 0;
-  if (o.firstDiscovery) s += 1;
+  if (o.firstDiscovery && o.firstMealForSlot) s += 1;
   if (o.streakAdvanced) {
     s += 1;
     if (o.streakCount === 7 || o.streakCount === 14 || o.streakCount === 30) s += 3;

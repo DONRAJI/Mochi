@@ -197,7 +197,8 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
                       meal={m}
                       resolveDate={resolveDate}
                       onMove={(id, targetDate) => move.mutate({ id, date: targetDate })}
-                      onEat={(id) => eat.mutate(id)}
+                      // '먹었어요'는 오늘 칸에만 — 기록은 누른 날로 남아서 다른 날 칸에서 누르면 달력과 어긋난다
+                      onEat={isToday ? (id) => eat.mutate(id) : undefined}
                       onRemove={(id) => remove.mutate(id)}
                     />
                   ))}
@@ -226,7 +227,8 @@ function DraggableMeal({
   meal: PlannedMealResponse;
   resolveDate: (x: number, y: number) => string | null;
   onMove: (id: string, date: string) => void;
-  onEat: (id: string) => void;
+  /** 없으면 '먹었어요' 버튼을 숨긴다(오늘이 아닌 날) */
+  onEat?: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
   const controls = useDragControls();
@@ -269,13 +271,15 @@ function DraggableMeal({
         <span className="text-xs text-cocoa-faint">먹음 ✓</span>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={() => onEat(meal.id)}
-            className="rounded-mochi-sm bg-mint px-2 py-0.5 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
-          >
-            먹었어요
-          </button>
+          {onEat && (
+            <button
+              type="button"
+              onClick={() => onEat(meal.id)}
+              className="rounded-mochi-sm bg-mint px-2 py-0.5 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
+            >
+              먹었어요
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onRemove(meal.id)}

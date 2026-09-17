@@ -155,6 +155,11 @@ export async function eatPlan(userId: string, id: string): Promise<MealRecordRes
   if (!plan || plan.userId !== userId) {
     throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
   }
+  // 기록은 늘 누른 시각(오늘)으로 남는다 — 목요일 계획을 수요일에 '먹었어요'하면 기록은 수요일인데
+  // 달력은 목요일에 '먹음 ✓'이 붙어 어긋났다. 오늘(한국 날짜) 계획만 받는다(화면도 오늘 칸에만 버튼).
+  if (plan.date.toISOString().slice(0, 10) !== kstDayKey()) {
+    throw new AppError("VALIDATION", "오늘 식단만 '먹었어요'로 남길 수 있어요 🙂", 400);
+  }
   // 먼저 '먹음'으로 조건부 표시 — 예전엔 기록부터 남기고 표시해서, 두 번 누르거나 이미 먹은 계획을
   // 다시 누르면 같은 끼니가 두 번 기록됐다.
   const claimed = await db.plannedMeal.updateMany({

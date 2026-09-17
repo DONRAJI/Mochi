@@ -23,10 +23,10 @@ describe("모찌 뽑기 경제", () => {
     expect(
       mealSeeds({ firstMealForSlot: false, firstDiscovery: false, streakAdvanced: false, streakCount: 3 }),
     ).toBe(0);
-    // 재등록이어도 첫 발견 보너스는 별개(본래 1회성) — 실제론 재등록 시 firstDiscovery도 false
+    // 재등록이면 첫 발견도 없다 — 기록을 지우면 이름 기준 첫 발견이 다시 참이 되는 반복을 막는다
     expect(
       mealSeeds({ firstMealForSlot: false, firstDiscovery: true, streakAdvanced: false, streakCount: 3 }),
-    ).toBe(1);
+    ).toBe(0);
   });
   it("씨앗: 첫 발견 +1", () => {
     expect(
