@@ -27,6 +27,11 @@ export function kstHour(ms = Date.now()): number {
   return new Date(ms + KST_OFFSET_MS).getUTCHours();
 }
 
+/** KST 요일 (0=일 … 6=토). 일 번호 0(1970-01-01)이 목요일. */
+export function kstWeekday(ms = Date.now()): number {
+  return (kstDayNumber(ms) + 4) % 7;
+}
+
 /** "YYYY-MM" → 그 달의 KST 시작 순간 이상 · 다음 달 시작 미만. */
 export function kstMonthRange(month: string): { gte: Date; lt: Date } {
   const [y, m] = month.split("-").map(Number);

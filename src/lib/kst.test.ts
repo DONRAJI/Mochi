@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { kstDayKey, kstDayNumber, kstDayStart, kstHour, kstMonthRange } from "./kst";
+import { kstDayKey, kstDayNumber, kstDayStart, kstHour, kstMonthRange, kstWeekday } from "./kst";
 
 // 테스트는 시각을 전부 오프셋까지 적는다 — 실행 기기(로컬 KST · CI UTC) 시간대와 무관하게.
 const t = (iso: string) => new Date(iso).getTime();
@@ -32,5 +32,9 @@ describe("KST 날짜·시각", () => {
       lt: new Date("2026-10-01T00:00:00+09:00"),
     });
     expect(kstMonthRange("2026-12").lt).toEqual(new Date("2027-01-01T00:00:00+09:00"));
+  });
+  it("요일은 한국 날짜 기준 — UTC로는 토요일 밤이어도 한국은 일요일", () => {
+    expect(kstWeekday(t("2026-09-17T12:00:00+09:00"))).toBe(4); // 목
+    expect(kstWeekday(t("2026-09-20T01:00:00+09:00"))).toBe(0); // 일 (UTC 19일 토 16시)
   });
 });
