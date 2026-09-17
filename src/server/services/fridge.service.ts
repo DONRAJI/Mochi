@@ -118,14 +118,13 @@ async function stock(
       ? new Date(item.expiresAt)
       : estimateExpiry(name, category, now, storage);
 
-    const row = same
-      ? await client.ingredient.update({
-          where: { id: same.id },
-          data: { expiresAt, storage, createdAt: now },
-        })
-      : await client.ingredient.create({
-          data: { userId, name, category, expiresAt, storage },
-        });
+    // (사용자, 이름) 유니크라 upsert — 동시에 두 요청이 와도 하나로 모인다(연타·장보기 이동 겹침).
+    // 이미 있으면 분류는 그대로 두고 담은 시각·보관·기한만 새로.
+    const row = await client.ingredient.upsert({
+      where: { userId_name: { userId, name } },
+      create: { userId, name, category, expiresAt, storage },
+      update: { expiresAt, storage, createdAt: now },
+    });
     results.push(toResponse(row, found.emoji));
   }
   return results;

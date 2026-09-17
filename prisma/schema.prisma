@@ -332,6 +332,7 @@ model Ingredient {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, name]) // 같은 재료는 하나 — 다시 담으면 갱신(fridge.service stock)
   @@index([userId])
   @@map("ingredients")
 }
