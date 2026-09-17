@@ -1,6 +1,13 @@
 import "server-only";
 import { db } from "@/server/db";
-import { kstDayStart } from "@/lib/kst";
+import { kstDayKey, kstDayNumber, kstDayStart } from "@/lib/kst";
+import { DRAW_COST } from "@/features/collection/gacha";
+import {
+  pickExpiringIngredient,
+  reminderMessage,
+  type ReminderContext,
+  type ReminderMessage,
+} from "@/features/notify/reminder";
 import { sendPush } from "@/server/push/webpush";
 import { sendFcm } from "@/server/push/fcm";
 
@@ -85,10 +92,68 @@ export interface ReminderRunResult {
   stale: number; // 죽은 구독(404/410) 정리 수
 }
 
-/** 저녁 리마인더 문구 — FCM(네이티브)은 서버가 내용을 싣는다. 웹푸시 쪽 문구는 sw.js에. */
-const REMINDER_TITLE = "모찌";
-const REMINDER_BODY = "오늘 저녁 뭐 먹을지, 모찌가 골라놨어요 🍽️";
-const REMINDER_URL = "/meals";
+const DAY_MS = 86_400_000;
+
+/**
+ * 사용자별 리마인더 상황(오늘 저녁 계획·임박 재료·뽑기 가능) — 발송 대상 전체를 쿼리 세 번으로.
+ * 문구 선택 규칙은 features/notify/reminder.ts(순수).
+ */
+async function reminderContexts(
+  userIds: string[],
+  nowMs = Date.now(),
+): Promise<Map<string, ReminderContext>> {
+  const map = new Map<string, ReminderContext>();
+  if (userIds.length === 0) return map;
+
+  const now = new Date(nowMs);
+  const [plans, ingredients, users] = await Promise.all([
+    // 계획 날짜는 "YYYY-MM-DD"를 UTC 자정으로 저장한다(plan.service) — 한국 날짜 키로 맞춘다.
+    db.plannedMeal.findMany({
+      where: {
+        userId: { in: userIds },
+        date: new Date(kstDayKey(nowMs)),
+        eaten: false,
+        OR: [{ slot: "dinner" }, { slot: null }],
+      },
+      orderBy: { createdAt: "asc" },
+      select: { userId: true, title: true },
+    }),
+    db.ingredient.findMany({
+      where: {
+        userId: { in: userIds },
+        expiresAt: { gte: new Date(nowMs - DAY_MS), lte: new Date(nowMs + 2 * DAY_MS) },
+      },
+      select: { userId: true, name: true, expiresAt: true },
+    }),
+    db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, mochiSeeds: true } }),
+  ]);
+
+  for (const u of users) {
+    map.set(u.id, {
+      plannedDinner: plans.find((p) => p.userId === u.id)?.title ?? null,
+      expiringIngredient: pickExpiringIngredient(
+        ingredients.filter((i) => i.userId === u.id),
+        now,
+      ),
+      canDraw: u.mochiSeeds >= DRAW_COST,
+      dayNumber: kstDayNumber(nowMs),
+      userKey: u.id,
+    });
+  }
+  return map;
+}
+
+/** 한 사용자의 오늘 리마인더 문구 — 웹푸시를 받은 서비스 워커가 /api/push/message로 가져간다. */
+export async function getReminderMessage(userId: string): Promise<ReminderMessage> {
+  const ctx = (await reminderContexts([userId])).get(userId) ?? {
+    plannedDinner: null,
+    expiringIngredient: null,
+    canDraw: false,
+    dayNumber: kstDayNumber(Date.now()),
+    userKey: userId,
+  };
+  return reminderMessage(ctx);
+}
 
 /**
  * 저녁 리마인더 1회 실행 (Vercel Cron이 KST 18:30에 호출).
@@ -111,6 +176,8 @@ export async function sendDinnerReminders(): Promise<ReminderRunResult> {
   });
   const ateDinner = new Set(eaten.map((e) => e.userId));
   const nativeUsers = new Set(devices.map((d) => d.userId));
+  // 앱으로 보낼 사람만 문구를 미리 고른다(웹푸시는 기기가 받은 뒤 /api/push/message로 가져간다).
+  const contexts = await reminderContexts([...nativeUsers].filter((id) => !ateDinner.has(id)));
 
   const result: ReminderRunResult = { sent: 0, skipped: 0, stale: 0 };
 
@@ -119,7 +186,11 @@ export async function sendDinnerReminders(): Promise<ReminderRunResult> {
       result.skipped += 1;
       continue;
     }
-    const r = await sendFcm(device.token, REMINDER_TITLE, REMINDER_BODY, REMINDER_URL);
+    const ctx = contexts.get(device.userId);
+    const msg = ctx
+      ? reminderMessage(ctx)
+      : { title: "모찌", body: "오늘 저녁 뭐 먹을지, 모찌가 골라놨어요 🍽️", url: "/meals" };
+    const r = await sendFcm(device.token, msg.title, msg.body, msg.url);
     if (r === "gone") {
       await db.deviceToken.delete({ where: { id: device.id } }).catch(() => {});
       result.stale += 1;
