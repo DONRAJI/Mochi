@@ -3,6 +3,8 @@ import { emojiForIngredient } from "../ingredients";
 
 interface IngredientStickerProps {
   name: string;
+  /** 서버가 재료 마스터에서 찾은 이모지 — 없으면 팔레트에서 */
+  emoji?: string;
   rarity?: string;
   onRemove?: () => void;
 }
@@ -14,7 +16,12 @@ const rarityRing: Record<string, string> = {
 };
 
 /** 재료 스티커 카드. 희귀 재료는 테두리 반짝(빨강 없이 토큰 링). onRemove면 ✕로 뺀다. */
-export function IngredientSticker({ name, rarity = "common", onRemove }: IngredientStickerProps) {
+export function IngredientSticker({
+  name,
+  emoji,
+  rarity = "common",
+  onRemove,
+}: IngredientStickerProps) {
   return (
     <div
       className={cn(
@@ -35,7 +42,7 @@ export function IngredientSticker({ name, rarity = "common", onRemove }: Ingredi
           ✕
         </button>
       )}
-      <span className="text-3xl">{emojiForIngredient(name)}</span>
+      <span className="text-3xl">{emoji ?? emojiForIngredient(name)}</span>
       <span className="text-xs text-cocoa-soft">{name}</span>
     </div>
   );
