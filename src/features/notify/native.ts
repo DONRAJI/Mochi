@@ -127,7 +127,9 @@ function plugin(): PushNotificationsPlugin | null {
  * 존재 이유(웹 번들 의존성 0)가 사라진다. 호출부에서 타입이 맞춰지므로 여기선 위임만 한다.
  */
 export async function listenNative<E extends string, A>(
-  target: { addListener: (event: E, fn: (arg: A) => void) => MaybePromise<ListenerHandle> } | undefined,
+  target:
+    | { addListener: (event: E, fn: (arg: A) => void) => MaybePromise<ListenerHandle> }
+    | undefined,
   event: E,
   fn: (arg: A) => void,
 ): Promise<ListenerHandle | null> {
@@ -202,6 +204,39 @@ export async function registerNativePush(timeoutMs = 15_000): Promise<string> {
       }
     })();
   });
+}
+
+/**
+ * 앱을 열 때마다 기기의 알림 상태를 서버와 맞춘다 — **리마인더를 켜 둔 기기만**(저장된 토큰이 있을 때).
+ *
+ * 왜: '켜짐' 표시는 기기에 남긴 토큰으로만 판단하는데, 서버 쪽 토큰은 기기 모르게 사라질 수 있다.
+ * - 유휴 자동 로그아웃(로그인 유지 안 함, 30분+)이 서버 로그아웃을 부르면 계정의 토큰이 지워진다
+ * - FCM이 토큰을 바꾸면 옛 토큰은 발송 때 404로 정리된다(push.service)
+ * 그러면 설정엔 "받는 중이에요"인데 알림은 영영 안 왔다. 앱을 열 때 현재 토큰을 다시 받아 등록하면
+ * 스스로 복구된다(서버는 upsert라 같은 토큰이면 변화 없음).
+ * - 휴대폰 설정에서 알림 권한을 끈 경우: 저장된 토큰을 지워 설정 화면도 '꺼짐'으로 맞춘다.
+ * - 로그인 전(401)·일시 오류: 조용히 넘기고 다음 실행 때 다시(토큰은 그대로 둔다).
+ * 사용자가 직접 로그아웃하면 releaseNativePushToken이 토큰을 지우므로 여기서 되살리지 않는다.
+ */
+export async function resyncNativePush(
+  sendToServer: (token: string) => Promise<unknown>,
+): Promise<void> {
+  if (!isNativeApp()) return;
+  const push = plugin();
+  if (!push) return;
+  try {
+    if (!localStorage.getItem(NATIVE_TOKEN_KEY)) return;
+    const status = await push.checkPermissions();
+    if (status.receive !== "granted") {
+      localStorage.removeItem(NATIVE_TOKEN_KEY);
+      return;
+    }
+    const token = await registerNativePush();
+    await sendToServer(token);
+    localStorage.setItem(NATIVE_TOKEN_KEY, token);
+  } catch {
+    // 로그인 전이거나 잠깐 연결이 안 됨 — 다음에 앱을 열 때 다시 맞춘다
+  }
 }
 
 /** 네이티브 푸시 해지 (기기 쪽). 서버 토큰 삭제는 호출부가 따로 한다. */

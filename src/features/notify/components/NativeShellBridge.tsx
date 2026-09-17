@@ -2,7 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { isNativeApp, nativePlugins, listenNative, removeHandle, type ListenerHandle } from "../native";
+import {
+  isNativeApp,
+  nativePlatform,
+  nativePlugins,
+  listenNative,
+  removeHandle,
+  resyncNativePush,
+  type ListenerHandle,
+} from "../native";
 
 /**
  * Capacitor 셸 안에서만 동작하는 네이티브 연결선 (브라우저에선 아무것도 하지 않는다).
@@ -32,6 +40,13 @@ export function NativeShellBridge() {
     void import("../api/notify.api")
       .then(({ unsubscribeAllPush }) => unsubscribeAllPush())
       .catch(() => {});
+
+    // 리마인더를 켜 둔 기기면 알림 토큰을 서버와 다시 맞춘다 — 유휴 자동 로그아웃·FCM 토큰 교체로
+    // 서버 토큰만 사라져 "받는 중"인데 안 오던 상태를 스스로 복구(native.ts resyncNativePush).
+    // 이 컴포넌트는 로그인 뒤 화면((main) 레이아웃)에서만 떠서, 다시 로그인하면 여기서 돌아간다.
+    void import("../api/notify.api").then(({ registerDevice }) =>
+      resyncNativePush((token) => registerDevice(token, nativePlatform())),
+    );
 
     // 안드로이드 뒤로가기: 갈 곳이 있으면 뒤로, 앱 첫 화면이면 종료.
     // 리스너를 달면 기본 동작을 우리가 가져오므로 두 갈래를 직접 처리해야 한다.
