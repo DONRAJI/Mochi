@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
 import type { ShoppingItemResponse } from "@/features/fridge/shopping";
+import { stockIngredients } from "./fridge.service";
 
 /** 장보기 리스트 (PRD 5.3) — 미체크 먼저, 담은 순. */
 export async function listShopping(userId: string): Promise<ShoppingItemResponse[]> {
@@ -47,17 +48,25 @@ export async function removeShopping(userId: string, id: string): Promise<void> 
   await db.shoppingItem.delete({ where: { id } });
 }
 
-/** 체크한 항목을 냉장고로 옮긴다(샀으니까). 냉장고 담기 + 리스트에서 제거를 한 트랜잭션으로. */
+/**
+ * 체크한 항목을 냉장고로 옮긴다(샀으니까). 냉장고 담기 + 리스트에서 제거를 한 트랜잭션으로.
+ * 담기는 냉장고 담기와 같은 규칙(fridge.service stock) — 분류·이모지는 재료 마스터에서, 보관 기한은 추정,
+ * 이미 냉장고에 있는 재료는 새로 만들지 않고 '다시 샀어요'로 갱신. (예전엔 늘 '기타'로 새로 만들었다)
+ */
 export async function moveCheckedToFridge(userId: string): Promise<ShoppingItemResponse[]> {
   const checked = await db.shoppingItem.findMany({ where: { userId, checked: true } });
   if (checked.length > 0) {
-    await db.$transaction([
-      ...checked.map((c) =>
-        db.ingredient.create({ data: { userId, name: c.name, category: "기타" } }),
-      ),
+    await db.$transaction(async (tx) => {
+      await stockIngredients(
+        tx,
+        userId,
+        checked.map((c) => c.name),
+      );
       // 읽은 항목만 지운다 — 그 사이에 새로 체크한 항목이 냉장고에 안 들어간 채 사라지지 않게.
-      db.shoppingItem.deleteMany({ where: { userId, id: { in: checked.map((c) => c.id) } } }),
-    ]);
+      await tx.shoppingItem.deleteMany({
+        where: { userId, id: { in: checked.map((c) => c.id) } },
+      });
+    });
   }
   return listShopping(userId);
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import * as fridgeApi from "../api/fridge.api";
 import { makeTempCanceller } from "@/lib/optimistic-temp";
 import type { CreateIngredientRequest, IngredientResponse } from "../types";
+import { emojiForIngredient } from "../ingredients";
 
 export const fridgeKey = ["fridge", "ingredients"] as const;
 // 냉장고를 바꾸는 작업 공통 mutation 키 — '진행 중인 냉장고 작업 수'를 센다(아래 settleFridgeIfLast).
@@ -46,15 +47,22 @@ export function useAddIngredient() {
     // 담자마자 스티커가 바로 보이게(딜레이 없이). 서버 응답 오면 실제 항목으로 교체.
     onMutate: async (input) => {
       const prev = await snapshotFridge(qc);
+      // 이미 있는 재료면 서버가 새로 만들지 않고 '다시 샀어요'로 갱신한다 — 화면도 맨 앞으로만 옮긴다.
+      const same = prev?.find((i) => i.name === input.name.trim());
+      if (same) {
+        patchFridge(qc, (list) => [same, ...list.filter((i) => i.id !== same.id)]);
+        return { prev, tempId: undefined };
+      }
       const tempId = `temp-${Date.now()}-${input.name}`;
       const optimistic: IngredientResponse = {
         id: tempId,
         name: input.name,
-        category: input.category,
+        category: input.category ?? "기타",
         rarity: "common",
         expiresAt: input.expiresAt ? new Date(input.expiresAt).toISOString() : null,
+        emoji: emojiForIngredient(input.name),
       };
-      patchFridge(qc, (list) => [...list, optimistic]);
+      patchFridge(qc, (list) => [optimistic, ...list]);
       return { prev, tempId };
     },
     // 임시 id를 서버 실제 항목으로 교체. 임시 상태에서 이미 지운 항목은 실제 항목도 서버에서 삭제.
@@ -64,7 +72,9 @@ export function useAddIngredient() {
         patchFridge(qc, (list) => list.filter((i) => i.id !== ctx.tempId && i.id !== created.id));
         return;
       }
-      patchFridge(qc, (list) => list.map((i) => (i.id === ctx?.tempId ? created : i)));
+      patchFridge(qc, (list) =>
+        list.map((i) => (i.id === ctx?.tempId || i.id === created.id ? created : i)),
+      );
     },
     onError: (_e, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(fridgeKey, ctx.prev);

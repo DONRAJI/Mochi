@@ -14,6 +14,7 @@ export function IngredientGrid({
         <IngredientSticker
           key={i.id}
           name={i.name}
+          emoji={i.emoji}
           rarity={i.rarity}
           onRemove={onRemove ? () => onRemove(i.id) : undefined}
         />

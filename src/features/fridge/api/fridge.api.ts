@@ -2,7 +2,8 @@ import { fetcher } from "@/lib/fetcher";
 import type { CreateIngredientRequest, IngredientResponse } from "../types";
 
 export function fetchIngredients(): Promise<IngredientResponse[]> {
-  return fetcher<IngredientResponse[]>("/api/fridge/ingredients");
+  // 한 번에 전부 — 예전 기본 50개라 51번째부터 화면·선반에서 안 보였다(추천은 전체를 봐서 어긋남).
+  return fetcher<IngredientResponse[]>("/api/fridge/ingredients?size=300");
 }
 
 export function createIngredient(input: CreateIngredientRequest): Promise<IngredientResponse> {

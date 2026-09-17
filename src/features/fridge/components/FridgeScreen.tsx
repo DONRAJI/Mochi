@@ -11,7 +11,7 @@ import { AddIngredientSheet } from "./AddIngredientSheet";
 import { ShoppingList } from "./ShoppingList";
 import { EmptyFridgeState } from "./EmptyFridgeState";
 import { useIngredients, useRemoveIngredient } from "../hooks/useFridge";
-import { daysUntil, isExpiringSoon } from "../expiry";
+import { splitByExpiry } from "../expiry";
 import { FRIDGE_CATEGORIES } from "../data";
 
 /** 🧊 냉장고 화면 — 실데이터. 재료를 담으면 식단(추천) 매칭률이 자동 점등(쿼리 무효화). */
@@ -23,15 +23,13 @@ export function FridgeScreen() {
 
   const all = data ?? [];
   const items = category === "전체" ? all : all.filter((i) => i.category === category);
-  const now = new Date();
-  const expiring = all
-    .filter((i) => isExpiringSoon(i.expiresAt, now))
-    .map((i) => ({ name: i.name, days: Math.max(0, daysUntil(i.expiresAt, now) ?? 0) }));
+  // 재료는 마운트 뒤 조회로 오므로 렌더 중 현재 시각을 써도 프리렌더 HTML과 어긋나지 않는다.
+  const shelf = splitByExpiry(all, new Date());
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-title text-cocoa">냉장고</h1>
-      <ExpiryShelf items={expiring} />
+      <ExpiryShelf soon={shelf.soon} past={shelf.past} />
       {/* 선호/비선호/알러지 필터 칩(PRD 5.2)은 제거 — 재료에 태그가 배선돼 있지 않아 누르면
           동작하는 척만 하는 장식이었다(정직화). 취향 태그의 소유처는 마이 탭 PreferencesSection. */}
       <div className="flex gap-2 overflow-x-auto pb-1">
