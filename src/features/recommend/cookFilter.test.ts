@@ -10,6 +10,7 @@ const base: RecommendationResponse = {
   myPhotoUrl: null,
   kcal: null,
   badge: "💪 단백질",
+  portion: "hearty",
   minutes: 10,
   servings: 1,
   matchRate: 100,
@@ -34,11 +35,17 @@ describe("요리 필터 (PRD 5.3)", () => {
   });
   it("추가구매 없음", () => {
     expect(matchesCookFilter({ ...base, missingIngredients: [] }, "추가구매 없음")).toBe(true);
-    expect(matchesCookFilter({ ...base, missingIngredients: ["두부"] }, "추가구매 없음")).toBe(false);
+    expect(matchesCookFilter({ ...base, missingIngredients: ["두부"] }, "추가구매 없음")).toBe(
+      false,
+    );
   });
-  it("뱃지 기반(단백질/가벼움)", () => {
+  it("단백질 위주는 뱃지로", () => {
     expect(matchesCookFilter({ ...base, badge: "💪 단백질" }, "단백질 위주")).toBe(true);
-    expect(matchesCookFilter({ ...base, badge: "🍃 가벼움" }, "가벼움")).toBe(true);
-    expect(matchesCookFilter({ ...base, badge: "🫧 포만감" }, "단백질 위주")).toBe(false);
+    expect(matchesCookFilter({ ...base, badge: null }, "단백질 위주")).toBe(false);
+  });
+  it("가볍게는 양감 라벨로 — 단백질 뱃지가 있어도 양감으로 판단", () => {
+    expect(matchesCookFilter({ ...base, portion: "light" }, "가볍게")).toBe(true);
+    expect(matchesCookFilter({ ...base, portion: "hearty" }, "가볍게")).toBe(false);
+    expect(matchesCookFilter({ ...base, portion: null }, "가볍게")).toBe(false);
   });
 });

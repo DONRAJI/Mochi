@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/server/db";
 import { computeMatchRate, missingIngredients } from "@/features/recommend/ranking";
 import { deriveBadge } from "@/features/recommend/nutrition";
+import { portionOf } from "@/lib/portion";
 import { swapFor } from "@/features/recommend/substitution";
 import { isPractical, isSkippableRare } from "@/features/recommend/practicality";
 import { MGR_ID_PREFIX } from "@/features/recommend/mgrParse";
@@ -212,6 +213,7 @@ export async function getRecommendations(
           myPhotoUrl: null as string | null, // 아래에서 반환분에만 내 사진 서명 URL 주입
           kcal: detail ? r.kcal : null,
           badge: deriveBadge(r.kcal, r.protein),
+          portion: portionOf(r.kcal), // 라벨은 숫자가 아니라 cozy에도
           minutes: r.minutes,
           servings: r.servings,
           matchRate: computeMatchRate(owned, required),
@@ -312,6 +314,7 @@ export async function getRecommendations(
         myPhotoUrl: null,
         kcal: detail ? m.kcal : null,
         badge: deriveBadge(m.kcal, m.protein),
+        portion: portionOf(m.kcal),
         minutes: null,
         servings: null,
         matchRate: null,
@@ -340,6 +343,7 @@ export async function getRecommendations(
       myPhotoUrl: null,
       kcal: detail ? c.kcal : null,
       badge: deriveBadge(c.kcal, c.protein),
+      portion: portionOf(c.kcal),
       minutes: null,
       servings: null,
       matchRate: null,

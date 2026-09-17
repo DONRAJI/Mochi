@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import type { RecommendationResponse } from "../types";
 import { servingsLabel, kcalLabel } from "../mealMeta";
+import { PORTION_LABEL } from "@/lib/portion";
 
 /** 추천 카드 — 랭킹 뱃지 + (요리 모드) 매칭률·추가구매 (PRD 5.3). 우상단 하트=즐겨찾기(#7). */
 export function RecipeCard({
@@ -34,72 +35,78 @@ export function RecipeCard({
         className="w-full text-left transition-transform ease-jelly active:scale-[0.98]"
       >
         <Card>
-        <div className="flex items-center gap-3">
-          {(item.myPhotoUrl ?? item.imageUrl) ? (
-            <div className="relative h-14 w-14 shrink-0">
-              <Image
-                src={(item.myPhotoUrl ?? item.imageUrl)!}
-                alt={item.name}
-                width={56}
-                height={56}
-                className="h-14 w-14 rounded-mochi-sm object-cover"
-              />
-              {/* 내가 찍어 올린 사진이면 살짝 표시 (나만 보는 개인 기록) */}
-              {item.myPhotoUrl && (
-                <span className="absolute -bottom-1 -right-1 rounded-mochi-sm bg-cream-50/90 px-1 text-[10px]">
-                  📷
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
-          )}
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-display text-cocoa">{item.name}</p>
-              {item.hidden && (
-                <span className="rounded-mochi-sm bg-butter-deep px-2 py-0.5 text-xs text-cocoa">
-                  🔓 히든
-                </span>
-              )}
-              {item.mine && (
-                <span className="rounded-mochi-sm bg-lavender-soft px-2 py-0.5 text-xs text-cocoa">
-                  🧑‍🍳 내 요리
-                </span>
-              )}
-              {item.usesExpiring && (
-                <span className="rounded-mochi-sm bg-peach-soft px-2 py-0.5 text-xs text-cocoa">
-                  🍑 임박 재료
-                </span>
-              )}
-              {item.badge && (
-                <span className="rounded-mochi-sm bg-mint-soft px-2 py-0.5 text-xs text-cocoa">
-                  {item.badge}
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-cocoa-faint">
-              {[servingsLabel(item.minutes, item.servings) ?? item.subtitle, kcalLabel(item.kcal)]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          </div>
-        </div>
-
-        {item.matchRate != null && (
-          <div className="mt-3">
-            <div className="mb-1 flex justify-between text-xs text-cocoa-soft">
-              <span>매칭률</span>
-              <span>{item.matchRate}%</span>
-            </div>
-            <Gauge value={item.matchRate} max={100} tone="mint" />
-            {item.missingIngredients.length > 0 && (
-              <p className="mt-2 text-xs text-cocoa-faint">
-                추가구매: {item.missingIngredients.join(", ")}
-              </p>
+          <div className="flex items-center gap-3">
+            {(item.myPhotoUrl ?? item.imageUrl) ? (
+              <div className="relative h-14 w-14 shrink-0">
+                <Image
+                  src={(item.myPhotoUrl ?? item.imageUrl)!}
+                  alt={item.name}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-mochi-sm object-cover"
+                />
+                {/* 내가 찍어 올린 사진이면 살짝 표시 (나만 보는 개인 기록) */}
+                {item.myPhotoUrl && (
+                  <span className="absolute -bottom-1 -right-1 rounded-mochi-sm bg-cream-50/90 px-1 text-[10px]">
+                    📷
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-4xl">{item.emoji ?? "🍽️"}</span>
             )}
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-display text-cocoa">{item.name}</p>
+                {item.hidden && (
+                  <span className="rounded-mochi-sm bg-butter-deep px-2 py-0.5 text-xs text-cocoa">
+                    🔓 히든
+                  </span>
+                )}
+                {item.mine && (
+                  <span className="rounded-mochi-sm bg-lavender-soft px-2 py-0.5 text-xs text-cocoa">
+                    🧑‍🍳 내 요리
+                  </span>
+                )}
+                {item.usesExpiring && (
+                  <span className="rounded-mochi-sm bg-peach-soft px-2 py-0.5 text-xs text-cocoa">
+                    🍑 임박 재료
+                  </span>
+                )}
+                {/* 양감 — 숫자를 안 보는 사람도 고르는 순간에 알 수 있게(lib/portion) */}
+                {item.portion && (
+                  <span className="rounded-mochi-sm bg-mint-soft px-2 py-0.5 text-xs text-cocoa">
+                    {PORTION_LABEL[item.portion]}
+                  </span>
+                )}
+                {item.badge && (
+                  <span className="rounded-mochi-sm bg-butter-soft px-2 py-0.5 text-xs text-cocoa">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-cocoa-faint">
+                {[servingsLabel(item.minutes, item.servings) ?? item.subtitle, kcalLabel(item.kcal)]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
           </div>
-        )}
+
+          {item.matchRate != null && (
+            <div className="mt-3">
+              <div className="mb-1 flex justify-between text-xs text-cocoa-soft">
+                <span>매칭률</span>
+                <span>{item.matchRate}%</span>
+              </div>
+              <Gauge value={item.matchRate} max={100} tone="mint" />
+              {item.missingIngredients.length > 0 && (
+                <p className="mt-2 text-xs text-cocoa-faint">
+                  추가구매: {item.missingIngredients.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
         </Card>
       </button>
     </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Portion } from "@/lib/portion";
 
 /** 끼니 슬롯 (PRD 11.2). 시간대로 자동추정하되 사용자가 바꿀 수 있음. */
 export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
@@ -45,6 +46,8 @@ export interface FoodSearchItem {
   category: string | null;
   /** 대표 1인분 kcal — detail(관리) 모드일 때만 채워진다. cozy면 null (불변 #2) */
   kcal: number | null;
+  /** 한 끼 양감(lib/portion) — 숫자가 아닌 라벨이라 모드와 무관하게 싣는다 */
+  portion: Portion | null;
 }
 
 /**

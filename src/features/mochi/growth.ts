@@ -23,6 +23,19 @@ export const GROWTH_TITLES = [
   "반짝반짝 모찌",
 ] as const;
 
+/**
+ * 연속 기록 보조 문구 — 2일 이상 이어갈 때만. 끊겨서 1일로 돌아간 순간엔 아무것도 안 보인다.
+ *
+ * 왜 보조인가(2026-09-17): 홈이 '연속 N일째'를 앞세우면 끊기는 순간(→1일)이 가장 이탈하기 쉬운 순간이
+ * 된다. 빠져도 벌이 없는 펫 앱이 사랑받는 이유와 같다. 홈의 주인공은 줄지 않는 '잘 먹은 날'이고,
+ * 연속은 이어가는 동안만 살짝 칭찬한다(씨앗 보너스·보호권 규칙은 그대로).
+ */
+export function streakNote(count: number, shields: number): string | null {
+  if (count < 2) return null;
+  const base = `🍮 ${count}일째 이어가는 중`;
+  return shields > 0 ? `${base} · 🛡️ ${shields}` : base;
+}
+
 /** 누적 기록 수 → 성장 단계(1~5). */
 export function growthStageFor(mealCount: number): number {
   return GROWTH_THRESHOLDS.filter((t) => mealCount >= t).length;

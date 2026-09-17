@@ -6,12 +6,14 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useRecommendations } from "@/features/recommend/hooks/useRecommend";
 import type { RecommendationResponse } from "@/features/recommend/types";
+import { PORTION_LABEL } from "@/lib/portion";
 
 const TONES = ["bg-peach-soft", "bg-mint-soft", "bg-lavender-soft"] as const;
 
 function hintFor(r: RecommendationResponse): string {
   if (r.matchRate != null && r.matchRate > 0) return `냉장고 ${r.matchRate}% 매칭`;
   if (r.usesExpiring) return "임박 재료로 딱";
+  if (r.portion) return PORTION_LABEL[r.portion];
   return r.badge ?? "오늘 이거 어때요?";
 }
 

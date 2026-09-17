@@ -12,4 +12,4 @@ export const MEAL_SEGMENTS = [
 
 export type MealsSegment = (typeof MEAL_SEGMENTS)[number]["value"];
 
-export const SORT_FILTERS = ["15분 이내", "추가구매 없음", "단백질 위주", "가벼움"] as const;
+export const SORT_FILTERS = ["15분 이내", "추가구매 없음", "단백질 위주", "가볍게"] as const;

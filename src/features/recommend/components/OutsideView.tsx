@@ -11,6 +11,7 @@ import { QuickRecordSheet } from "@/features/record/components/QuickRecordSheet"
 import { useFoodBrowse, FOOD_BROWSE_PAGE_SIZE } from "@/features/record/hooks/useFoodBrowse";
 import { OUTSIDE_PLACES, PLACE_INFO, type OutsidePlace } from "@/features/record/outsidePlaces";
 import type { FoodBrowseItem } from "@/features/record/types";
+import { PORTION_LABEL } from "@/lib/portion";
 import { RecipePager } from "./RecipePager";
 
 /**
@@ -120,7 +121,14 @@ export function OutsideFoodList({ place }: OutsideFoodListProps) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-cocoa">{item.name}</p>
                 <p className="text-xs text-cocoa-faint">
-                  {[look?.label ?? item.category, servingLabel(item)].filter(Boolean).join(" · ")}
+                  {[
+                    look?.label ?? item.category,
+                    servingLabel(item),
+                    // 숫자를 안 보는 사람도 양감은 알 수 있게 — detail은 오른쪽에 kcal까지
+                    item.portion ? PORTION_LABEL[item.portion] : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
               {showKcal && item.kcal != null && (
