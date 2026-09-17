@@ -24,21 +24,45 @@ self.addEventListener("activate", (event) => {
 
 // ── 저녁 리마인더 (웹푸시) ──
 // 서버는 페이로드 없이 "깨워라"만 보낸다(webpush.ts — RFC 8291 암호화 회피).
-// 문구는 이 기기에서 그 시각에 맞게 정한다. 톤은 재촉이 아니라 제안(불변 #1).
+// 문구는 깨어난 뒤 서버에서 사용자별로 받아온다(/api/push/message — 오늘 계획·임박 재료 등,
+// features/notify/reminder.ts). 못 받아오면(오프라인·로그아웃) 기본 문구. 톤은 제안(불변 #1).
+const FALLBACK_REMINDER = {
+  title: "모찌",
+  body: "오늘 저녁 뭐 먹을지, 모찌가 골라놨어요 🍽️",
+  url: "/meals",
+};
+
+async function fetchReminderMessage() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000); // 알림이 늦게 뜨지 않게
+  try {
+    const res = await fetch("/api/push/message", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const json = await res.json();
+    const data = json && json.success ? json.data : null;
+    return data && data.body ? data : FALLBACK_REMINDER;
+  } catch {
+    return FALLBACK_REMINDER;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 self.addEventListener("push", (event) => {
-  const hour = new Date().getHours();
-  const body =
-    hour >= 16
-      ? "오늘 저녁 뭐 먹을지, 모찌가 골라놨어요 🍽️"
-      : "오늘 뭐 먹을지, 모찌가 골라놨어요 🍽️";
   event.waitUntil(
-    self.registration.showNotification("모찌", {
-      body,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      tag: "mochi-meal-reminder", // 같은 태그 = 쌓이지 않고 교체(알림 도배 방지)
-      data: { url: "/meals" },
-    }),
+    (async () => {
+      const msg = await fetchReminderMessage();
+      await self.registration.showNotification(msg.title, {
+        body: msg.body,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        tag: "mochi-meal-reminder", // 같은 태그 = 쌓이지 않고 교체(알림 도배 방지)
+        data: { url: msg.url || "/meals" },
+      });
+    })(),
   );
 });
 
