@@ -3,6 +3,8 @@ import { db } from "@/server/db";
 import { markMealEaten } from "./record.service";
 import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
+import { kstDayKey } from "@/lib/kst";
+import { upcomingDates } from "@/features/recommend/plan";
 import { messages } from "@/lib/messages";
 import type {
   AddPlanRequest,
@@ -61,7 +63,8 @@ export async function listPlan(
 
 /**
  * 이번 주 빈 날을 cook 추천으로 자동 채운다 (PRD 4.3 위클리 루프).
- * 이미 계획된 날은 건너뛰고, 상위 추천을 로테이션으로 배정해 날마다 다르게.
+ * 이미 계획된 날·**지난 날**(한국 날짜 기준)은 건너뛰고, 상위 추천을 로테이션으로 배정해 날마다 다르게.
+ * 응답은 넘겨받은 한 주 전체를 돌려준다(화면이 주 단위로 그린다).
  */
 export async function autoFillWeek(
   userId: string,
@@ -72,7 +75,8 @@ export async function autoFillWeek(
     select: { date: true },
   });
   const planned = new Set(existing.map((e) => e.date.toISOString().slice(0, 10)));
-  const empty = dates.filter((d) => !planned.has(d));
+  // 클라도 오늘 이후만 보내지만, 서버가 한 번 더 거른다(한국 날짜 — 서버는 UTC).
+  const empty = upcomingDates(dates, kstDayKey()).filter((d) => !planned.has(d));
 
   if (empty.length > 0) {
     const recs = await getRecommendations("cook", userId, 0, 20);
