@@ -58,13 +58,19 @@ export async function getMochiCollection(userId: string): Promise<MochiCollectio
  */
 export async function drawMochiCard(userId: string): Promise<DrawResultResponse> {
   return db.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({
+    // 차감을 먼저, 조건부로 — 읽고 비교한 뒤 쓰면 연속 탭 두 요청이 같은 잔액을 보고 둘 다 통과해
+    // 씨앗이 음수가 될 수 있다. 조건부 UPDATE는 행을 잠가 두 번째 요청이 줄어든 잔액으로 다시 판단한다.
+    const charged = await tx.user.updateMany({
+      where: { id: userId, mochiSeeds: { gte: DRAW_COST } },
+      data: { mochiSeeds: { decrement: DRAW_COST } },
+    });
+    if (charged.count === 0) {
+      throw new AppError("VALIDATION", "씨앗이 조금 더 모이면 뽑을 수 있어요 🌱", 400);
+    }
+    const user = await tx.user.findUniqueOrThrow({
       where: { id: userId },
       select: { mochiSeeds: true, drawPity: true },
     });
-    if (!user || user.mochiSeeds < DRAW_COST) {
-      throw new AppError("VALIDATION", "씨앗이 조금 더 모이면 뽑을 수 있어요 🌱", 400);
-    }
 
     const rarity = rollRarity(Math.random(), isPityReady(user.drawPity));
     const pool = await tx.mochiCard.findMany({ where: { rarity } });
@@ -93,7 +99,7 @@ export async function drawMochiCard(userId: string): Promise<DrawResultResponse>
       });
     }
 
-    const seedsLeft = user.mochiSeeds - DRAW_COST + refund;
+    const seedsLeft = user.mochiSeeds + refund; // 이미 차감된 잔액
     await tx.user.update({
       where: { id: userId },
       data: { mochiSeeds: seedsLeft, drawPity: nextPity(user.drawPity, rarity as CardRarity) },

@@ -22,6 +22,7 @@ const EXT: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "image/heic": "heic",
+  "image/heif": "heif", // 허용 목록엔 있는데 빠져 있어 파일명이 "….undefined"로 저장됐다
 };
 
 function config() {

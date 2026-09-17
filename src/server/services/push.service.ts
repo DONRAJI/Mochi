@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/server/db";
+import { kstDayStart } from "@/lib/kst";
 import { sendPush } from "@/server/push/webpush";
 import { sendFcm } from "@/server/push/fcm";
 
@@ -76,13 +77,6 @@ export async function saveDeviceToken(
 /** 네이티브 토큰 해지 — 소유자 검증: 내 토큰만 지울 수 있다. */
 export async function removeDeviceToken(userId: string, token: string): Promise<void> {
   await db.deviceToken.deleteMany({ where: { token, userId } });
-}
-
-/** KST 자정의 UTC 순간 (record.service와 같은 계산 — 서버가 UTC라도 한국의 '오늘'). */
-function kstDayStart(nowMs = Date.now()): Date {
-  const KST = 9 * 3_600_000;
-  const shifted = nowMs + KST;
-  return new Date(shifted - (shifted % 86_400_000) - KST);
 }
 
 export interface ReminderRunResult {

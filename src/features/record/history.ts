@@ -5,6 +5,7 @@
  * 죄책감 제로(불변 #1): 데이터를 정직하게 나란히 놓을 뿐, 벌하거나 단정하지 않는다(추세는 부호만).
  * 숫자(체중·kcal)는 마이 트리에서만(불변 #2) — 이 화면은 마이 전용.
  */
+import { kstDayKey as kstDayKeyOfMs } from "@/lib/kst";
 import type { MealHistoryDayResponse, MealSlot } from "./types";
 
 export interface HistoryMeal {
@@ -26,7 +27,7 @@ const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 /** ISO 순간 → 한국(KST) 기준 날짜 키 "YYYY-MM-DD". 서버가 UTC(Vercel)라도 한국 하루로 자른다. */
 export function kstDayKey(iso: string): string {
-  return new Date(new Date(iso).getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+  return kstDayKeyOfMs(new Date(iso).getTime());
 }
 
 /** "2026-07-09" → "7월 9일 (수)". 요일은 로컬 구성요소로 계산해 시간대에 안전. */
@@ -103,5 +104,14 @@ export function buildMealHistory(
 /** 기록이 있는 달 목록 "YYYY-MM" (최근 먼저) — 월 선택 칩용. buildMealHistory 결과에서 뽑는다. */
 export function availableMonths(days: MealHistoryDayResponse[]): string[] {
   const set = new Set(days.map((d) => d.date.slice(0, 7)));
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * 기록 시각들(ISO) → 기록이 있는 달 "YYYY-MM"(KST, 최근 먼저). 회고 화면이 전체 식사를 불러와 묶지 않고
+ * 시각만으로 달 칩을 만들 때 쓴다(availableMonths와 같은 결과).
+ */
+export function monthsOf(isos: string[]): string[] {
+  const set = new Set(isos.map((iso) => kstDayKey(iso).slice(0, 7)));
   return [...set].sort((a, b) => b.localeCompare(a));
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildMealHistory,
   availableMonths,
+  monthsOf,
   kstDayKey,
   type HistoryMeal,
   type HistoryWeight,
@@ -76,7 +77,10 @@ describe("history — 날짜별 회고 묶음", () => {
   });
 
   it("title 없으면(사진만 등) null로 두고, 라벨에 요일을 붙인다", () => {
-    const days = buildMealHistory([meal({ eatenAt: "2026-07-09T12:00:00+09:00", title: null })], []);
+    const days = buildMealHistory(
+      [meal({ eatenAt: "2026-07-09T12:00:00+09:00", title: null })],
+      [],
+    );
     expect(days[0].meals[0].title).toBeNull();
     expect(days[0].label).toContain("월"); // "7월 9일 (수)" 형태
   });
@@ -98,5 +102,15 @@ describe("history — 월 목록(availableMonths)", () => {
 
   it("기록이 없으면 빈 배열", () => {
     expect(availableMonths([])).toEqual([]);
+  });
+});
+
+describe("history — 시각만으로 달 목록(monthsOf)", () => {
+  it("한국 날짜 기준으로 달을 묶고 최근 달 먼저", () => {
+    // 2026-07-31T16:00Z = 한국 8월 1일 새벽 1시 → 8월
+    expect(
+      monthsOf(["2026-06-10T03:00:00Z", "2026-07-31T16:00:00Z", "2026-06-20T03:00:00Z"]),
+    ).toEqual(["2026-08", "2026-06"]);
+    expect(monthsOf([])).toEqual([]);
   });
 });

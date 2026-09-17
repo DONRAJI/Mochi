@@ -4,7 +4,11 @@ import { markMealEaten } from "./record.service";
 import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
 import { messages } from "@/lib/messages";
-import type { AddPlanRequest, MovePlanRequest, PlannedMealResponse } from "@/features/recommend/plan";
+import type {
+  AddPlanRequest,
+  MovePlanRequest,
+  PlannedMealResponse,
+} from "@/features/recommend/plan";
 import {
   weekdayOf,
   slotKey,
@@ -78,7 +82,15 @@ export async function autoFillWeek(
           const r = recs[i % recs.length];
           // 자동 채우기는 '오늘 저녁 뭐 먹지'가 기본 — 하루 대표 한 끼(저녁)로 배정(끼니 구조 유지).
           return db.plannedMeal.create({
-            data: { userId, date: new Date(date), slot: "dinner", mode: "cook", refId: r.id, title: r.name, emoji: r.emoji },
+            data: {
+              userId,
+              date: new Date(date),
+              slot: "dinner",
+              mode: "cook",
+              refId: r.id,
+              title: r.name,
+              emoji: r.emoji,
+            },
           });
         }),
       );
@@ -87,10 +99,7 @@ export async function autoFillWeek(
   return listPlan(userId, dates[0], dates[dates.length - 1]);
 }
 
-export async function addPlan(
-  userId: string,
-  input: AddPlanRequest,
-): Promise<PlannedMealResponse> {
+export async function addPlan(userId: string, input: AddPlanRequest): Promise<PlannedMealResponse> {
   const row = await db.plannedMeal.create({
     data: {
       userId,
@@ -136,14 +145,29 @@ export async function eatPlan(userId: string, id: string): Promise<MealRecordRes
   if (!plan || plan.userId !== userId) {
     throw new AppError("FORBIDDEN", messages.error.FORBIDDEN, 403);
   }
-  const result = await markMealEaten(userId, {
-    mode: plan.mode,
-    slot: plan.slot ?? undefined,
-    refId: plan.refId ?? undefined,
-    rarity: "common",
+  // 먼저 '먹음'으로 조건부 표시 — 예전엔 기록부터 남기고 표시해서, 두 번 누르거나 이미 먹은 계획을
+  // 다시 누르면 같은 끼니가 두 번 기록됐다.
+  const claimed = await db.plannedMeal.updateMany({
+    where: { id, userId, eaten: false },
+    data: { eaten: true },
   });
-  await db.plannedMeal.update({ where: { id }, data: { eaten: true } });
-  return result;
+  if (claimed.count === 0) {
+    throw new AppError("VALIDATION", "이미 먹었어요로 남겨둔 끼니예요 🙂", 409);
+  }
+  try {
+    return await markMealEaten(userId, {
+      mode: plan.mode,
+      slot: plan.slot ?? undefined,
+      refId: plan.refId ?? undefined,
+      // 카탈로그 밖에서 담은 계획은 refId가 없다 — 이름을 넘기지 않으면 이름 없는 기록이 됐다.
+      title: plan.refId ? undefined : plan.title,
+      rarity: "common",
+    });
+  } catch (error) {
+    // 기록이 안 남았으면 '먹음' 표시도 되돌린다(다시 누를 수 있게).
+    await db.plannedMeal.update({ where: { id }, data: { eaten: false } }).catch(() => {});
+    throw error;
+  }
 }
 
 // ── 주간 프리셋 (매주 비슷하게 먹는 사람이 한 주치를 저장해 반복 적용) ──────────────
@@ -240,7 +264,9 @@ export async function applyPreset(
     select: { date: true, slot: true },
   });
   const occupied = new Set(
-    existing.map((e) => slotKey(weekdayOf(e.date.toISOString().slice(0, 10)), e.slot as MealSlot | null)),
+    existing.map((e) =>
+      slotKey(weekdayOf(e.date.toISOString().slice(0, 10)), e.slot as MealSlot | null),
+    ),
   );
 
   const { toCreate, skipped } = planPresetApply(
