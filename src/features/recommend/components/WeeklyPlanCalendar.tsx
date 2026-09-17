@@ -16,7 +16,7 @@ import {
 } from "../hooks/usePlan";
 import { SLOT_LABEL, SLOT_EMOJI } from "@/features/record/slot";
 import type { MealSlot } from "@/features/record/types";
-import type { PlannedMealResponse } from "../plan";
+import { upcomingDates, type PlannedMealResponse } from "../plan";
 
 /** 아침→점심→저녁→간식 순으로 정렬(끼니 없는 건 뒤로) — 식단표처럼 보이게. */
 const SLOT_ORDER: Record<MealSlot, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
@@ -93,7 +93,9 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
   // 각 날짜의 끼니를 아침→점심→저녁 순으로 정렬.
   for (const arr of byDate.values()) arr.sort((a, b) => slotRank(a.slot) - slotRank(b.slot));
   // 불러오기 전엔 모든 날이 비어 보이므로, 그 상태로 '자동 채우기'를 띄웠다 감추면 깜빡인다.
-  const hasEmpty = !isPending && week.some((d) => !byDate.has(d));
+  // 자동 채우기는 오늘 이후의 빈 날만 — 지난 날은 채우지 않는다(plan.upcomingDates).
+  const upcoming = upcomingDates(week, today);
+  const hasEmpty = !isPending && upcoming.some((d) => !byDate.has(d));
   const hasMovable = (meals ?? []).some((m) => !m.eaten);
 
   // 날짜가 정해지기 전(= 프리렌더·첫 렌더)엔 자리만 지킨다. 빌드 시점 날짜는 '가짜 값'이라
@@ -144,7 +146,7 @@ export function WeeklyPlanCalendar({ compact = false }: WeeklyPlanCalendarProps)
             {hasEmpty && (
               <button
                 type="button"
-                onClick={() => autoFill.mutate(week)}
+                onClick={() => autoFill.mutate(upcoming)}
                 className="rounded-mochi-sm bg-lavender-soft px-2.5 py-1 text-xs text-cocoa transition-transform ease-jelly active:scale-90"
               >
                 {autoFill.isPending ? "채우는 중…" : "🎲 자동 채우기"}
