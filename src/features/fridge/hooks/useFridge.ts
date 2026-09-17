@@ -5,6 +5,7 @@ import * as fridgeApi from "../api/fridge.api";
 import { makeTempCanceller } from "@/lib/optimistic-temp";
 import type { CreateIngredientRequest, IngredientResponse } from "../types";
 import { emojiForIngredient } from "../ingredients";
+import type { Storage } from "../shelfLife";
 
 export const fridgeKey = ["fridge", "ingredients"] as const;
 // 냉장고를 바꾸는 작업 공통 mutation 키 — '진행 중인 냉장고 작업 수'를 센다(아래 settleFridgeIfLast).
@@ -50,7 +51,8 @@ export function useAddIngredient() {
       // 이미 있는 재료면 서버가 새로 만들지 않고 '다시 샀어요'로 갱신한다 — 화면도 맨 앞으로만 옮긴다.
       const same = prev?.find((i) => i.name === input.name.trim());
       if (same) {
-        patchFridge(qc, (list) => [same, ...list.filter((i) => i.id !== same.id)]);
+        const moved = input.storage ? { ...same, storage: input.storage } : same;
+        patchFridge(qc, (list) => [moved, ...list.filter((i) => i.id !== same.id)]);
         return { prev, tempId: undefined };
       }
       const tempId = `temp-${Date.now()}-${input.name}`;
@@ -61,6 +63,7 @@ export function useAddIngredient() {
         rarity: "common",
         expiresAt: input.expiresAt ? new Date(input.expiresAt).toISOString() : null,
         emoji: emojiForIngredient(input.name),
+        storage: input.storage ?? "fridge",
       };
       patchFridge(qc, (list) => [optimistic, ...list]);
       return { prev, tempId };
@@ -75,6 +78,28 @@ export function useAddIngredient() {
       patchFridge(qc, (list) =>
         list.map((i) => (i.id === ctx?.tempId || i.id === created.id ? created : i)),
       );
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(fridgeKey, ctx.prev);
+    },
+    onSettled: () => settleFridgeIfLast(qc),
+  });
+}
+
+/** 냉장 ↔ 냉동 옮기기 — 구역 이동은 바로 보이게(낙관적), 보관 기한은 서버 응답으로. */
+export function useMoveIngredient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: fridgeMutationKey,
+    mutationFn: ({ id, storage }: { id: string; storage: Storage }) =>
+      fridgeApi.moveIngredient(id, storage),
+    onMutate: async ({ id, storage }) => {
+      const prev = await snapshotFridge(qc);
+      patchFridge(qc, (list) => list.map((i) => (i.id === id ? { ...i, storage } : i)));
+      return { prev };
+    },
+    onSuccess: (updated) => {
+      patchFridge(qc, (list) => list.map((i) => (i.id === updated.id ? updated : i)));
     },
     onError: (_e, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(fridgeKey, ctx.prev);

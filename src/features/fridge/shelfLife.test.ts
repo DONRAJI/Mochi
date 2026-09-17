@@ -24,6 +24,19 @@ describe("재료 보관 기간 추정", () => {
   });
 });
 
+describe("냉동 보관", () => {
+  it("냉동이면 대략 3개월 — 냉동새우가 생새우 2일로 잡히지 않게", () => {
+    expect(shelfLifeDays("새우", "단백질", "freezer")).toBe(90);
+    expect(shelfLifeDays("새우", "단백질", "fridge")).toBe(2);
+    expect(shelfLifeDays("빵", "곡물", "freezer")).toBe(30);
+  });
+
+  it("냉장에선 추정 안 하던 것도 냉동이면 기간을 둔다", () => {
+    expect(shelfLifeDays("만두", "기타")).toBeNull();
+    expect(shelfLifeDays("만두", "기타", "freezer")).toBe(90);
+  });
+});
+
 describe("재료 마스터 분류 → 냉장고 탭", () => {
   it("탭에 있는 분류는 그대로, 가공육·가공수산은 단백질, 나머지는 기타", () => {
     expect(fridgeCategoryOf("채소")).toBe("채소");
