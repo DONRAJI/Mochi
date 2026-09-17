@@ -5,6 +5,7 @@ import { getRecommendations } from "./recommend.service";
 import { AppError } from "@/lib/api-response";
 import { kstDayKey } from "@/lib/kst";
 import { upcomingDates } from "@/features/recommend/plan";
+import { AUTO_FILL_POOL, pickAutoFillRecipes } from "@/features/recommend/autoFill";
 import { messages } from "@/lib/messages";
 import type {
   AddPlanRequest,
@@ -63,7 +64,8 @@ export async function listPlan(
 
 /**
  * 이번 주 빈 날을 cook 추천으로 자동 채운다 (PRD 4.3 위클리 루프).
- * 이미 계획된 날·**지난 날**(한국 날짜 기준)은 건너뛰고, 상위 추천을 로테이션으로 배정해 날마다 다르게.
+ * 이미 계획된 날·**지난 날**(한국 날짜 기준)은 건너뛰고, 추천 상위 후보 안에서 순위 가중치로 섞어 배정한다
+ * (autoFill.ts — 누를 때마다 다르게, 임박 재료 요리는 가까운 날부터, 이번 주에 담긴 요리는 제외).
  * 응답은 넘겨받은 한 주 전체를 돌려준다(화면이 주 단위로 그린다).
  */
 export async function autoFillWeek(
@@ -72,18 +74,22 @@ export async function autoFillWeek(
 ): Promise<PlannedMealResponse[]> {
   const existing = await db.plannedMeal.findMany({
     where: { userId, date: { in: dates.map((d) => new Date(d)) } },
-    select: { date: true },
+    select: { date: true, refId: true },
   });
   const planned = new Set(existing.map((e) => e.date.toISOString().slice(0, 10)));
   // 클라도 오늘 이후만 보내지만, 서버가 한 번 더 거른다(한국 날짜 — 서버는 UTC).
   const empty = upcomingDates(dates, kstDayKey()).filter((d) => !planned.has(d));
 
   if (empty.length > 0) {
-    const recs = await getRecommendations("cook", userId, 0, 20);
-    if (recs.length > 0) {
+    const recs = await getRecommendations("cook", userId, 0, AUTO_FILL_POOL);
+    const alreadyThisWeek = new Set(
+      existing.map((e) => e.refId).filter((id): id is string => !!id),
+    );
+    const picks = pickAutoFillRecipes(recs, empty.length, alreadyThisWeek);
+    if (picks.length > 0) {
       await Promise.all(
         empty.map((date, i) => {
-          const r = recs[i % recs.length];
+          const r = picks[i];
           // 자동 채우기는 '오늘 저녁 뭐 먹지'가 기본 — 하루 대표 한 끼(저녁)로 배정(끼니 구조 유지).
           return db.plannedMeal.create({
             data: {
