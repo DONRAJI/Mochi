@@ -15,13 +15,11 @@ import { useMochiState } from "../hooks/useMochi";
 import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
 import { isOnboardingComplete } from "../onboarding";
 import { messages } from "@/lib/messages";
+import { kstDayNumber, kstHour, kstWeekday } from "@/lib/kst";
+import { mochiSpeech } from "../speech";
 
-const bubbleFor: Record<string, string> = {
-  happy: "오늘도 잘 먹었네요, 뿌듯해요 😊",
-  sleepy: "쉬어가도 괜찮아요 😴",
-  idle: messages.mochi.greet,
-  cheer: "잘 먹었네요! 씨앗이 쑥 자랐어요 🌱",
-};
+/** 기록·뽑기 직후 환호 — 이 순간만은 늘 같은 말로 분명하게. 평소 인사는 speech.ts가 매번 다르게. */
+const CHEER_BUBBLE = "잘 먹었네요! 씨앗이 쑥 자랐어요 🌱";
 
 /** 환호 유지 시간 — 기록 직후 홈에 오면 이만큼 cheer 표정으로 반겨준다. */
 const CHEER_MS = 4000;
@@ -65,14 +63,26 @@ export function MochiRoom() {
     !mochiQuery.isPending && !!mochi && !isOnboardingComplete(mochi.collectedCount);
 
   // 말풍선 우선순위: 방금 잘 먹은 환호가 최우선(신규 안내보다 축하가 먼저), 다음 밸런싱
-  // 넛지(가벼운 제안, 경고 아님 — PRD 11.5), 신규 인사, 그 외 상태 인사.
+  // 넛지(가벼운 제안, 경고 아님 — PRD 11.5), 신규 인사, 그 외엔 오늘의 한마디(speech.ts).
+  // 오늘의 한마디는 모찌 상태가 온 뒤에만 고른다 — 상태는 마운트 뒤 조회로 오므로 현재 시각을 써도
+  // 빌드 때 구워진 HTML(기본 인사)과 어긋나지 않는다(렌더 중 new Date 함정, workflow 4장).
+  const now = Date.now();
   const bubble = cheering
-    ? bubbleFor.cheer
+    ? CHEER_BUBBLE
     : nudge?.kind === "light"
       ? nudge.message
       : isNewcomer
         ? messages.mochi.welcome
-        : (bubbleFor[state] ?? messages.mochi.greet);
+        : mochi
+          ? mochiSpeech({
+              state,
+              hour: kstHour(now),
+              weekday: kstWeekday(now),
+              dayNumber: kstDayNumber(now),
+              goodDays: mochi.goodDays,
+              canDraw: mochi.seeds >= mochi.drawCost,
+            })
+          : messages.mochi.greet;
 
   return (
     <main className="flex flex-col items-center gap-5">
