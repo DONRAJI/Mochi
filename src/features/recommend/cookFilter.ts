@@ -9,8 +9,8 @@ export function matchesCookFilter(r: RecommendationResponse, filter: string | nu
       return r.missingIngredients.length === 0;
     case "단백질 위주":
       return !!r.badge && r.badge.includes("단백질");
-    case "가벼움":
-      return !!r.badge && r.badge.includes("가벼움");
+    case "가볍게":
+      return r.portion === "light";
     default:
       return true;
   }

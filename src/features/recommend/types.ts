@@ -1,3 +1,4 @@
+import type { Portion } from "@/lib/portion";
 import { z } from "zod";
 
 export type MealMode = "cook" | "eatout" | "convenience";
@@ -14,10 +15,7 @@ export const recommendQuerySchema = z.object({
 /** 내 요리 등록 (PRD 11.3 — 냉장고 재료로 만드는 자기만의 요리). */
 export const createRecipeSchema = z.object({
   name: z.string().min(1, "요리 이름을 알려줄래요?").max(40),
-  ingredients: z
-    .array(z.string().min(1).max(20))
-    .min(1, "재료를 하나만 더 넣어볼까요?")
-    .max(20),
+  ingredients: z.array(z.string().min(1).max(20)).min(1, "재료를 하나만 더 넣어볼까요?").max(20),
   steps: z.array(z.string().min(1).max(200)).max(20).default([]),
   minutes: z.coerce.number().int().min(1).max(300).optional(),
   // 1인분 kcal(선택) — 넣으면 detail 모드 표시·예산 합산·넛지에 반영. 강요 아님(죄책감 제로).
@@ -46,7 +44,9 @@ export interface RecommendationResponse {
   imageUrl: string | null; // 완성 요리 사진(cook). 없으면 emoji로 폴백
   myPhotoUrl: string | null; // 내가 이 레시피로 찍어 올린 사진(개인 기록·나만 봄). 있으면 우선 표시
   kcal: number | null; // detail(관리) 모드에서만 채워짐 (#4). cozy면 null
-  badge: string | null;
+  badge: string | null; // "💪 단백질" 또는 null (nutrition.deriveBadge)
+  /** 한 끼 양감(lib/portion) — 숫자가 아닌 라벨이라 cozy에도 싣는다. 칼로리를 모르면 null */
+  portion: Portion | null;
   minutes: number | null; // cook
   servings: number | null; // cook
   matchRate: number | null; // cook (냉장고 기준)

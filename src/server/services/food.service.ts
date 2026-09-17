@@ -2,6 +2,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { FOOD_SOURCE, searchKeyOf } from "@/features/record/foodDict";
+import { portionOf } from "@/lib/portion";
 import {
   MEAL_MIN_KCAL,
   MEAL_SUFFIXES,
@@ -93,6 +94,7 @@ export async function searchFoods(
     name: row.name,
     category: row.category,
     kcal: detail ? row.kcal : null, // cozy 사용자에겐 숫자를 싣지 않는다 (불변 #2)
+    portion: portionOf(row.kcal), // 라벨은 숫자가 아니라 모드와 무관
   }));
 }
 
@@ -171,6 +173,7 @@ export async function browseFoods(
       name: row.name,
       category: row.category,
       kcal: detail ? row.kcal : null,
+      portion: portionOf(row.kcal),
       servingAmount: row.servingAmount,
       servingUnit: row.servingUnit,
     })),

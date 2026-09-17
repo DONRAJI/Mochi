@@ -11,6 +11,7 @@ import { useFoodSearch } from "../hooks/useFoodSearch";
 import { useMe } from "@/features/auth/hooks/useAuth";
 import { useRecommendations } from "@/features/recommend/hooks/useRecommend";
 import { SLOT_LABEL, SLOT_EMOJI, estimateSlot } from "../slot";
+import { PORTION_LABEL } from "@/lib/portion";
 import {
   matchCatalog,
   normalizeName,
@@ -243,7 +244,14 @@ export function QuickRecordSheet({
                   key={f.id}
                   emoji="🥣"
                   name={f.name}
-                  meta={[f.category, showKcal && f.kcal != null ? `${f.kcal}kcal` : null]}
+                  meta={[
+                    f.category,
+                    showKcal && f.kcal != null
+                      ? `${f.kcal}kcal`
+                      : f.portion
+                        ? PORTION_LABEL[f.portion]
+                        : null,
+                  ]}
                   onPick={() => pickFood(f)}
                 />
               ))}
