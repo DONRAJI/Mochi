@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Gauge } from "@/components/ui/Gauge";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak } from "@/features/record/hooks/useRecord";
 import { useIngredients } from "@/features/fridge/hooks/useFridge";
+import { useMe } from "@/features/auth/hooks/useAuth";
+import { QuickRecordSheet } from "@/features/record/components/QuickRecordSheet";
 import {
   buildOnboardingSteps,
   isOnboardingComplete,
@@ -15,7 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * 첫 안내 — 가입 직후 홈에서 핵심 루프(재료 → 기록 → 뽑기)를 한눈에.
+ * 첫 안내 — 가입 직후 홈에서 핵심 루프(기록 → 뽑기)를 한눈에. 냉장고는 요리하는 사람에게만 선택 단계.
+ * '한 끼 기록하기'는 탭으로 이동시키지 않고 이 자리에서 기록 시트를 연다 — 첫날 가장 짧은 길.
  * 첫 모찌를 뽑으면 사라지고 다시 나오지 않는다(onboarding.ts).
  *
  * 스킵 버튼을 두지 않은 이유: 세 단계 자체가 앱의 핵심 동선이라 '건너뛸 것'이 아니고,
@@ -24,12 +28,14 @@ import { cn } from "@/lib/utils";
  */
 export function StartHereCard() {
   const router = useRouter();
+  const [recordOpen, setRecordOpen] = useState(false);
+  const { data: me, isPending: mePending } = useMe();
   const { data: mochi, isPending: mochiPending } = useMochiState();
   const { data: streak, isPending: streakPending } = useStreak();
   const { data: ingredients, isPending: fridgePending } = useIngredients();
 
   // 값이 오기 전엔 아무것도 그리지 않는다 — 이미 루프를 돈 사용자에게 안내가 번쩍이지 않게.
-  if (mochiPending || streakPending || fridgePending) return null;
+  if (mePending || mochiPending || streakPending || fridgePending) return null;
   if (!mochi || isOnboardingComplete(mochi.collectedCount)) return null;
 
   const steps = buildOnboardingSteps({
@@ -38,18 +44,25 @@ export function StartHereCard() {
     seeds: mochi.seeds,
     drawCost: mochi.drawCost,
     collectedCount: mochi.collectedCount,
+    cooksOften: me?.cooksOften ?? false,
   });
 
   return (
     <Card className="w-full bg-butter-soft">
-      <p className="font-display text-lg text-cocoa">{onboardingHeadline(steps)}</p>
+      <p className="font-display text-lg text-cocoa">
+        {onboardingHeadline(steps, mochi.seeds >= mochi.drawCost)}
+      </p>
       <p className="mt-0.5 text-sm text-cocoa-soft">
         잘 먹은 날마다 씨앗이 쌓이고, 씨앗으로 모찌를 뽑아요.
       </p>
 
       <div className="mt-3 flex flex-col gap-2">
         {steps.map((s) => (
-          <StepRow key={s.key} step={s} onClick={() => router.push(s.href)} />
+          <StepRow
+            key={s.key}
+            step={s}
+            onClick={() => (s.key === "record" ? setRecordOpen(true) : router.push(s.href))}
+          />
         ))}
       </div>
 
@@ -60,6 +73,8 @@ export function StartHereCard() {
           🌱 씨앗 {mochi.seeds} / {mochi.drawCost}
         </p>
       </div>
+
+      <QuickRecordSheet open={recordOpen} onClose={() => setRecordOpen(false)} />
     </Card>
   );
 }
@@ -84,7 +99,10 @@ function StepRow({ step, onClick }: { step: OnboardingStep; onClick: () => void 
         {step.done ? "✓" : step.emoji}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-cocoa">{step.label}</span>
+        <span className="block truncate text-sm text-cocoa">
+          {step.label}
+          {step.optional && <span className="ml-1 text-xs text-cocoa-faint">· 선택</span>}
+        </span>
         <span className="block truncate text-xs text-cocoa-faint">{step.hint}</span>
       </span>
       <span className="shrink-0 text-cocoa-faint">›</span>

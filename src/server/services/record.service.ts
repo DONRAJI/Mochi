@@ -8,6 +8,7 @@ import { estimateSlot } from "@/features/record/slot";
 import { balanceNudge, type Nudge } from "@/features/record/balance";
 import { buildMealHistory, monthsOf, type HistoryMeal } from "@/features/record/history";
 import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
+import { discoveryCheckFor } from "@/features/collection/discovery";
 import { kstDayKey, kstDayStart, kstMonthRange } from "@/lib/kst";
 import { isWeightStale } from "@/features/record/weightFreshness";
 import {
@@ -109,6 +110,28 @@ export async function markMealEaten(
       });
     }
 
+    // 첫 발견(씨앗 +1) — 카탈로그는 아래 도감 적립으로, 외식 메뉴·음식 이름은 예전 기록 유무로(discovery.ts).
+    // 방금 만든 이 기록은 빼고 찾는다.
+    const discovery = discoveryCheckFor({
+      mode: input.mode,
+      refId: input.refId,
+      name: food?.name ?? input.title,
+    });
+    let firstFood = false;
+    if (discovery?.kind === "menu" || discovery?.kind === "name") {
+      const before = await tx.mealRecord.findFirst({
+        where: {
+          userId,
+          id: { not: record.id },
+          ...(discovery.kind === "menu"
+            ? { mode: "eatout", refId: discovery.refId }
+            : { refId: null, title: { equals: discovery.name, mode: "insensitive" } }),
+        },
+        select: { id: true },
+      });
+      firstFood = before == null;
+    }
+
     // 도감 적립 — 중복(이미 가진 카드)이면 추가 없음
     let cardAcquired = false;
     const type = collectionTypeFor(input.mode);
@@ -139,7 +162,7 @@ export async function markMealEaten(
     const firstMealForSlot = !grantedSlots.has(slot);
     const want = mealSeeds({
       firstMealForSlot,
-      firstDiscovery: cardAcquired,
+      firstDiscovery: cardAcquired || firstFood,
       streakAdvanced,
       streakCount: s.count,
     });
