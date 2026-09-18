@@ -240,13 +240,15 @@ export function QuickRecordSheet({
           {/* 밖에서 먹은 건 이름을 적기보다 장소에서 고르는 게 빠르다 — 제안이 아니라 기록을 돕는 자리. */}
           {!picked && (
             <div className="mt-1 flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPlaceOpen((o) => !o)}
-                className="self-start rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
-              >
-                {placeOpen ? "밖에서 고르기 접기" : "🏪 밖에서 먹었다면 — 장소에서 고르기"}
-              </button>
+              {!initialPlaceOpen && (
+                <button
+                  type="button"
+                  onClick={() => setPlaceOpen((o) => !o)}
+                  className="self-start rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
+                >
+                  {placeOpen ? "밖에서 고르기 접기" : "🏪 밖에서 먹었다면 — 장소에서 고르기"}
+                </button>
+              )}
               {placeOpen && <FoodPlacePicker onPick={pickFromPlace} />}
             </div>
           )}
@@ -310,16 +312,20 @@ export function QuickRecordSheet({
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-cocoa-soft">어떻게 드셨어요?</span>
-          <div className="flex gap-2">
-            {MODES.map((m) => (
-              <Chip key={m.value} active={mode === m.value} onClick={() => changeMode(m.value)}>
-                {m.label}
-              </Chip>
-            ))}
+        {/* 장소에서 고르는 흐름이면 어떻게 먹었는지는 장소가 이미 정한다(편의점=간편식·그 외=외식) —
+            줄을 하나라도 줄이는 게 낫다(2026-09-18). 이름을 직접 적을 때만 고르게 둔다. */}
+        {!initialPlaceOpen && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm text-cocoa-soft">어떻게 드셨어요?</span>
+            <div className="flex gap-2">
+              {MODES.map((m) => (
+                <Chip key={m.value} active={mode === m.value} onClick={() => changeMode(m.value)}>
+                  {m.label}
+                </Chip>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-cocoa-soft">언제 드셨어요?</span>
