@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMe } from "@/features/auth/hooks/useAuth";
-import { ModeToggle } from "./ModeToggle";
 import { SortFilterChips } from "./SortFilterChips";
 import { RecipeCard } from "./RecipeCard";
 import { RecipeDetailModal } from "./RecipeDetailModal";
 import { RecipeSearchBar } from "./RecipeSearchBar";
 import { AddMyRecipeSheet } from "./AddMyRecipeSheet";
 import { WeeklyPlanCalendar } from "./WeeklyPlanCalendar";
-import { OutsidePlaceChips, OutsideFoodList } from "./OutsideView";
 import { RecipePager } from "./RecipePager";
 import { FavoritesList } from "./FavoritesList";
 import { BalanceBanner } from "@/features/record/components/BalanceBanner";
@@ -21,8 +18,6 @@ import { useRecommendations, useRecipeSearch, useToggleFavorite } from "../hooks
 import { matchesCookFilter } from "../cookFilter";
 import { pageSlice, pageCount, clampPage } from "../paging";
 import type { RecommendationResponse } from "../types";
-import type { MealsSegment } from "../data";
-import type { OutsidePlace } from "@/features/record/outsidePlaces";
 import { messages } from "@/lib/messages";
 
 /** 입력을 디바운스 — 타이핑 중 매 글자마다 조회하지 않게. */
@@ -51,18 +46,12 @@ type MealsView = "recommend" | "favorites" | "week";
  * 요리 안 하는 사용자도 같은 무게의 갈래를 갖는다(불변 #5).
  */
 export function MealsScreen() {
-  const { data: me } = useMe();
   const [view, setView] = useState<MealsView>("recommend");
-  // '밖에서'는 장소를 고른다 — 예전 외식·간편식 고정 목록(36개씩)을 대신한다(OutsideView).
-  const [segment, setSegment] = useState<MealsSegment>("cook");
-  const [place, setPlace] = useState<OutsidePlace>("cafe");
   const [cookFilter, setCookFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<RecommendationResponse | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   // 레시피 추천은 요리 갈래에서만 받는다.
-  const { data, isPending, isError, refetch } = useRecommendations("cook", {
-    enabled: segment === "cook",
-  });
+  const { data, isPending, isError, refetch } = useRecommendations("cook");
   const toggleFav = useToggleFavorite();
 
   // 레시피 검색(cook) — 이름 부분일치 + 상세검색(재료). 입력은 디바운스해 서버 조회.
@@ -75,8 +64,7 @@ export function MealsScreen() {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const searchActive =
-    segment === "cook" && (debouncedName.trim().length > 0 || searchIngredients.length > 0);
+  const searchActive = debouncedName.trim().length > 0 || searchIngredients.length > 0;
   const searchResult = useRecipeSearch(
     searchActive ? debouncedName : "",
     searchActive ? searchIngredients : [],
@@ -99,25 +87,6 @@ export function MealsScreen() {
     viewApplied.current = true;
   }, [viewParam]);
 
-  // ?segment=outside 딥링크 — 빈 냉장고의 '밖에서 먹기 보기'가 곧장 장소 선택으로 들어온다.
-  // 딥링크가 없으면 **요리 성향**(가입 때 고른 값, 마이에서 변경 가능)으로 첫 갈래를 정한다 —
-  // 주로 사 먹는 사람에게 요리 목록이 먼저 뜨면 자기 앱이 아니라고 느낀다(2026-09-18 테스터 피드백).
-  // 한 번만 적용하고, 그 뒤엔 사용자가 고른 칩을 존중한다.
-  const segmentParam = params.get("segment");
-  const segmentApplied = useRef(false);
-  useEffect(() => {
-    if (segmentApplied.current) return;
-    if (segmentParam === "outside") {
-      setSegment("outside");
-      segmentApplied.current = true;
-      return;
-    }
-    if (me) {
-      if (!me.cooksOften) setSegment("outside");
-      segmentApplied.current = true;
-    }
-  }, [segmentParam, me]);
-
   useEffect(() => {
     if (!openId || openConsumed.current || !data) return;
     const found = data.find((r) => r.id === openId);
@@ -126,15 +95,6 @@ export function MealsScreen() {
       openConsumed.current = true;
     }
   }, [openId, data]);
-
-  /** 갈래를 바꾸면 필터·검색을 초기화한다. */
-  function changeSegment(v: string) {
-    setSegment(v as MealsSegment);
-    setCookFilter(null);
-    setNameQuery("");
-    setIngQuery("");
-    setAdvancedOpen(false);
-  }
 
   const shown = data?.filter((r) => matchesCookFilter(r, cookFilter));
 
@@ -159,6 +119,8 @@ export function MealsScreen() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-title text-cocoa">오늘 뭐 먹지</h1>
+      {/* 밖에서 먹은 건 홈 '먹었어요'에서 장소로 고른다(2026-09-18) — 이 탭은 만들어 먹는 제안만 맡는다. */}
+      <p className="px-1 text-sm text-cocoa-soft">냉장고에 있는 걸로 만들 수 있는 요리예요</p>
 
       <div className="flex gap-2">
         <Chip active={view === "recommend"} onClick={() => setView("recommend")}>
@@ -179,111 +141,101 @@ export function MealsScreen() {
       ) : (
         <>
           <BalanceBanner />
-          <ModeToggle value={segment} onChange={changeSegment} />
 
-          {segment === "outside" ? (
+          <RecipeSearchBar
+            name={nameQuery}
+            onName={setNameQuery}
+            advancedOpen={advancedOpen}
+            onToggleAdvanced={() => setAdvancedOpen((o) => !o)}
+            ingredients={ingQuery}
+            onIngredients={setIngQuery}
+          />
+
+          {searchActive ? (
+            // 검색 결과 뷰 — 이름/재료로 찾은 요리 (칩은 잠시 숨겨 집중)
             <>
-              <OutsidePlaceChips value={place} onChange={setPlace} />
-              <OutsideFoodList key={place} place={place} />
+              {searchResult.isError && <RetryNotice onRetry={() => searchResult.refetch()} />}
+              {!searchResult.isError &&
+                !searchResult.isFetching &&
+                (searchResult.data?.length ?? 0) === 0 && (
+                  <p className="px-1 text-sm text-cocoa-soft">
+                    찾는 요리가 없어요. 다른 이름이나 재료로 찾아볼까요?
+                  </p>
+                )}
+              <div ref={listTopRef} className="flex flex-col gap-3">
+                {searchVisible.map((r) => (
+                  <RecipeCard
+                    key={r.id}
+                    item={r}
+                    onClick={() => setSelected(r)}
+                    onToggleFavorite={() =>
+                      toggleFav.mutate({
+                        mode: "cook",
+                        refId: r.id,
+                        title: r.name,
+                        emoji: r.emoji ?? undefined,
+                      })
+                    }
+                  />
+                ))}
+              </div>
+              <RecipePager
+                page={searchPage}
+                totalPages={pageCount(searchItems.length)}
+                onChange={(p) => goToPage(p, searchItems.length)}
+              />
             </>
           ) : (
             <>
-              <RecipeSearchBar
-                name={nameQuery}
-                onName={setNameQuery}
-                advancedOpen={advancedOpen}
-                onToggleAdvanced={() => setAdvancedOpen((o) => !o)}
-                ingredients={ingQuery}
-                onIngredients={setIngQuery}
-              />
+              <SortFilterChips value={cookFilter} onChange={setCookFilter} />
 
-              {searchActive ? (
-                // 검색 결과 뷰 — 이름/재료로 찾은 요리 (칩은 잠시 숨겨 집중)
-                <>
-                  {searchResult.isError && <RetryNotice onRetry={() => searchResult.refetch()} />}
-                  {!searchResult.isError &&
-                    !searchResult.isFetching &&
-                    (searchResult.data?.length ?? 0) === 0 && (
-                      <p className="px-1 text-sm text-cocoa-soft">
-                        찾는 요리가 없어요. 다른 이름이나 재료로 찾아볼까요?
-                      </p>
-                    )}
-                  <div ref={listTopRef} className="flex flex-col gap-3">
-                    {searchVisible.map((r) => (
-                      <RecipeCard
-                        key={r.id}
-                        item={r}
-                        onClick={() => setSelected(r)}
-                        onToggleFavorite={() =>
-                          toggleFav.mutate({
-                            mode: "cook",
-                            refId: r.id,
-                            title: r.name,
-                            emoji: r.emoji ?? undefined,
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                  <RecipePager
-                    page={searchPage}
-                    totalPages={pageCount(searchItems.length)}
-                    onChange={(p) => goToPage(p, searchItems.length)}
-                  />
-                </>
-              ) : (
-                <>
-                  <SortFilterChips value={cookFilter} onChange={setCookFilter} />
-
-                  {/* 내 요리 등록은 가끔 쓰는 기능이라 목록 위 오른쪽에 작게 — 예전엔 큰 버튼이 목록 앞을
+              {/* 내 요리 등록은 가끔 쓰는 기능이라 목록 위 오른쪽에 작게 — 예전엔 큰 버튼이 목록 앞을
                       가로막아 '무슨 기능인지 모르겠다'는 피드백을 받았다(2026-09-18). 이름도 무엇을 만드는지로. */}
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setAddOpen(true)}
-                      className="rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
-                    >
-                      🧑‍🍳 레시피에 없는 내 요리 등록
-                    </button>
-                  </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
+                >
+                  🧑‍🍳 레시피에 없는 내 요리 등록
+                </button>
+              </div>
 
-                  {isPending && (
-                    <>
-                      <p className="px-1 text-sm text-cocoa-faint">{messages.empty.meals}</p>
-                      {/* 카드가 나중에 끼어들며 아래 페이지 넘기기를 밀지 않게 자리를 잡아둔다. */}
-                      <div className="flex flex-col gap-3">
-                        {Array.from({ length: 3 }, (_, i) => (
-                          <Skeleton key={i} className="h-[104px] w-full rounded-mochi" />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {isError && <RetryNotice onRetry={() => refetch()} />}
-
-                  <div ref={listTopRef} className="flex flex-col gap-3">
-                    {visible.map((r) => (
-                      <RecipeCard
-                        key={r.id}
-                        item={r}
-                        onClick={() => setSelected(r)}
-                        onToggleFavorite={() =>
-                          toggleFav.mutate({
-                            mode: "cook",
-                            refId: r.id,
-                            title: r.name,
-                            emoji: r.emoji ?? undefined,
-                          })
-                        }
-                      />
+              {isPending && (
+                <>
+                  <p className="px-1 text-sm text-cocoa-faint">{messages.empty.meals}</p>
+                  {/* 카드가 나중에 끼어들며 아래 페이지 넘기기를 밀지 않게 자리를 잡아둔다. */}
+                  <div className="flex flex-col gap-3">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <Skeleton key={i} className="h-[104px] w-full rounded-mochi" />
                     ))}
                   </div>
-                  <RecipePager
-                    page={curPage}
-                    totalPages={pageCount(shownCount)}
-                    onChange={(p) => goToPage(p, shownCount)}
-                  />
                 </>
               )}
+              {isError && <RetryNotice onRetry={() => refetch()} />}
+
+              <div ref={listTopRef} className="flex flex-col gap-3">
+                {visible.map((r) => (
+                  <RecipeCard
+                    key={r.id}
+                    item={r}
+                    onClick={() => setSelected(r)}
+                    onToggleFavorite={() =>
+                      toggleFav.mutate({
+                        mode: "cook",
+                        refId: r.id,
+                        title: r.name,
+                        emoji: r.emoji ?? undefined,
+                      })
+                    }
+                  />
+                ))}
+              </div>
+              <RecipePager
+                page={curPage}
+                totalPages={pageCount(shownCount)}
+                onChange={(p) => goToPage(p, shownCount)}
+              />
             </>
           )}
         </>

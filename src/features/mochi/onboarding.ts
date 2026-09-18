@@ -64,7 +64,7 @@ export function buildOnboardingSteps(input: OnboardingInput): OnboardingStep[] {
       emoji: "🍽️",
       label: "한 끼 기록하기",
       hint: "먹은 걸 이름만 적어도 씨앗이 쌓여요",
-      href: "/meals?segment=outside",
+      href: "/",
       done: input.hasRecord,
     },
     {

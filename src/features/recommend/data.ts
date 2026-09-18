@@ -5,11 +5,4 @@
  * '밖에서'는 장소(카페·빵집·버거·식사·편의점)를 고르는 화면이다. 기록·즐겨찾기에 쓰는 모드 값
  * (cook/eatout/convenience)은 DB와 여러 곳이 쓰므로 그대로 두고 MealsScreen이 파생한다.
  */
-export const MEAL_SEGMENTS = [
-  { value: "cook", label: "요리" },
-  { value: "outside", label: "밖에서" },
-] as const;
-
-export type MealsSegment = (typeof MEAL_SEGMENTS)[number]["value"];
-
 export const SORT_FILTERS = ["15분 이내", "추가구매 없음", "단백질 위주", "가볍게"] as const;

@@ -19,7 +19,7 @@ const APP_ROUTES = [
   "/me/settings",
 ];
 /** 식단 탭이 받는 딥링크(MealsScreen) */
-const MEALS_PARAMS = ["segment=outside", "view=week"];
+const MEALS_PARAMS = ["view=week"];
 /** messages.test.ts와 같은 금지어 — 안내 문구도 죄책감 제로(불변 #1) */
 const BANNED = ["실패", "오류", "에러", "경고", "잘못", "❌", "금지", "초과"];
 

@@ -24,22 +24,43 @@ export function QuickActionBar() {
   const router = useRouter();
   const { data: me } = useMe();
   const [recordOpen, setRecordOpen] = useState(false);
+  // 사 먹는 사람의 가운데 버튼은 '장소에서 고르기'가 펼쳐진 기록 시트를 연다(제안이 아니라 기록).
+  const [placeOpen, setPlaceOpen] = useState(false);
   // 값이 오기 전엔 기본(요리) — 잠깐 다른 버튼이 보였다 바뀌는 것보다 낫다.
   const cooks = me?.cooksOften ?? true;
   return (
     <div className="flex w-full items-stretch gap-2">
-      <Button className="flex-1" onClick={() => setRecordOpen(true)}>
+      <Button
+        className="flex-1"
+        onClick={() => {
+          setPlaceOpen(false);
+          setRecordOpen(true);
+        }}
+      >
         먹었어요
       </Button>
       <Button
         variant="soft"
         className="flex-1"
-        onClick={() => router.push(cooks ? "/fridge" : "/meals?segment=outside")}
+        onClick={() => {
+          if (cooks) router.push("/fridge");
+          else {
+            setPlaceOpen(true);
+            setRecordOpen(true);
+          }
+        }}
       >
-        {cooks ? "재료 추가" : "밖에서 먹기"}
+        {cooks ? "재료 추가" : "밖에서 먹었어요"}
       </Button>
       <PhotoRecordButton compact />
-      <QuickRecordSheet open={recordOpen} onClose={() => setRecordOpen(false)} />
+      <QuickRecordSheet
+        open={recordOpen}
+        onClose={() => {
+          setRecordOpen(false);
+          setPlaceOpen(false);
+        }}
+        initialPlaceOpen={placeOpen}
+      />
     </div>
   );
 }

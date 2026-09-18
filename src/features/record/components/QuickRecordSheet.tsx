@@ -18,7 +18,8 @@ import {
   type CatalogCandidate,
   type CatalogMode,
 } from "../catalogMatch";
-import type { FoodSearchItem, MealSlot } from "../types";
+import { FoodPlacePicker } from "./FoodPlacePicker";
+import type { FoodBrowseItem, FoodSearchItem, MealSlot } from "../types";
 
 const MODES = [
   { value: "cook", label: "🍳 요리" },
@@ -45,6 +46,8 @@ interface QuickRecordSheetProps {
   initialFood?: FoodSearchItem | null;
   /** 미리 고른 음식을 어떻게 먹었는지 — 편의점 장소면 간편식, 그 밖의 장소면 외식. */
   initialMode?: RecordMode;
+  /** 열 때 '밖에서 고르기'를 펼친 상태로 (홈의 '밖에서 먹었어요' 버튼) */
+  initialPlaceOpen?: boolean;
 }
 
 interface CatalogRow {
@@ -105,6 +108,7 @@ export function QuickRecordSheet({
   onClose,
   initialFood,
   initialMode = "eatout",
+  initialPlaceOpen = false,
 }: QuickRecordSheetProps) {
   const router = useRouter();
   const mark = useMarkMealEaten();
@@ -115,14 +119,18 @@ export function QuickRecordSheet({
   const [slot, setSlot] = useState<MealSlot>(() => estimateSlot(new Date()));
   const [kcal, setKcal] = useState("");
   const [picked, setPicked] = useState<Picked | null>(null);
+  // 밖에서 먹은 것 고르기 — 이름을 몰라도 장소 → 메뉴 두 번 탭이면 골라진다(FoodPlacePicker).
+  const [placeOpen, setPlaceOpen] = useState(initialPlaceOpen);
 
   // 목록에서 음식을 누르고 열었으면 그 음식을 골라둔 상태로 시작한다.
   useEffect(() => {
-    if (!open || !initialFood) return;
+    if (!open) return;
+    setPlaceOpen(initialPlaceOpen);
+    if (!initialFood) return;
     setPicked({ kind: "food", item: initialFood });
     setTitle(initialFood.name);
     setMode(initialMode);
-  }, [open, initialFood, initialMode]);
+  }, [open, initialFood, initialMode, initialPlaceOpen]);
 
   // 이 시트는 홈에 항상 마운트돼 있다 — 열렸을 때만 받아야 홈 진입마다 요청이 나가지 않는다.
   const eatout = useRecommendations("eatout", { enabled: open });
@@ -152,6 +160,7 @@ export function QuickRecordSheet({
     setTitle("");
     setKcal("");
     setPicked(null);
+    setPlaceOpen(false);
   }
 
   function changeTitle(value: string) {
@@ -175,6 +184,13 @@ export function QuickRecordSheet({
   function pickFood(item: FoodSearchItem) {
     setPicked({ kind: "food", item });
     setTitle(item.name);
+  }
+
+  /** 장소 목록에서 고른 음식 — 편의점은 간편식, 그 밖의 장소는 외식으로 기록한다. */
+  function pickFromPlace(item: FoodBrowseItem, place: string) {
+    pickFood(item);
+    setMode(place === "convenience" ? "convenience" : "eatout");
+    setPlaceOpen(false);
   }
 
   function onSubmit(e: FormEvent) {
@@ -220,6 +236,20 @@ export function QuickRecordSheet({
             placeholder="예: 추러스, 감자탕"
             onChange={(e) => changeTitle(e.target.value)}
           />
+
+          {/* 밖에서 먹은 건 이름을 적기보다 장소에서 고르는 게 빠르다 — 제안이 아니라 기록을 돕는 자리. */}
+          {!picked && (
+            <div className="mt-1 flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPlaceOpen((o) => !o)}
+                className="self-start rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
+              >
+                {placeOpen ? "밖에서 고르기 접기" : "🏪 밖에서 먹었다면 — 장소에서 고르기"}
+              </button>
+              {placeOpen && <FoodPlacePicker onPick={pickFromPlace} />}
+            </div>
+          )}
 
           {hasSuggestions && (
             <div className="flex flex-col gap-1.5">
