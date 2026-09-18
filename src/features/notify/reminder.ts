@@ -50,8 +50,8 @@ export const REMINDER_POOL: readonly ReminderMessage[] = [
   },
   {
     title: TITLE,
-    body: "밖에서 먹는 날이면 가벼운 메뉴부터 보여드릴게요 ☕",
-    url: "/meals?segment=outside",
+    body: "밖에서 먹는 날이면 장소만 고르면 기록 끝이에요 ☕",
+    url: "/",
   },
   { title: TITLE, body: "저녁 한 끼 남기면 모찌가 또 한 뼘 자라요 🌱", url: "/meals" },
   { title: TITLE, body: "냉장고에 있는 걸로 만들 저녁, 모찌가 찾아놨어요 🥕", url: "/meals" },

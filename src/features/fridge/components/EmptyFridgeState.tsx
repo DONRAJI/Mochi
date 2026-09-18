@@ -3,8 +3,8 @@ import { Card } from "@/components/ui/Card";
 import { messages } from "@/lib/messages";
 
 /**
- * 빈 냉장고 — 비요리 사용자를 식단 탭 '밖에서 먹기'로 잇는 브릿지 (불변 #5, PRD 5.2·8장).
- * 장소 선택 화면으로 바로 들어가게 딥링크한다(추천 기본 갈래는 요리라서).
+ * 빈 냉장고 — 사 먹는 사람을 '기록'으로 잇는 브릿지 (불변 #5, PRD 5.2·8장).
+ * 밖에서 먹는 건 제안이 아니라 기록이라(2026-09-18) 홈의 '먹었어요'로 보낸다 — 거기서 장소로 고른다.
  */
 export function EmptyFridgeState() {
   return (
@@ -12,10 +12,10 @@ export function EmptyFridgeState() {
       <span className="text-5xl">🧊</span>
       <p className="text-cocoa-soft">{messages.empty.fridge}</p>
       <Link
-        href="/meals?segment=outside"
+        href="/"
         className="rounded-mochi-sm bg-mint px-4 py-2 text-sm text-cocoa shadow-mochi-press"
       >
-        밖에서 먹기 보기
+        밖에서 먹은 것 기록하기
       </Link>
     </Card>
   );
