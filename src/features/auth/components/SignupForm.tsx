@@ -41,7 +41,8 @@ export function SignupForm() {
     const tags = allergies.map((label) => ({ kind: "allergy" as const, label }));
     signup.mutate(
       { email, password, nickname, cooksOften, tags },
-      { onSuccess: () => router.push("/") },
+      // replace — 가입 직후 뒤로가기가 가입·로그인 화면으로 돌아가지 않게(히스토리에서 치운다).
+      { onSuccess: () => router.replace("/") },
     );
   }
 
