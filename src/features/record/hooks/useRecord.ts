@@ -14,6 +14,7 @@ import {
   addWeight,
   recordPhoto,
   fetchMealHistory,
+  fetchFrequentMeals,
 } from "../api/record.api";
 import { useMochiStore } from "@/store/mochi";
 import { estimateSlot } from "../slot";
@@ -22,6 +23,11 @@ import type { MarkMealRequest, MealSlot, ProfileRequest } from "../types";
 /** queryKey ["record","streak"] — 먹었어요 시 함께 갱신. */
 export function useStreak() {
   return useQuery({ queryKey: ["record", "streak"], queryFn: fetchStreak, retry: false });
+}
+
+/** 자주 먹은 것(홈 '또 먹었어요') — 기록할 때마다 ["record"] 무효화로 순위가 따라온다. */
+export function useFrequentMeals() {
+  return useQuery({ queryKey: ["record", "frequent"], queryFn: fetchFrequentMeals, retry: false });
 }
 
 /** 오늘 먹은 끼니 — 먹었어요 시 ["record"] 무효화로 함께 갱신. */

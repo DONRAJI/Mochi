@@ -1,5 +1,6 @@
 import { fetcher, FetchError } from "@/lib/fetcher";
 import type { Nudge } from "../balance";
+import type { FrequentMeal } from "../frequent";
 import type {
   MarkMealRequest,
   MealRecordResponse,
@@ -11,6 +12,10 @@ import type {
   DailyBudgetResponse,
   MealHistoryResponse,
 } from "../types";
+
+export function fetchFrequentMeals(): Promise<FrequentMeal[]> {
+  return fetcher<FrequentMeal[]>("/api/records/frequent");
+}
 
 export function fetchTodayMeals(): Promise<TodayMealResponse[]> {
   return fetcher<TodayMealResponse[]>("/api/records/today");

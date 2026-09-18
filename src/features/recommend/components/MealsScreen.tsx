@@ -223,13 +223,17 @@ export function MealsScreen() {
                 <>
                   <SortFilterChips value={cookFilter} onChange={setCookFilter} />
 
-                  <button
-                    type="button"
-                    onClick={() => setAddOpen(true)}
-                    className="rounded-mochi border border-dashed border-lavender bg-cream-50 px-4 py-3 text-sm text-cocoa-soft transition-transform ease-jelly active:scale-[0.98]"
-                  >
-                    🧑‍🍳 냉장고 재료로 내 요리 추가하기
-                  </button>
+                  {/* 내 요리 등록은 가끔 쓰는 기능이라 목록 위 오른쪽에 작게 — 예전엔 큰 버튼이 목록 앞을
+                      가로막아 '무슨 기능인지 모르겠다'는 피드백을 받았다(2026-09-18). 이름도 무엇을 만드는지로. */}
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setAddOpen(true)}
+                      className="rounded-mochi-sm px-2 py-1 text-xs text-cocoa-soft underline transition-transform ease-jelly active:scale-95"
+                    >
+                      🧑‍🍳 레시피에 없는 내 요리 등록
+                    </button>
+                  </div>
 
                   {isPending && (
                     <>
