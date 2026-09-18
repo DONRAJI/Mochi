@@ -18,7 +18,8 @@ export function LoginForm() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    login.mutate({ email, password, remember }, { onSuccess: () => router.push("/") });
+    // replace — push로 두면 뒤로가기가 로그인 화면으로 돌아와 "로그아웃된 것 같다"는 오해를 준다.
+    login.mutate({ email, password, remember }, { onSuccess: () => router.replace("/") });
   }
 
   return (
@@ -56,7 +57,9 @@ export function LoginForm() {
           </span>
           로그인 유지
         </button>
-        {login.isError && <p className="text-sm text-cocoa-soft">{(login.error as Error).message}</p>}
+        {login.isError && (
+          <p className="text-sm text-cocoa-soft">{(login.error as Error).message}</p>
+        )}
         <Button type="submit" className="w-full">
           {login.isPending ? "들어가는 중…" : "로그인"}
         </Button>

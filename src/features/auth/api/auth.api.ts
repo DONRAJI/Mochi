@@ -39,6 +39,13 @@ export function fetchMe(): Promise<AuthUserResponse> {
   return fetcher<AuthUserResponse>("/api/auth/me");
 }
 
+export function setCooksOften(cooksOften: boolean): Promise<AuthUserResponse> {
+  return fetcher<AuthUserResponse>("/api/auth/cooks-often", {
+    method: "PUT",
+    body: JSON.stringify({ cooksOften }),
+  });
+}
+
 export function setDisplayMode(displayMode: DisplayMode): Promise<AuthUserResponse> {
   return fetcher<AuthUserResponse>("/api/auth/display-mode", {
     method: "PUT",

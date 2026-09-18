@@ -106,6 +106,18 @@ export function useSetDisplayMode() {
   });
 }
 
+/**
+ * 요리 성향 변경 (마이) — 성공 시 me 갱신. 식단 탭 첫 갈래·홈 빠른 버튼이 이 값을 보고 정해진다.
+ * 추천 내용 자체는 이 값을 쓰지 않으므로 추천 캐시는 건드리지 않는다.
+ */
+export function useSetCooksOften() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cooksOften: boolean) => authApi.setCooksOften(cooksOften),
+    onSuccess: (user) => qc.setQueryData(meKey, user),
+  });
+}
+
 /** 닉네임 변경 (설정) — 성공 시 me 갱신(마이 인사말이 바로 바뀐다). */
 export function useSetNickname() {
   const qc = useQueryClient();
