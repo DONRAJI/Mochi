@@ -48,6 +48,9 @@ export const displayModeSchema = z.object({
   displayMode: z.enum(["cozy", "detail"]),
 });
 
+/** 요리 성향 변경 (마이) — 가입 때 고른 값을 나중에 바꾼다. 첫 화면 기본값이 이 값을 따른다. */
+export const cooksOftenSchema = z.object({ cooksOften: z.boolean() });
+
 /** 닉네임 변경 (설정) — 가입 때와 같은 규칙. 공백만 넣는 것도 막는다. */
 export const nicknameSchema = z.object({
   nickname: z.string().trim().min(1, "닉네임을 알려줄래요?").max(20),

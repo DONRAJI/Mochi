@@ -13,6 +13,7 @@ import { TodayMealsStrip } from "./TodayMealsStrip";
 import { MeMenuList } from "./MeMenuList";
 import { PreferencesSection } from "@/features/auth/components/PreferencesSection";
 import { DisplayModeToggle } from "@/features/auth/components/DisplayModeToggle";
+import { CookStyleToggle } from "@/features/auth/components/CookStyleToggle";
 import { useMe, useLogout, useDeleteAccount } from "@/features/auth/hooks/useAuth";
 import { useMochiState } from "@/features/mochi/hooks/useMochi";
 
@@ -54,6 +55,8 @@ export function MeScreen() {
       </Card>
 
       <DisplayModeToggle />
+
+      <CookStyleToggle />
 
       <TodayMealsStrip />
 

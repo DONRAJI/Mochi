@@ -216,6 +216,15 @@ export async function setDisplayMode(userId: string, mode: DisplayMode): Promise
   return toAuthUser(user);
 }
 
+/** 요리 성향 변경 (마이) — 식단 탭 첫 갈래·홈 빠른 버튼·첫 안내의 냉장고 단계가 이 값을 본다. */
+export async function setCooksOften(
+  userId: string,
+  cooksOften: boolean,
+): Promise<AuthUserResponse> {
+  const user = await db.user.update({ where: { id: userId }, data: { cooksOften } });
+  return toAuthUser(user);
+}
+
 /** 닉네임 변경 (설정). 마이 인사말·모찌가 부르는 이름에 쓰인다. */
 export async function setNickname(userId: string, nickname: string): Promise<AuthUserResponse> {
   const user = await db.user.update({ where: { id: userId }, data: { nickname } });

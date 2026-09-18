@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useMe } from "@/features/auth/hooks/useAuth";
 import { ModeToggle } from "./ModeToggle";
 import { SortFilterChips } from "./SortFilterChips";
 import { RecipeCard } from "./RecipeCard";
@@ -50,6 +51,7 @@ type MealsView = "recommend" | "favorites" | "week";
  * 요리 안 하는 사용자도 같은 무게의 갈래를 갖는다(불변 #5).
  */
 export function MealsScreen() {
+  const { data: me } = useMe();
   const [view, setView] = useState<MealsView>("recommend");
   // '밖에서'는 장소를 고른다 — 예전 외식·간편식 고정 목록(36개씩)을 대신한다(OutsideView).
   const [segment, setSegment] = useState<MealsSegment>("cook");
@@ -98,13 +100,23 @@ export function MealsScreen() {
   }, [viewParam]);
 
   // ?segment=outside 딥링크 — 빈 냉장고의 '밖에서 먹기 보기'가 곧장 장소 선택으로 들어온다.
+  // 딥링크가 없으면 **요리 성향**(가입 때 고른 값, 마이에서 변경 가능)으로 첫 갈래를 정한다 —
+  // 주로 사 먹는 사람에게 요리 목록이 먼저 뜨면 자기 앱이 아니라고 느낀다(2026-09-18 테스터 피드백).
+  // 한 번만 적용하고, 그 뒤엔 사용자가 고른 칩을 존중한다.
   const segmentParam = params.get("segment");
   const segmentApplied = useRef(false);
   useEffect(() => {
-    if (segmentParam !== "outside" || segmentApplied.current) return;
-    setSegment("outside");
-    segmentApplied.current = true;
-  }, [segmentParam]);
+    if (segmentApplied.current) return;
+    if (segmentParam === "outside") {
+      setSegment("outside");
+      segmentApplied.current = true;
+      return;
+    }
+    if (me) {
+      if (!me.cooksOften) setSegment("outside");
+      segmentApplied.current = true;
+    }
+  }, [segmentParam, me]);
 
   useEffect(() => {
     if (!openId || openConsumed.current || !data) return;
