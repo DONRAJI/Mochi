@@ -9,6 +9,7 @@ import { balanceNudge, type Nudge } from "@/features/record/balance";
 import { buildMealHistory, monthsOf, type HistoryMeal } from "@/features/record/history";
 import { mealSeeds, cappedSeedGrant, DRAW_COST } from "@/features/collection/gacha";
 import { discoveryCheckFor } from "@/features/collection/discovery";
+import { rankFrequentMeals, type FrequentMeal } from "@/features/record/frequent";
 import { kstDayKey, kstDayStart, kstMonthRange } from "@/lib/kst";
 import { isWeightStale } from "@/features/record/weightFreshness";
 import {
@@ -357,6 +358,30 @@ export async function listMealHistory(
   );
 
   return { months, month, page, totalPages, days };
+}
+
+/**
+ * 자주 먹은 것 (홈 '또 먹었어요' 한 번 탭 기록). 최근 기록에서 많이 먹은 순으로 몇 개.
+ * 카탈로그 항목은 이름을 해석해 붙인다 — 이름이 있어야 다시 기록할 수 있다(frequent.ts).
+ */
+export async function listFrequentMeals(userId: string, limit = 3): Promise<FrequentMeal[]> {
+  const since = new Date(Date.now() - 60 * 86_400_000);
+  const rows = await db.mealRecord.findMany({
+    where: { userId, eatenAt: { gte: since } },
+    orderBy: { eatenAt: "desc" },
+    take: 200,
+    select: { mode: true, refId: true, title: true, eatenAt: true },
+  });
+  const titles = await resolveMealTitles(rows);
+  return rankFrequentMeals(
+    rows.map((r) => ({
+      mode: r.mode,
+      refId: r.refId,
+      title: (r.refId ? titles.get(r.refId) : r.title) ?? null,
+      eatenAt: r.eatenAt.toISOString(),
+    })),
+    limit,
+  );
 }
 
 /** 오늘 기록 삭제(#2) — 실수 정정용. 소유자 검증. 스트릭·도감은 되돌리지 않음(죄책감 제로·단순). */

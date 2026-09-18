@@ -10,6 +10,7 @@ import { GrowthCard } from "./GrowthCard";
 import { StartHereCard } from "./StartHereCard";
 import { FeatureTourCard } from "./FeatureTourCard";
 import { QuickActionBar } from "./QuickActionBar";
+import { AgainChips } from "@/features/record/components/AgainChips";
 import { WeeklyPlanCalendar } from "@/features/recommend/components/WeeklyPlanCalendar";
 import { useMochiState } from "../hooks/useMochi";
 import { useStreak, useBalanceNudge } from "@/features/record/hooks/useRecord";
@@ -110,6 +111,8 @@ export function MochiRoom() {
       <div className="w-full">
         <WeeklyPlanCalendar compact />
       </div>
+      {/* 자주 먹는 것 한 번 탭 기록 — 기록 과정 자체가 일이 되지 않게(record/frequent.ts) */}
+      <AgainChips />
       {/* 빠른 액션 — 먹었어요·재료 추가·사진 기록을 한 줄로 */}
       <QuickActionBar />
     </main>

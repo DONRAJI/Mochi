@@ -288,7 +288,15 @@ export function RecipeDetailModal({
               item.missingIngredients.length > 0 &&
               (shopped ? (
                 <p className="mt-2 text-center text-sm text-cocoa-soft">
-                  장보기 리스트에 담았어요 🛒
+                  {/* 담은 뒤 어디서 보는지 몰라 헤맨다는 피드백(2026-09-18) → 바로 갈 길을 준다 */}
+                  장보기 리스트에 담았어요 🛒{" "}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/fridge")}
+                    className="underline"
+                  >
+                    보러가기
+                  </button>
                 </p>
               ) : (
                 <button

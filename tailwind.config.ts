@@ -12,7 +12,10 @@ const config: Config = {
     extend: {
       colors: {
         cream: { DEFAULT: "#FFF8F0", 50: "#FFFDFA", 100: "#FFF8F0", 200: "#FBEFE2" },
-        cocoa: { DEFAULT: "#6B5B53", soft: "#8C7D74", faint: "#B6A89F" },
+        // soft·faint는 작은 글씨(12px 이하)에 240곳 넘게 쓰인다 — 웹 접근성 AA(4.5:1)를 넘도록 어둡게
+        // 조정(2026-09-18 테스터 '가시성' 피드백). 베이지 배경 기준 본문 6.14 · soft 5.03 · faint 4.53.
+        // 배경을 흰색으로 바꿔도 대비는 거의 그대로(2.19→2.31)라, 배경이 아니라 이 두 색이 원인이었다.
+        cocoa: { DEFAULT: "#6B5B53", soft: "#766961", faint: "#826F63" },
         peach: { DEFAULT: "#FFD2B8", soft: "#FFE4D4", deep: "#F7B79A" },
         mint: { DEFAULT: "#BCEBD3", soft: "#DBF5E7", deep: "#93DBB8" },
         lavender: { DEFAULT: "#DCD2F2", soft: "#ECE6F8", deep: "#C4B5EA" },
