@@ -50,7 +50,7 @@ export function QuickActionBar() {
           }
         }}
       >
-        {cooks ? "재료 추가" : "밖에서 먹었어요"}
+        {cooks ? "재료 추가" : "밖에서"}
       </Button>
       <PhotoRecordButton compact />
       <QuickRecordSheet
