@@ -9,10 +9,10 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748?logo=prisma&logoColor=white)
 ![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-213%20passing-4CAF50)
-![Play](https://img.shields.io/badge/Google%20Play-내부%20테스트%20중-01875F?logo=googleplay&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-336%20passing-4CAF50)
+![Play](https://img.shields.io/badge/Google%20Play-정식%20출시-01875F?logo=googleplay&logoColor=white)
 
-**🔗 [웹에서 바로 써보기](https://mochi-nu-ashen.vercel.app)** · Android 앱은 Google Play 내부 테스트 진행 중
+**📱 [Google Play에서 받기](https://play.google.com/store/apps/details?id=app.vercel.mochi_nu_ashen.twa)** · **🔗 [웹에서 바로 써보기](https://mochi-nu-ashen.vercel.app)**
 
 | 홈 — 제안 | 식단 — 고르기 | 도감 — 수집 |
 |:---:|:---:|:---:|
@@ -22,7 +22,7 @@
 | 냉장고 — 재료 | 담기 — 한 번에 | 마이 — 체중 흐름 |
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/fridge.jpg" width="240"> | <img src="docs/screenshots/fridge-add.jpg" width="240"> | <img src="docs/screenshots/weight.jpg" width="240"> |
-| 비어 있어도 막다른 화면이 되지 않게 외식 모드로 안내 | 자주 쓰는 재료는 탭 한 번으로 (낙관적 업데이트) | 기록량에 따라 주간→월별→연간이 단계적으로 열린다 |
+| 비어 있어도 막다른 화면이 되지 않게 기록 쪽으로 안내 | 자주 쓰는 재료는 탭 한 번으로 (낙관적 업데이트) | 기록량에 따라 주간→월별→연간이 단계적으로 열린다 |
 
 ---
 
@@ -31,9 +31,19 @@
 | | |
 |---|---|
 | **역할** | 1인 개발 — 기획 · 디자인 · 프론트엔드 · 백엔드 · 배포 전 범위 |
-| **기간** | 2026.06 ~ 2026.09 (약 2개월) · 커밋 204 · PR 61건 |
-| **규모** | TypeScript 15,700줄 · API 라우트 45개 · DB 23모델 · 테스트 37파일 213케이스 |
-| **배포** | Vercel(웹) / Google Play 내부 테스트(Android — Capacitor 원격 URL 셸) |
+| **기간** | 2026.06 착수 → **2026.10.06 Google Play 정식 출시** · 커밋 265 · PR 87건 |
+| **규모** | TypeScript 20,500줄 · API 라우트 50개 · DB 24모델 · 테스트 55파일 336케이스 |
+| **배포** | Vercel(웹) / **Google Play 프로덕션**(Android — Capacitor 원격 URL 셸) |
+
+---
+
+## 출시
+
+**2026년 10월 6일 Google Play 프로덕션 정식 출시.** 내부 테스트 → 비공개 테스트 → 프로덕션 순으로 올렸다. 2023년 11월 이후 만든 개인 개발자 계정은 **테스터 12명을 연속 14일 유지**해야 프로덕션 액세스를 신청할 수 있어서, 비공개 테스트가 형식적 단계가 아니라 실제 관문이었다.
+
+- **스토어**: [모찌 다이어트 — 오늘 뭐 먹지](https://play.google.com/store/apps/details?id=app.vercel.mochi_nu_ashen.twa) · 건강/운동 · 전체 이용가(IARC 3세 이상)
+- **업데이트 경로가 둘이다** — Capacitor 원격 URL 셸이라 화면·기능·문구 수정은 **웹 배포만으로 앱에 반영**된다. 새 AAB와 심사는 셸을 건드릴 때(런처 아이콘·스플래시·권한·`versionCode`)만 필요하다. 첫 프로덕션 심사가 최대 7일 걸릴 수 있는 걸 감안하면, 이 구조가 출시 후 수정 속도를 그대로 좌우했다.
+- **첫 출시엔 단계적 출시를 쓸 수 없다** — 비율을 나눠 내보내는 건 업데이트부터 가능하다. 1.0은 전체 공개로 한 번에 나가므로, 출시 전 게이트(타입·린트·336케이스·빌드) 전부 통과를 전제로 뒀다.
 
 ---
 
@@ -164,7 +174,7 @@ native/             # Capacitor 안드로이드 셸 (웹과 의존성 분리)
 도메인: `auth` · `fridge` · `recommend` · `record` · `collection` · `mochi`.
 계층 의존 방향은 `app → features → server/services → db`. 도메인 간엔 ID/공개 타입으로만 참조한다.
 
-**테스트 전략** — 순수 도메인 로직(추천 랭킹·칼로리 추정·스트릭·가챠 확률·경로 판별 등)을 부수효과 없는 모듈로 떼어내 그쪽에 테스트를 몰아둔다. 37개 파일 213케이스가 전부 여기에 있고, IO 껍데기는 테스트하지 않는다.
+**테스트 전략** — 순수 도메인 로직(추천 랭킹·칼로리 추정·스트릭·가챠 확률·경로 판별 등)을 부수효과 없는 모듈로 떼어내 그쪽에 테스트를 몰아둔다. 55개 파일 336케이스가 전부 여기에 있고, IO 껍데기는 테스트하지 않는다.
 
 ## 제품 원칙 (코드가 지키는 불변 규칙)
 
@@ -172,7 +182,7 @@ native/             # Capacitor 안드로이드 셸 (웹과 의존성 분리)
 2. **홈에 숫자 금지** — 체중·칼로리·달성률은 마이(`me`) 탭으로 격리.
 3. **모찌 상태 고정** — `'happy' | 'sleepy' | 'idle' | 'cheer'` 유니온만.
 4. **디자인 토큰만** — 색·라운드·그림자는 `tailwind.config.ts` 토큰만 (임의 hex 금지, lint로 강제).
-5. **비요리 사용자 동등** — 외식·간편식 모드도 동일한 제안→기록→수집 루프.
+5. **비요리 사용자 동등** — 기록·씨앗·성장·도감은 완전히 동등하게. 다만 **제안은 앱이 정보 우위를 갖는 곳(냉장고)에서만** 한다 — 밖에서 먹는 순간은 메뉴판이 눈앞에 있고 앱은 그 가게 메뉴를 모르니, 제안이 아니라 기록이다. 그 자리에선 제안 대신 **고를 때의 판단 재료**(가벼운 순·양감 라벨)를 기록 직전에 준다. *(2026-09 개정 — 원래는 '외식도 동일한 제안 루프'였다)*
 
 ## 브랜치 전략
 
